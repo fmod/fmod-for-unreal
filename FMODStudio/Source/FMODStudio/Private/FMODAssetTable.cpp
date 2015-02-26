@@ -201,7 +201,7 @@ void FFMODAssetTable::AddAsset(const FGuid& AssetGuid, const FString& AssetFullN
 		UPackage* NewPackage = CreatePackage(NULL, *AssetPackagePath);
 		NewPackage->PackageFlags |= PKG_CompiledIn;
 
-		AssetNameObject = ConstructObject<UFMODAsset>(AssetClass, NewPackage, FName(*AssetShortName), RF_Standalone | RF_Public  | RF_Transient );
+		AssetNameObject = ConstructObject<UFMODAsset>(AssetClass, NewPackage, FName(*AssetShortName), RF_Standalone | RF_Public /* | RF_Transient */);
 		AssetNameObject->AssetGuid = AssetGuid;
 		AssetNameObject->bShowAsAsset = true;
 

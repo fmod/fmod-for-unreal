@@ -82,40 +82,37 @@ namespace UnrealBuildTool.Rules
 			// PublicAdditionalLibraries seems to load from the Engine/Source directory so make a path relative to there
 			string BasePath = "../Plugins/FMODStudio/Lib/" + platformName + "/";
 
-			bool copyThirdParty = false;
-			bool copyThirdPartyToExe = false;
+			string copyThirdPartyPath = "";
 
 			switch (Target.Platform)
 			{
 				case UnrealTargetPlatform.Win32:
 					linkExtension = "_vc.lib";
 					dllExtension = ".dll";
-					copyThirdParty = true;
+					copyThirdPartyPath = "FMODStudio/Win32";
 					break;
 				case UnrealTargetPlatform.Win64:
 					platformMidName = "64";
 					linkExtension = "_vc.lib";
 					dllExtension = ".dll";
-					copyThirdParty = true;
+					copyThirdPartyPath = "FMODStudio/Win64";
 					break;
 				case UnrealTargetPlatform.Mac:
 					linkExtension = dllExtension = ".dylib";
 					libPrefix = "lib";
-					copyThirdParty = true;
+					copyThirdPartyPath = "FMODStudio/Mac";
 					break;
 				case UnrealTargetPlatform.XboxOne:
 					linkExtension = "_vc.lib";
 					dllExtension = ".dll";
-					copyThirdParty = true;
-					copyThirdPartyToExe = true;
+					copyThirdPartyPath = "../XBoxOne";
 					break;
 				case UnrealTargetPlatform.PS4:
 					linkExtension = "_stub.a";
 					dllExtension = ".prx";
 					libPrefix = "lib";
-					copyThirdParty = true;
-					copyThirdPartyToExe = true;
-
+					// Need to get it into the PS4 staging directory
+					copyThirdPartyPath = "../../Build/PS4/sce_sys";
 					break;
 				case UnrealTargetPlatform.Android:
 					linkExtension = dllExtension = ".so";
@@ -158,17 +155,9 @@ namespace UnrealBuildTool.Rules
 			PublicAdditionalLibraries.Add(fmodLibPath);
 			PublicAdditionalLibraries.Add(fmodStudioLibPath);
 
-			if (copyThirdParty)
+			if (copyThirdPartyPath.Length != 0)
 			{
-				string destPath;
-				if (copyThirdPartyToExe)
-				{
-					destPath = System.IO.Path.Combine(UEBuildConfiguration.UEThirdPartyBinariesDirectory, System.String.Format("../{0}", platformName));
-				}
-				else
-				{
-					destPath = System.IO.Path.Combine(UEBuildConfiguration.UEThirdPartyBinariesDirectory, System.String.Format("FMODStudio/{0}", platformName));
-				}
+				string destPath = System.IO.Path.Combine(UEBuildConfiguration.UEThirdPartyBinariesDirectory, copyThirdPartyPath);
 				System.IO.Directory.CreateDirectory(destPath);
 
 				string fmodDllSource = System.IO.Path.Combine(BasePath, fmodDllName);

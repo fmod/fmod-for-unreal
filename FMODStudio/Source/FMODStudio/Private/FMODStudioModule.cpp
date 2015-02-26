@@ -13,6 +13,14 @@
 
 #include "fmod_studio.hpp"
 
+#if PLATFORM_PS4
+#include "FMODPlatformLoadDll_PS4.h"
+#elif PLATFORM_XBOXONE
+#include "FMODPlatformLoadDll_XBoxOne.h"
+#else
+#include "FMODPlatformLoadDll_Generic.h"
+#endif
+
 #define LOCTEXT_NAMESPACE "FMODStudio"
 
 DEFINE_LOG_CATEGORY(LogFMOD);
@@ -23,9 +31,10 @@ public:
 	/** IModuleInterface implementation */
 	FFMODStudioModule()
 	:	AuditioningInstance(nullptr),
-        bSimulating(false),
+		bSimulating(false),
 		bIsInPIE(false),
 		bUseSound(true),
+		bAllowLiveUpdate(true),
 		LowLevelLibHandle(nullptr),
 		StudioLibHandle(nullptr)
 	{
@@ -39,10 +48,10 @@ public:
 	virtual void PostLoadCallback() override;
 	virtual void ShutdownModule() override;
 
-	FString GetDllRootPath();
-	FString GetDllExtension();
+	FString GetDllPath(const TCHAR* ShortName);
+	void* LoadDll(const TCHAR* ShortName);
 
-	bool LoadDll();
+	bool LoadLibraries();
 
 	void LoadBanks(EFMODSystemContext::Type Type);
 
@@ -89,6 +98,9 @@ public:
 	/** The delegate to be invoked when this profiler manager ticks. */
 	FTickerDelegate OnTick;
 
+	/** Handle for registered TickDelegate. */
+	FDelegateHandle TickDelegateHandle;
+
 	/** Table of assets with name and guid */
 	FFMODAssetTable AssetTable;
 
@@ -103,6 +115,9 @@ public:
 
 	/** True if we want sound enabled */
 	bool bUseSound;
+
+	/** True if we allow live update */
+	bool bAllowLiveUpdate;
 	
 	/** Dynamic library handles */
 	void* LowLevelLibHandle;
@@ -111,55 +126,49 @@ public:
 
 IMPLEMENT_MODULE( FFMODStudioModule, FMODStudio )
 
-void* PlatformLoadDll(FString LibToLoad)
+void* FFMODStudioModule::LoadDll(const TCHAR* ShortName)
 {
+	FString LibPath = GetDllPath(ShortName);
+
 	void* Handle = nullptr;
-#if PLATFORM_WINDOWS || PLATFORM_MAC
-	UE_LOG(LogFMOD, Log, TEXT("FFMODStudioModule::LoadDll: Loading %s"), *LibToLoad);
-	Handle = FPlatformProcess::GetDllHandle(*LibToLoad);
+	UE_LOG(LogFMOD, Log, TEXT("FFMODStudioModule::LoadDll: Loading %s"), *LibPath);
+	// Unfortunately Unreal's platform loading code hasn't been implemented on all platforms so we wrap it
+	Handle = FMODPlatformLoadDll(*LibPath);
 #if WITH_EDITOR
 	if (!Handle)
 	{
-		FString Message = TEXT("Couldn't load FMOD DLL ") + LibToLoad;
+		FString Message = TEXT("Couldn't load FMOD DLL ") + LibPath;
 		FPlatformMisc::MessageBoxExt(EAppMsgType::Ok, *Message, TEXT("Error"));
 	}
 #endif
 	if (!Handle)
 	{
-		UE_LOG(LogFMOD, Error, TEXT("Failed to load FMOD DLL '%s', FMOD sounds will not play!"), *LibToLoad);
+		UE_LOG(LogFMOD, Error, TEXT("Failed to load FMOD DLL '%s', FMOD sounds will not play!"), *LibPath);
 	}
-	//verifyf(Handle, TEXT("Couldn't load FMOD DLL %s"), *LibToLoad);
-#endif
 	return Handle;
 }
 
-FString FFMODStudioModule::GetDllRootPath()
+FString FFMODStudioModule::GetDllPath(const TCHAR* ShortName)
 {
 #if PLATFORM_MAC
-	return FPaths::EngineDir() / TEXT("Binaries/ThirdParty/FMODStudio/Mac/");
+	return FString::Printf(TEXT("%s/Binaries/ThirdParty/FMODStudio/Mac/lib%s.dylib"), *FPaths::EngineDir(), ShortName);
+#elif PLATFORM_PS4
+	return FString::Printf(TEXT("/app0/sce_sys/lib%s.prx"), ShortName);
+#elif PLATFORM_XBOXONE
+	return FString::Printf(TEXT("%s.dll"), ShortName);
 #elif PLATFORM_64BITS
-	return FPaths::EngineDir() / TEXT("Binaries/ThirdParty/FMODStudio/Win64/");
+	return FString::Printf(TEXT("%s/Binaries/ThirdParty/FMODStudio/Win64/%s64.dll"), *FPaths::EngineDir(), ShortName);
 #else
-	return FPaths::EngineDir() / TEXT("Binaries/ThirdParty/FMODStudio/Win32/");
+	return FString::Printf(TEXT("%s/Binaries/ThirdParty/FMODStudio/Win32/%s.dll"), *FPaths::EngineDir(), ShortName);
 #endif
 }
 
-FString FFMODStudioModule::GetDllExtension()
+bool FFMODStudioModule::LoadLibraries()
 {
-#if PLATFORM_MAC
-	return TEXT(".dylib");
+#if PLATFORM_IOS || PLATFORM_ANDROID
+	return true; // Nothing to do on those platforms
 #else
-	return TEXT(".dll");
-#endif
-}
-
-bool FFMODStudioModule::LoadDll()
-{
-	UE_LOG(LogFMOD, Verbose, TEXT("FFMODStudioModule::LoadDll"));
-
-#if PLATFORM_WINDOWS || PLATFORM_MAC
-
-	FString RootPath = GetDllRootPath();
+	UE_LOG(LogFMOD, Verbose, TEXT("FFMODStudioModule::LoadLibraries"));
 
 #if defined(FMODSTUDIO_LINK_DEBUG)
 	FString ConfigName = TEXT("D");
@@ -171,21 +180,12 @@ bool FFMODStudioModule::LoadDll()
 	#error FMODSTUDIO_LINK not defined
 #endif
 
-#if PLATFORM_MAC
-	FString LibPrefix = TEXT("lib");
-	FString ExtName = TEXT(".dylib");
-#elif PLATFORM_64BITS
-	FString LibPrefix = TEXT("");
-	FString ExtName = TEXT("64.dll");
-#else
-	FString LibPrefix = TEXT("");
-	FString ExtName = TEXT(".dll");
-#endif
-
-	LowLevelLibHandle = PlatformLoadDll(RootPath + LibPrefix + TEXT("fmod") + ConfigName + ExtName);
-	StudioLibHandle = PlatformLoadDll(RootPath + LibPrefix + TEXT("fmodstudio") + ConfigName + ExtName);
-#endif
+	FString LowLevelName = FString(TEXT("fmod")) + ConfigName;
+	FString StudioName = FString(TEXT("fmodstudio")) + ConfigName;
+	LowLevelLibHandle = LoadDll(*LowLevelName);
+	StudioLibHandle = LoadDll(*StudioName);
 	return (LowLevelLibHandle != nullptr && StudioLibHandle != nullptr);
+#endif
 }
 
 void FFMODStudioModule::StartupModule()
@@ -197,7 +197,12 @@ void FFMODStudioModule::StartupModule()
 		bUseSound = false;
 	}
 
-	if (LoadDll())
+	if(FParse::Param(FCommandLine::Get(),TEXT("noliveupdate")))
+	{
+		bAllowLiveUpdate = false;
+	}
+
+	if (LoadLibraries())
 	{
 		// Create sandbox system just for asset loading
 		AssetTable.Create();
@@ -210,7 +215,7 @@ void FFMODStudioModule::StartupModule()
 	}
 
 	OnTick = FTickerDelegate::CreateRaw( this, &FFMODStudioModule::Tick );
-	FTicker::GetCoreTicker().AddTicker( OnTick );
+	TickDelegateHandle = FTicker::GetCoreTicker().AddTicker( OnTick );
 
 	if (GIsEditor)
 	{
@@ -253,7 +258,7 @@ void FFMODStudioModule::CreateStudioSystem(EFMODSystemContext::Type Type)
 	{
 		StudioInitFlags |= FMOD_STUDIO_INIT_ALLOW_MISSING_PLUGINS;
 	}
-	else if (Type == EFMODSystemContext::Runtime && Settings.bEnableLiveUpdate)
+	else if (Type == EFMODSystemContext::Runtime && Settings.bEnableLiveUpdate && bAllowLiveUpdate)
 	{
 #if (defined(FMODSTUDIO_LINK_DEBUG) ||  defined(FMODSTUDIO_LINK_LOGGING))
 		UE_LOG(LogFMOD, Verbose, TEXT("Enabling live update"));
@@ -275,7 +280,7 @@ void FFMODStudioModule::CreateStudioSystem(EFMODSystemContext::Type Type)
 	{
 		for (FString PluginName : Settings.PluginFiles)
 		{
-			FString PluginPath = GetDllRootPath() + PluginName + GetDllExtension();
+			FString PluginPath = GetDllPath(*PluginName);
 			UE_LOG(LogFMOD, Log, TEXT("Loading plugin '%s'"), *PluginPath);
 			unsigned int Handle = 0;
 			verifyfmod(lowLevelSystem->loadPlugin(TCHAR_TO_UTF8(*PluginPath), &Handle, 0));
@@ -448,7 +453,7 @@ void FFMODStudioModule::ShutdownModule()
 	if (UObjectInitialized())
 	{
 		// Unregister tick function.
-		FTicker::GetCoreTicker().RemoveTicker( OnTick );
+		FTicker::GetCoreTicker().RemoveTicker(TickDelegateHandle);
 	}
 
 	UE_LOG(LogFMOD, Verbose, TEXT("FFMODStudioModule unloading dynamic libraries"));

@@ -28,8 +28,8 @@ void FFMODAmbientSoundDetails::CustomizeDetails( IDetailLayoutBuilder& DetailBui
 		}
 	}
 
-	DetailBuilder.EditCategory( "Sound", TEXT(""), ECategoryPriority::Important )
-		.AddCustomRow( TEXT("") )
+	DetailBuilder.EditCategory(TEXT("Sound"))
+		.AddCustomRow(FText::GetEmpty())
 		[
 			SNew(SVerticalBox)
 			+ SVerticalBox::Slot()

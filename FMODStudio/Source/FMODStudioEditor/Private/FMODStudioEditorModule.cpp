@@ -79,6 +79,14 @@ public:
 	/** The delegate to be invoked when this profiler manager ticks. */
 	FTickerDelegate OnTick;
 
+	/** Handle for registered delegates. */
+	FDelegateHandle TickDelegateHandle;
+	FDelegateHandle BeginPIEDelegateHandle;
+	FDelegateHandle EndPIEDelegateHandle;
+	FDelegateHandle PausePIEDelegateHandle;
+	FDelegateHandle ResumePIEDelegateHandle;
+	FDelegateHandle HandleBanksReloadedDelegateHandle;
+
 	/** Hook for drawing viewport */
 	FDebugDrawDelegate ViewportDrawingDelegate;
 
@@ -125,15 +133,20 @@ void FFMODStudioEditorModule::StartupModule()
 		PropertyModule.NotifyCustomizationModuleChanged();
 	}
 
-	MainMenuExtender = MakeShareable(new FExtender);
-	MainMenuExtender->AddMenuExtension("HelpBrowse", EExtensionHook::After, NULL, FMenuExtensionDelegate::CreateRaw(this, &FFMODStudioEditorModule::AddHelpMenuExtension));
-	MainMenuExtender->AddMenuExtension("FileLoadAndSave", EExtensionHook::After, NULL, FMenuExtensionDelegate::CreateRaw(this, &FFMODStudioEditorModule::AddFileMenuExtension));
+	// Need to load the editor module since it gets created after us, and we can't re-order ourselves otherwise our asset registration stops working!
+	// It only works if we are running the editor, not a commandlet
+	if (!IsRunningCommandlet())
+	{
+		MainMenuExtender = MakeShareable(new FExtender);
+		MainMenuExtender->AddMenuExtension("HelpBrowse", EExtensionHook::After, NULL, FMenuExtensionDelegate::CreateRaw(this, &FFMODStudioEditorModule::AddHelpMenuExtension));
+		MainMenuExtender->AddMenuExtension("FileLoadAndSave", EExtensionHook::After, NULL, FMenuExtensionDelegate::CreateRaw(this, &FFMODStudioEditorModule::AddFileMenuExtension));
 
-	FLevelEditorModule* LevelEditorModule = FModuleManager::GetModulePtr<FLevelEditorModule>( "LevelEditor" );
-    if (LevelEditorModule)
-    {
-        LevelEditorModule->GetMenuExtensibilityManager()->AddExtender(MainMenuExtender);
-    }
+		FLevelEditorModule* LevelEditor = FModuleManager::LoadModulePtr<FLevelEditorModule>(TEXT("LevelEditor"));
+		if (LevelEditor)
+		{
+			LevelEditor->GetMenuExtensibilityManager()->AddExtender(MainMenuExtender);
+		}
+	}
 
 	// Register AssetTypeActions
 	IAssetTools& AssetTools = FModuleManager::GetModuleChecked<FAssetToolsModule>("AssetTools").Get();
@@ -144,19 +157,19 @@ void FFMODStudioEditorModule::StartupModule()
 	// Register slate style overrides
 	FFMODStudioStyle::Initialize();
 
-	FEditorDelegates::BeginPIE.AddRaw(this, &FFMODStudioEditorModule::BeginPIE);
-	FEditorDelegates::EndPIE.AddRaw(this, &FFMODStudioEditorModule::EndPIE);
-	FEditorDelegates::PausePIE.AddRaw(this, &FFMODStudioEditorModule::PausePIE);
-	FEditorDelegates::ResumePIE.AddRaw(this, &FFMODStudioEditorModule::ResumePIE);
+	BeginPIEDelegateHandle = FEditorDelegates::BeginPIE.AddRaw(this, &FFMODStudioEditorModule::BeginPIE);
+	EndPIEDelegateHandle = FEditorDelegates::EndPIE.AddRaw(this, &FFMODStudioEditorModule::EndPIE);
+	PausePIEDelegateHandle = FEditorDelegates::PausePIE.AddRaw(this, &FFMODStudioEditorModule::PausePIE);
+	ResumePIEDelegateHandle = FEditorDelegates::ResumePIE.AddRaw(this, &FFMODStudioEditorModule::ResumePIE);
 
 	ViewportDrawingDelegate = FDebugDrawDelegate::CreateRaw(this, &FFMODStudioEditorModule::ViewportDraw);
 	UDebugDrawService::Register(TEXT("Editor"), ViewportDrawingDelegate);
 
 	OnTick = FTickerDelegate::CreateRaw( this, &FFMODStudioEditorModule::Tick );
-	FTicker::GetCoreTicker().AddTicker( OnTick );
+	TickDelegateHandle = FTicker::GetCoreTicker().AddTicker( OnTick );
 
 	// This module is loaded after FMODStudioModule
-	IFMODStudioModule::Get().BanksReloadedEvent().AddRaw(this, &FFMODStudioEditorModule::HandleBanksReloaded);
+	HandleBanksReloadedDelegateHandle = IFMODStudioModule::Get().BanksReloadedEvent().AddRaw(this, &FFMODStudioEditorModule::HandleBanksReloaded);
 
 }
 
@@ -292,6 +305,7 @@ void FFMODStudioEditorModule::ResumePIE(bool simulating)
 
 void FFMODStudioEditorModule::PostLoadCallback()
 {
+	UE_LOG(LogFMOD, Verbose, TEXT("FFMODStudioEditorModule PostLoadCallback"));
 }
 
 void FFMODStudioEditorModule::ViewportDraw(UCanvas* Canvas, APlayerController*)
@@ -319,8 +333,8 @@ void FFMODStudioEditorModule::ViewportDraw(UCanvas* Canvas, APlayerController*)
 		{
 			FMOD_3D_ATTRIBUTES Attributes = {{0}};
 			Attributes.position = FMODUtils::ConvertWorldVector(ViewLocation);
-			Attributes.forward = FMODUtils::ConvertUnitVector(ProjDir.SafeNormal());
-			Attributes.up = FMODUtils::ConvertUnitVector(ProjUp.SafeNormal());
+			Attributes.forward = FMODUtils::ConvertUnitVector(ProjDir.GetSafeNormal());
+			Attributes.up = FMODUtils::ConvertUnitVector(ProjUp.GetSafeNormal());
 			verifyfmod(StudioSystem->setListenerAttributes(&Attributes));
 		}
 	}
@@ -333,12 +347,12 @@ void FFMODStudioEditorModule::ShutdownModule()
 	if (UObjectInitialized())
 	{
 		// Unregister tick function.
-		FTicker::GetCoreTicker().RemoveTicker( OnTick );
+		FTicker::GetCoreTicker().RemoveTicker(TickDelegateHandle);
 
-		FEditorDelegates::BeginPIE.RemoveRaw(this, &FFMODStudioEditorModule::BeginPIE);
-		FEditorDelegates::EndPIE.RemoveRaw(this, &FFMODStudioEditorModule::EndPIE);
-		FEditorDelegates::PausePIE.RemoveRaw(this, &FFMODStudioEditorModule::PausePIE);
-		FEditorDelegates::ResumePIE.RemoveRaw(this, &FFMODStudioEditorModule::ResumePIE);
+		FEditorDelegates::BeginPIE.Remove(BeginPIEDelegateHandle);
+		FEditorDelegates::EndPIE.Remove(EndPIEDelegateHandle);
+		FEditorDelegates::PausePIE.Remove(PausePIEDelegateHandle);
+		FEditorDelegates::ResumePIE.Remove(ResumePIEDelegateHandle);
 
 		if (ViewportDrawingDelegate.IsBound())
 		{
@@ -350,12 +364,11 @@ void FFMODStudioEditorModule::ShutdownModule()
 		if (MainMenuExtender.IsValid())
 		{
 			FLevelEditorModule* LevelEditorModule = FModuleManager::GetModulePtr<FLevelEditorModule>( "LevelEditor" );
-            if (LevelEditorModule)
-            {
-                LevelEditorModule->GetMenuExtensibilityManager()->RemoveExtender(MainMenuExtender);
-            }
-        }
-
+			if (LevelEditorModule)
+			{
+				LevelEditorModule->GetMenuExtensibilityManager()->RemoveExtender(MainMenuExtender);
+			}
+		}
 	}
 
 	if (ISettingsModule* SettingsModule = FModuleManager::GetModulePtr<ISettingsModule>("Settings"))
@@ -381,7 +394,7 @@ void FFMODStudioEditorModule::ShutdownModule()
 		}
 	}
 
-	IFMODStudioModule::Get().BanksReloadedEvent().RemoveRaw(this, &FFMODStudioEditorModule::HandleBanksReloaded);
+	IFMODStudioModule::Get().BanksReloadedEvent().Remove(HandleBanksReloadedDelegateHandle);
 }
 
 bool FFMODStudioEditorModule::HandleSettingsSaved()

@@ -55,7 +55,7 @@ void UFMODAudioComponent::OnRegister()
 		SpriteComponent->AlwaysLoadOnServer = false;
 		SpriteComponent->SpriteInfo.Category = TEXT("Misc");
 		SpriteComponent->SpriteInfo.DisplayName = NSLOCTEXT("SpriteCategory", "Misc", "Misc");
-		SpriteComponent->bCreatedByConstructionScript = bCreatedByConstructionScript;
+		//SpriteComponent->bCreatedByConstructionScript = bCreatedByConstructionScript;
 		SpriteComponent->bIsScreenSizeScaled = true;
 		SpriteComponent->bUseInEditorScaling = true;
 
