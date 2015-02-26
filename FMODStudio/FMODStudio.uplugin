@@ -1,0 +1,20 @@
+{
+    "FileVersion" : 3,
+	
+	"FriendlyName" : "FMOD Studio Integration",
+	"Version" : 1,
+	"VersionName" : "1.0",
+	"CreatedBy" : "Firelight Technology",
+	"CreatedByURL" : "http://fmod.com",
+	"EngineVersion" : 1579795,
+	"Description" : "FMOD Studio Integration.",
+	"Category" : "Engine.Sound",
+	
+    "Modules" :
+	[
+		{
+			"Name" : "FMODStudio",
+			"Type" : "Developer"
+		}
+	]
+}
