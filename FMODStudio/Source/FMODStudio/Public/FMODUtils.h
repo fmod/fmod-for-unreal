@@ -1,0 +1,158 @@
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2015.
+
+#pragma once
+
+#include "fmod_studio.hpp"
+#include "fmod.hpp"
+
+#include "FMODEvent.h"
+#include "FMODStudioModule.h"
+
+#define verifyfmod(fn) { FMOD_RESULT _result = (fn); verifyf(_result == FMOD_OK, TEXT("FMOD error (%d)"), _result); }
+
+namespace FMODUtils
+{
+
+// Unreal defines 1 unit == 1cm, so convert to metres for Studio automatically
+#define FMOD_VECTOR_SCALE_DEFAULT 0.01f
+
+inline void Assign(FMOD_VECTOR& Dest, const FVector& Src)
+{
+	Dest.x = Src.X * FMOD_VECTOR_SCALE_DEFAULT;
+	Dest.y = Src.Y * FMOD_VECTOR_SCALE_DEFAULT;
+	Dest.z = Src.Z * FMOD_VECTOR_SCALE_DEFAULT;
+}
+
+inline void Assign(FMOD_3D_ATTRIBUTES& Dest, const FTransform& Src)
+{
+	Assign(Dest.position, Src.GetTranslation());
+	Assign(Dest.forward, Src.GetUnitAxis(EAxis::X));
+	Assign(Dest.up, Src.GetUnitAxis(EAxis::Z));
+}
+
+inline FMOD_VECTOR ConvertWorldVector(const FVector& Src)
+{
+	FMOD_VECTOR Dest;
+	Assign(Dest, Src);
+	return Dest;
+}
+
+inline FMOD_VECTOR ConvertUnitVector(const FVector& Src)
+{
+	FMOD_VECTOR Dest;
+	Dest.x = Src.X;
+	Dest.y = Src.Y;
+	Dest.z = Src.Z;
+	return Dest;
+}
+
+inline float DistanceToUEScale(float FMODDistance)
+{
+	return FMODDistance / FMOD_VECTOR_SCALE_DEFAULT;
+}
+
+inline bool IsWorldAudible(UWorld* World)
+{
+	if (GEngine && IFMODStudioModule::Get().UseSound())
+	{
+		if (World == nullptr)
+		{
+			return true;
+		}
+
+		if (World->bAllowAudioPlayback && World->GetNetMode() != NM_DedicatedServer)
+		{
+			if (World->IsGameWorld() || World->WorldType == EWorldType::Preview)
+			{
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
+inline FMOD::Studio::ID ConvertGuid(const FGuid& UnrealGuid)
+{
+	// Unreal doesn't follow the usual windows GUID format, instead it parses 
+	// them as 4 integers
+	FMOD::Studio::ID StudioGuid;
+	FMemory::Memcpy(&StudioGuid, &UnrealGuid, sizeof(StudioGuid));
+	Swap(StudioGuid.Data2, StudioGuid.Data3);
+	Swap(StudioGuid.Data4[0], StudioGuid.Data4[3]);
+	Swap(StudioGuid.Data4[1], StudioGuid.Data4[2]);
+	Swap(StudioGuid.Data4[4], StudioGuid.Data4[7]);
+	Swap(StudioGuid.Data4[5], StudioGuid.Data4[6]);
+	return StudioGuid;
+}
+
+inline FGuid ConvertGuid(const FMOD::Studio::ID& StudioGuid)
+{
+	// Unreal doesn't follow the usual windows GUID format, instead it parses 
+	// them as 4 integers
+	FMOD::Studio::ID CopiedGuid;
+	FMemory::Memcpy(&CopiedGuid, &StudioGuid, sizeof(StudioGuid));
+	Swap(CopiedGuid.Data2, CopiedGuid.Data3);
+	Swap(CopiedGuid.Data4[0], CopiedGuid.Data4[3]);
+	Swap(CopiedGuid.Data4[1], CopiedGuid.Data4[2]);
+	Swap(CopiedGuid.Data4[4], CopiedGuid.Data4[7]);
+	Swap(CopiedGuid.Data4[5], CopiedGuid.Data4[6]);
+	FGuid UnrealGuid;
+	FMemory::Memcpy(&UnrealGuid, &CopiedGuid, sizeof(CopiedGuid));
+	return UnrealGuid;
+}
+
+template <class StudioType>
+inline FGuid GetID(StudioType* Instance)
+{
+	FMOD::Studio::ID StudioID;
+	verifyfmod(Instance->getID(&StudioID));
+	return FMODUtils::ConvertGuid(StudioID);
+}
+
+template <class StudioType>
+inline FString GetPath(StudioType* Instance)
+{
+	int ActualSize = 128; // Start with expected enough space
+	TArray<char> RawBuffer;
+	FMOD_RESULT Result;
+	do
+	{
+		RawBuffer.SetNum(ActualSize);
+		Result = Instance->getPath(RawBuffer.GetData(), ActualSize, &ActualSize);
+	}
+	while (Result == FMOD_ERR_TRUNCATED);
+
+	if (Result == FMOD_OK)
+	{
+		return FString(UTF8_TO_TCHAR(RawBuffer.GetData()));
+	}
+	else
+	{
+		return FString();
+	}
+}
+
+inline FString ParameterTypeToString(FMOD_STUDIO_PARAMETER_TYPE Type)
+{
+	switch (Type)
+	{
+	case FMOD_STUDIO_PARAMETER_GAME_CONTROLLED:
+		return FString("Game Controlled");
+	case FMOD_STUDIO_PARAMETER_AUTOMATIC_DISTANCE:
+		return FString("Distance (Auto)");
+	case FMOD_STUDIO_PARAMETER_AUTOMATIC_EVENT_CONE_ANGLE:
+		return FString("Event Cone Angle (Auto)");
+	case FMOD_STUDIO_PARAMETER_AUTOMATIC_EVENT_ORIENTATION:
+		return FString("Event Orientation (Auto)");
+	case FMOD_STUDIO_PARAMETER_AUTOMATIC_DIRECTION:
+		return FString("Direction (Auto)");
+	case FMOD_STUDIO_PARAMETER_AUTOMATIC_ELEVATION:
+		return FString("Elevation (Auto)");
+	case FMOD_STUDIO_PARAMETER_AUTOMATIC_LISTENER_ORIENTATION:
+		return FString("Listener Orientation (Auto)");
+	}
+
+	return FString();
+}
+
+}

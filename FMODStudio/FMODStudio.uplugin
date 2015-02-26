@@ -2,19 +2,27 @@
     "FileVersion" : 3,
 	
 	"FriendlyName" : "FMOD Studio Integration",
-	"Version" : 1,
-	"VersionName" : "1.0",
-	"CreatedBy" : "Firelight Technology",
+	"Version" : 10513,
+	"VersionName" : "1.05.13",
+	"CreatedBy" : "Firelight Technologies",
 	"CreatedByURL" : "http://fmod.com",
-	"EngineVersion" : 1579795,
+	"EngineVersion" : "4.6.0",
 	"Description" : "FMOD Studio Integration.",
-	"Category" : "Engine.Sound",
+	"Category" : "Audio.Audio Integration",
+	"EnabledByDefault" : true,
 	
-    "Modules" :
+	"Modules" :
 	[
 		{
 			"Name" : "FMODStudio",
-			"Type" : "Developer"
+			"Type" : "Runtime",
+			"LoadingPhase" : "PreDefault"
+		},
+		{
+			"Name" : "FMODStudioEditor",
+			"Type" : "Editor"
 		}
-	]
+	],
+
+	"CanContainContent" : true
 }
