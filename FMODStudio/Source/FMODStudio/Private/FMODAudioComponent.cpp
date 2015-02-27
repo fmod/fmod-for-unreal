@@ -15,7 +15,9 @@ UFMODAudioComponent::UFMODAudioComponent(const FObjectInitializer& ObjectInitial
 	bAutoActivate = true;
 	bStopWhenOwnerDestroyed = true;
 	bNeverNeedsRenderUpdate = true;
+#if WITH_EDITORONLY_DATA
 	bVisualizeComponent = true;
+#endif
 
 	PrimaryComponentTick.bCanEverTick = true;
 	PrimaryComponentTick.TickGroup = TG_PrePhysics;
@@ -44,23 +46,7 @@ void UFMODAudioComponent::OnRegister()
 {
 	Super::OnRegister();
 
-	if (bVisualizeComponent && SpriteComponent == NULL && GetOwner() && !GetWorld()->IsGameWorld())
-	{
-		SpriteComponent = ConstructObject<UBillboardComponent>(UBillboardComponent::StaticClass(), GetOwner(), NAME_None, RF_Transactional | RF_TextExportTransient);
-
-		UpdateSpriteTexture();
-		SpriteComponent->RelativeScale3D = FVector(0.5f, 0.5f, 0.5f);
-		SpriteComponent->AttachTo(this);
-		SpriteComponent->AlwaysLoadOnClient = false;
-		SpriteComponent->AlwaysLoadOnServer = false;
-		SpriteComponent->SpriteInfo.Category = TEXT("Misc");
-		SpriteComponent->SpriteInfo.DisplayName = NSLOCTEXT("SpriteCategory", "Misc", "Misc");
-		//SpriteComponent->bCreatedByConstructionScript = bCreatedByConstructionScript;
-		SpriteComponent->bIsScreenSizeScaled = true;
-		SpriteComponent->bUseInEditorScaling = true;
-
-		SpriteComponent->RegisterComponent();
-	}
+	UpdateSpriteTexture();
 }
 
 void UFMODAudioComponent::UpdateSpriteTexture()

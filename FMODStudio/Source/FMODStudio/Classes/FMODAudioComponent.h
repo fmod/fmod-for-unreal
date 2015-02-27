@@ -94,9 +94,6 @@ class FMODSTUDIO_API UFMODAudioComponent : public USceneComponent
 
 public:
 
-	/** Whether or not the audio component should display an icon in the editor */
-	uint32 bVisualizeComponent:1;
-
 	/** Actual Studio instance handle */
 	FMOD::Studio::EventInstance* StudioInstance;
 
@@ -124,8 +121,6 @@ private:
 	// End ActorComponent interface.
 
 #if WITH_EDITORONLY_DATA
-	UPROPERTY(transient)
-    class UBillboardComponent* SpriteComponent;
 	void UpdateSpriteTexture();
 #endif
 };

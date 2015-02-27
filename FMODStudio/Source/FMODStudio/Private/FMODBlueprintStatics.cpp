@@ -91,7 +91,9 @@ class UFMODAudioComponent* UFMODBlueprintStatics::PlayEventAttached(class UFMODE
 	AudioComponent->bAutoActivate = false;
 	AudioComponent->bAutoDestroy = true;
 	AudioComponent->bStopWhenOwnerDestroyed = bStopWhenAttachedToDestroyed;
+#if WITH_EDITORONLY_DATA
 	AudioComponent->bVisualizeComponent = false;
+#endif
 	AudioComponent->RegisterComponentWithWorld(AttachToComponent->GetWorld());
 
 	AudioComponent->AttachTo(AttachToComponent, AttachPointName);
