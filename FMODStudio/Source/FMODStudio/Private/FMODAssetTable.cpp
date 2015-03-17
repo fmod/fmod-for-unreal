@@ -170,9 +170,9 @@ void FFMODAssetTable::AddAsset(const FGuid& AssetGuid, const FString& AssetFullN
 		AssetPath = TEXT("");
 	}
 
-	if (AssetShortName.IsEmpty())
+	if (AssetShortName.IsEmpty() || AssetShortName.Contains(TEXT(".strings")))
 	{
-		UE_LOG(LogFMOD, Log, TEXT("Skippping asset: %s"), *AssetFullName);
+		UE_LOG(LogFMOD, Log, TEXT("Skipping asset: %s"), *AssetFullName);
 		return;
 	}
 
@@ -199,17 +199,24 @@ void FFMODAssetTable::AddAsset(const FGuid& AssetGuid, const FString& AssetFullN
 		UE_LOG(LogFMOD, Log, TEXT("Constructing asset: %s"), *AssetPackagePath);
 
 		UPackage* NewPackage = CreatePackage(NULL, *AssetPackagePath);
-		NewPackage->PackageFlags |= PKG_CompiledIn;
+		if (NewPackage)
+		{
+			NewPackage->PackageFlags |= PKG_CompiledIn;
 
-		AssetNameObject = ConstructObject<UFMODAsset>(AssetClass, NewPackage, FName(*AssetShortName), RF_Standalone | RF_Public /* | RF_Transient */);
-		AssetNameObject->AssetGuid = AssetGuid;
-		AssetNameObject->bShowAsAsset = true;
+			AssetNameObject = ConstructObject<UFMODAsset>(AssetClass, NewPackage, FName(*AssetShortName), RF_Standalone | RF_Public /* | RF_Transient */);
+			AssetNameObject->AssetGuid = AssetGuid;
+			AssetNameObject->bShowAsAsset = true;
 
 #if WITH_EDITOR
-		FAssetRegistryModule& AssetRegistryModule = FModuleManager::LoadModuleChecked<FAssetRegistryModule>(TEXT("AssetRegistry"));
-		AssetRegistryModule.Get().AddPath(*FolderPath);
-		FAssetRegistryModule::AssetCreated(AssetNameObject);
+			FAssetRegistryModule& AssetRegistryModule = FModuleManager::LoadModuleChecked<FAssetRegistryModule>(TEXT("AssetRegistry"));
+			AssetRegistryModule.Get().AddPath(*FolderPath);
+			FAssetRegistryModule::AssetCreated(AssetNameObject);
 #endif
+		}
+		else
+		{
+			UE_LOG(LogFMOD, Warning, TEXT("Failed to construct package for asset %s"), *AssetPackagePath);
+		}
 	}
 	UFMODAsset* AssetGuidObject = ExistingGuidAsset.Get();
 	if (AssetGuidObject != nullptr && AssetGuidObject != AssetNameObject)

@@ -113,4 +113,10 @@ public:
 	/** Returns whether sound is enabled for the game */
 	virtual bool UseSound() = 0;
 
+	/** Attempts to load a plugin by name */
+	virtual bool LoadPlugin(const TCHAR* ShortName) = 0;
+
+	/** Log a FMOD error */
+	virtual void LogError(int result, const char* function) = 0;
+
 };

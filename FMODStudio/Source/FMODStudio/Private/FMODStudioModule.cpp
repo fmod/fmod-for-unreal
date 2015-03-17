@@ -10,8 +10,11 @@
 #include "FMODFileCallbacks.h"
 #include "FMODBankUpdateNotifier.h"
 #include "FMODUtils.h"
+#include "FMODEvent.h"
+#include "FMODStudioOculusModule.h"
 
 #include "fmod_studio.hpp"
+#include "fmod_errors.h"
 
 #if PLATFORM_PS4
 #include "FMODPlatformLoadDll_PS4.h"
@@ -79,10 +82,10 @@ public:
 	virtual UFMODAsset* FindAssetByName(const FString& Name) override;
 	virtual UFMODEvent* FindEventByName(const FString& Name) override;
 
-	FSimpleMulticastDelegate BanksReloaded;
+	FSimpleMulticastDelegate BanksReloadedDelegate;
 	virtual FSimpleMulticastDelegate& BanksReloadedEvent() override
 	{
-		return BanksReloaded;
+		return BanksReloadedDelegate;
 	}
 
 	virtual bool UseSound() override
@@ -90,6 +93,9 @@ public:
 		return bUseSound;
 	}
 
+	virtual bool LoadPlugin(const TCHAR* ShortName) override;
+
+	virtual void LogError(int result, const char* function) override;
 
 	/** The studio system handle. */
 	FMOD::Studio::System* StudioSystem[EFMODSystemContext::Max];
@@ -118,13 +124,58 @@ public:
 
 	/** True if we allow live update */
 	bool bAllowLiveUpdate;
-	
+
 	/** Dynamic library handles */
 	void* LowLevelLibHandle;
 	void* StudioLibHandle;
 };
 
 IMPLEMENT_MODULE( FFMODStudioModule, FMODStudio )
+
+void FFMODStudioModule::LogError(int result, const char* function)
+{
+	FString ErrorStr(ANSI_TO_TCHAR(FMOD_ErrorString((FMOD_RESULT)result)));
+	FString FunctionStr(ANSI_TO_TCHAR(function));
+	UE_LOG(LogFMOD, Error, TEXT("'%s' returned '%s'"), *FunctionStr, *ErrorStr);
+}
+
+bool FFMODStudioModule::LoadPlugin(const TCHAR* ShortName)
+{
+	UE_LOG(LogFMOD, Log, TEXT("Loading plugin '%s'"), ShortName);
+
+	static const int ATTEMPT_COUNT = 2;
+	static const TCHAR* AttemptPrefixes[ATTEMPT_COUNT] = 
+	{
+		TEXT(""),
+#if PLATFORM_64BITS
+		TEXT("64")
+#else
+		TEXT("32")
+#endif
+	};
+
+	FMOD::System* LowLevelSystem = nullptr;
+	verifyfmod(StudioSystem[EFMODSystemContext::Runtime]->getLowLevelSystem(&LowLevelSystem));
+
+	FMOD_RESULT PluginLoadResult;
+	for (int attempt=0; attempt<2; ++attempt)
+	{
+		FString AttemptName = FString(ShortName) + AttemptPrefixes[attempt];
+		FString PluginPath = GetDllPath(*AttemptName);
+
+		UE_LOG(LogFMOD, Log, TEXT("Trying to load plugin file at location: %s"), *PluginPath);
+
+		unsigned int Handle = 0;
+		PluginLoadResult = LowLevelSystem->loadPlugin(TCHAR_TO_UTF8(*PluginPath), &Handle, 0);
+		if (PluginLoadResult == FMOD_OK)
+		{
+			UE_LOG(LogFMOD, Log, TEXT("Loaded plugin %s"), ShortName);
+			return true;
+		}
+	}
+	UE_LOG(LogFMOD, Error, TEXT("Failed to load plugin '%s', sounds may not play"), ShortName);
+	return false;
+}
 
 void* FFMODStudioModule::LoadDll(const TCHAR* ShortName)
 {
@@ -280,10 +331,7 @@ void FFMODStudioModule::CreateStudioSystem(EFMODSystemContext::Type Type)
 	{
 		for (FString PluginName : Settings.PluginFiles)
 		{
-			FString PluginPath = GetDllPath(*PluginName);
-			UE_LOG(LogFMOD, Log, TEXT("Loading plugin '%s'"), *PluginPath);
-			unsigned int Handle = 0;
-			verifyfmod(lowLevelSystem->loadPlugin(TCHAR_TO_UTF8(*PluginPath), &Handle, 0));
+			LoadPlugin(*PluginName);
 		}
 	}
 }
@@ -402,8 +450,19 @@ void FFMODStudioModule::SetInPIE(bool bInPIE, bool simulating)
 			// Also make sure banks are finishing loading so they aren't grabbing file handles.
 			StudioSystem[EFMODSystemContext::Auditioning]->flushCommands();
 		}
+
+		UE_LOG(LogFMOD, Log, TEXT("Creating Studio System"));
 		CreateStudioSystem(EFMODSystemContext::Runtime);
+
+		UE_LOG(LogFMOD, Log, TEXT("Triggering Initialized on other modules"));
+		if (IFMODStudioOculusModule::IsAvailable())
+		{
+			IFMODStudioOculusModule::Get().OnInitialize();
+		}
+
+		UE_LOG(LogFMOD, Log, TEXT("Loading Banks"));
 		LoadBanks(EFMODSystemContext::Runtime);
+
 	}
 	else
 	{
@@ -551,7 +610,8 @@ void FFMODStudioModule::HandleBanksUpdated()
 	CreateStudioSystem(EFMODSystemContext::Auditioning);
 	LoadBanks(EFMODSystemContext::Auditioning);
 
-	BanksReloaded.Broadcast();
+	BanksReloadedDelegate.Broadcast();
+
 }
 
 FMOD::Studio::System* FFMODStudioModule::GetStudioSystem(EFMODSystemContext::Type Context)

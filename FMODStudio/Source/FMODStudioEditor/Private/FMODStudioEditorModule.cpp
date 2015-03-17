@@ -89,6 +89,7 @@ public:
 
 	/** Hook for drawing viewport */
 	FDebugDrawDelegate ViewportDrawingDelegate;
+	FDelegateHandle ViewportDrawingDelegateHandle;
 
 	TSharedPtr<IComponentAssetBroker> AssetBroker;
 
@@ -163,7 +164,7 @@ void FFMODStudioEditorModule::StartupModule()
 	ResumePIEDelegateHandle = FEditorDelegates::ResumePIE.AddRaw(this, &FFMODStudioEditorModule::ResumePIE);
 
 	ViewportDrawingDelegate = FDebugDrawDelegate::CreateRaw(this, &FFMODStudioEditorModule::ViewportDraw);
-	UDebugDrawService::Register(TEXT("Editor"), ViewportDrawingDelegate);
+	ViewportDrawingDelegateHandle = UDebugDrawService::Register(TEXT("Editor"), ViewportDrawingDelegate);
 
 	OnTick = FTickerDelegate::CreateRaw( this, &FFMODStudioEditorModule::Tick );
 	TickDelegateHandle = FTicker::GetCoreTicker().AddTicker( OnTick );
@@ -356,7 +357,7 @@ void FFMODStudioEditorModule::ShutdownModule()
 
 		if (ViewportDrawingDelegate.IsBound())
 		{
-			UDebugDrawService::Unregister(ViewportDrawingDelegate);
+			UDebugDrawService::Unregister(ViewportDrawingDelegateHandle);
 		}
 
 		FComponentAssetBrokerage::UnregisterBroker(AssetBroker);

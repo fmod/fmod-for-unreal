@@ -21,6 +21,7 @@ namespace UnrealBuildTool.Rules
 				new string[] {
 					"FMODStudio/Private",
 					"FMODStudio/Public/FMOD",
+					"FMODStudioOculus/Public",
 				}
 				);
 

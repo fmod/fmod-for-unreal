@@ -17,7 +17,6 @@ namespace UnrealBuildTool.Rules
 				new string[] {
 					"FMODStudioEditor/Private",
 					"FMODStudio/Private",
-					"FMODStudio/Private/FMOD",
 				}
 				);
 

@@ -5,16 +5,21 @@
 #include "fmod_studio.hpp"
 #include "fmod.hpp"
 
-#include "FMODEvent.h"
 #include "FMODStudioModule.h"
 
-#define verifyfmod(fn) { FMOD_RESULT _result = (fn); verifyf(_result == FMOD_OK, TEXT("FMOD error (%d)"), _result); }
+#define verifyfmod(fn) { FMOD_RESULT _result = (fn); if (_result != FMOD_OK) { FMODUtils::LogError(_result, #fn); } }
 
 namespace FMODUtils
 {
 
 // Unreal defines 1 unit == 1cm, so convert to metres for Studio automatically
 #define FMOD_VECTOR_SCALE_DEFAULT 0.01f
+
+// Just call into module
+inline void LogError(FMOD_RESULT result, const char* function)
+{
+	IFMODStudioModule::Get().LogError(result, function);
+}
 
 inline void Assign(FMOD_VECTOR& Dest, const FVector& Src)
 {
@@ -104,7 +109,7 @@ inline FGuid ConvertGuid(const FMOD::Studio::ID& StudioGuid)
 template <class StudioType>
 inline FGuid GetID(StudioType* Instance)
 {
-	FMOD::Studio::ID StudioID;
+	FMOD::Studio::ID StudioID = {0};
 	verifyfmod(Instance->getID(&StudioID));
 	return FMODUtils::ConvertGuid(StudioID);
 }

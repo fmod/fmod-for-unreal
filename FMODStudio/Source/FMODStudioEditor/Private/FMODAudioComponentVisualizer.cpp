@@ -4,6 +4,7 @@
 #include "FMODAudioComponentVisualizer.h"
 #include "FMODAudioComponent.h"
 #include "FMODUtils.h"
+#include "FMODEvent.h"
 #include "fmod_studio.hpp"
 
 void FFMODAudioComponentVisualizer::DrawVisualization(const UActorComponent* Component, const FSceneView* View, FPrimitiveDrawInterface* PDI)

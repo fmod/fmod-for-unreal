@@ -3,3 +3,8 @@
 #include "FMODStudioPrivatePCH.h"
 #include "FMODUtils.h"
 
+namespace FMODUtils
+{
+
+
+} // end namespace
