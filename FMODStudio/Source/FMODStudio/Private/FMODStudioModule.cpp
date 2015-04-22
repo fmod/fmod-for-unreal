@@ -216,7 +216,7 @@ FString FFMODStudioModule::GetDllPath(const TCHAR* ShortName)
 
 bool FFMODStudioModule::LoadLibraries()
 {
-#if PLATFORM_IOS || PLATFORM_ANDROID
+#if PLATFORM_IOS || PLATFORM_ANDROID || PLATFORM_LINUX
 	return true; // Nothing to do on those platforms
 #else
 	UE_LOG(LogFMOD, Verbose, TEXT("FFMODStudioModule::LoadLibraries"));
@@ -405,7 +405,11 @@ void FFMODStudioModule::UpdateViewportPosition()
 					// For now, only apply the first listener position
 					if (ListenerIndex == 0)
 					{
+#if FMOD_VERSION >= 0x00010600
+						verifyfmod(StudioSystem[EFMODSystemContext::Runtime]->setListenerAttributes(0, &Attributes));
+#else
 						verifyfmod(StudioSystem[EFMODSystemContext::Runtime]->setListenerAttributes(&Attributes));
+#endif
 						break;
 					}
 

@@ -89,7 +89,7 @@ typedef struct FMOD_COMPLEX
 [ENUM]
 [
     [DESCRIPTION]
-    Flags for the FMOD_PAN_SUM_SURROUND_MATRIX callback.
+    Flags for the FMOD_DSP_PAN_SUM_SURROUND_MATRIX callback.
 
     [REMARKS]
     This functionality is experimental, please contact support@fmod.org for more information.
@@ -100,11 +100,11 @@ typedef struct FMOD_COMPLEX
 */
 typedef enum
 {
-    FMOD_PAN_SURROUND_DEFAULT = 0,
-    FMOD_PAN_SURROUND_ROTATION_NOT_BIASED = 1,
+    FMOD_DSP_PAN_SURROUND_DEFAULT = 0,
+    FMOD_DSP_PAN_SURROUND_ROTATION_NOT_BIASED = 1,
 
-    FMOD_PAN_SURROUND_FLAGS_FORCEINT = 65536     /* Makes sure this enum is signed 32bit. */
-} FMOD_PAN_SURROUND_FLAGS;
+    FMOD_DSP_PAN_SURROUND_FLAGS_FORCEINT = 65536     /* Makes sure this enum is signed 32bit. */
+} FMOD_DSP_PAN_SURROUND_FLAGS;
 
 /* 
     DSP callbacks
@@ -128,15 +128,15 @@ typedef FMOD_RESULT (F_CALLBACK *FMOD_DSP_GETPARAM_DATA_CALLBACK)       (FMOD_DS
 typedef FMOD_RESULT (F_CALLBACK *FMOD_DSP_SYSTEM_GETSAMPLERATE)         (FMOD_DSP_STATE *dsp_state, int *rate);
 typedef FMOD_RESULT (F_CALLBACK *FMOD_DSP_SYSTEM_GETBLOCKSIZE)          (FMOD_DSP_STATE *dsp_state, unsigned int *blocksize);
 
-typedef FMOD_RESULT (F_CALLBACK *FMOD_FFTREAL)                          (FMOD_DSP_STATE* thisdsp, int size, const float *signal, FMOD_COMPLEX* dft, const float *window, int signalhop);
-typedef FMOD_RESULT (F_CALLBACK *FMOD_IFFTREAL)                         (FMOD_DSP_STATE* thisdsp, int size, const FMOD_COMPLEX *dft, float* signal, const float *window, int signalhop);
+typedef FMOD_RESULT (F_CALLBACK *FMOD_DSP_DFT_FFTREAL)                  (FMOD_DSP_STATE* thisdsp, int size, const float *signal, FMOD_COMPLEX* dft, const float *window, int signalhop);
+typedef FMOD_RESULT (F_CALLBACK *FMOD_DSP_DFT_IFFTREAL)                 (FMOD_DSP_STATE* thisdsp, int size, const FMOD_COMPLEX *dft, float* signal, const float *window, int signalhop);
 
-typedef FMOD_RESULT (F_CALLBACK *FMOD_PAN_SUM_MONO_MATRIX)              (FMOD_DSP_STATE *dsp_state, int sourceSpeakerMode, float lowFrequencyGain, float overallGain, float *matrix);
-typedef FMOD_RESULT (F_CALLBACK *FMOD_PAN_SUM_STEREO_MATRIX)            (FMOD_DSP_STATE *dsp_state, int sourceSpeakerMode, float pan, float lowFrequencyGain, float overallGain, int matrixHop, float *matrix);
-typedef FMOD_RESULT (F_CALLBACK *FMOD_PAN_SUM_SURROUND_MATRIX)          (FMOD_DSP_STATE *dsp_state, int sourceSpeakerMode, int targetSpeakerMode, float direction, float extent, float rotation, float lowFrequencyGain, float overallGain, int matrixHop, float *matrix, FMOD_PAN_SURROUND_FLAGS flags);
-typedef FMOD_RESULT (F_CALLBACK *FMOD_PAN_SUM_MONO_TO_SURROUND_MATRIX)  (FMOD_DSP_STATE *dsp_state, int targetSpeakerMode, float direction, float extent, float lowFrequencyGain, float overallGain, int matrixHop, float *matrix);
-typedef FMOD_RESULT (F_CALLBACK *FMOD_PAN_SUM_STEREO_TO_SURROUND_MATRIX)(FMOD_DSP_STATE *dsp_state, int targetSpeakerMode, float direction, float extent, float rotation, float lowFrequencyGain, float overallGain, int matrixHop, float *matrix);
-typedef FMOD_RESULT (F_CALLBACK *FMOD_PAN_3D_GET_ROLLOFF_GAIN)          (FMOD_DSP_STATE *dsp_state, FMOD_DSP_PAN_3D_ROLLOFF_TYPE rolloff, float distance, float mindistance, float maxdistance, float *gain);
+typedef FMOD_RESULT (F_CALLBACK *FMOD_DSP_PAN_SUM_MONO_MATRIX)              (FMOD_DSP_STATE *dsp_state, int sourceSpeakerMode, float lowFrequencyGain, float overallGain, float *matrix);
+typedef FMOD_RESULT (F_CALLBACK *FMOD_DSP_PAN_SUM_STEREO_MATRIX)            (FMOD_DSP_STATE *dsp_state, int sourceSpeakerMode, float pan, float lowFrequencyGain, float overallGain, int matrixHop, float *matrix);
+typedef FMOD_RESULT (F_CALLBACK *FMOD_DSP_PAN_SUM_SURROUND_MATRIX)          (FMOD_DSP_STATE *dsp_state, int sourceSpeakerMode, int targetSpeakerMode, float direction, float extent, float rotation, float lowFrequencyGain, float overallGain, int matrixHop, float *matrix, FMOD_DSP_PAN_SURROUND_FLAGS flags);
+typedef FMOD_RESULT (F_CALLBACK *FMOD_DSP_PAN_SUM_MONO_TO_SURROUND_MATRIX)  (FMOD_DSP_STATE *dsp_state, int targetSpeakerMode, float direction, float extent, float lowFrequencyGain, float overallGain, int matrixHop, float *matrix);
+typedef FMOD_RESULT (F_CALLBACK *FMOD_DSP_PAN_SUM_STEREO_TO_SURROUND_MATRIX)(FMOD_DSP_STATE *dsp_state, int targetSpeakerMode, float direction, float extent, float rotation, float lowFrequencyGain, float overallGain, int matrixHop, float *matrix);
+typedef FMOD_RESULT (F_CALLBACK *FMOD_DSP_PAN_3D_GET_ROLLOFF_GAIN)          (FMOD_DSP_STATE *dsp_state, FMOD_DSP_PAN_3D_ROLLOFF_TYPE rolloff, float distance, float mindistance, float maxdistance, float *gain);
 
 
 /*
@@ -200,12 +200,35 @@ typedef enum
 */
 typedef enum
 {
-    FMOD_DSP_PARAMETER_FLOAT_MAPPING_TYPE_LINEAR,		      /* Values mapped linearly across range. */
-    FMOD_DSP_PARAMETER_FLOAT_MAPPING_TYPE_AUTO,				  /* A mapping is automatically chosen based on range and units.  See remarks. */
-    FMOD_DSP_PARAMETER_FLOAT_MAPPING_TYPE_PIECEWISE_LINEAR,   /* Values mapped in a piecewise linear fashion defined by FMOD_DSP_PARAMETER_DESC_FLOAT::mapping.piecewiselinearmapping. */
+    FMOD_DSP_PARAMETER_FLOAT_MAPPING_TYPE_LINEAR,               /* Values mapped linearly across range. */
+    FMOD_DSP_PARAMETER_FLOAT_MAPPING_TYPE_AUTO,                 /* A mapping is automatically chosen based on range and units.  See remarks. */
+    FMOD_DSP_PARAMETER_FLOAT_MAPPING_TYPE_PIECEWISE_LINEAR,     /* Values mapped in a piecewise linear fashion defined by FMOD_DSP_PARAMETER_FLOAT_MAPPING_PIECEWISE_LINEAR. */
 
-    FMOD_DSP_PARAMETER_FLOAT_MAPPING_TYPE_FORCEINT = 65536    /* Makes sure this enum is signed 32bit. */
+    FMOD_DSP_PARAMETER_FLOAT_MAPPING_TYPE_FORCEINT = 65536      /* Makes sure this enum is signed 32bit. */
 } FMOD_DSP_PARAMETER_FLOAT_MAPPING_TYPE;
+
+/*
+[STRUCTURE] 
+[
+    [DESCRIPTION]
+    Structure to define a piecewise linear mapping.
+
+    [REMARKS]
+    Members marked with [r] mean the variable is modified by FMOD and is for reading purposes only.  Do not change this value.<br>
+    Members marked with [w] mean the variable can be written to.  The user can set the value.<br>
+
+    [SEE_ALSO]    
+    FMOD_DSP_PARAMETER_FLOAT_MAPPING_TYPE
+    FMOD_DSP_PARAMETER_FLOAT_MAPPING
+]
+*/
+typedef struct FMOD_DSP_PARAMETER_FLOAT_MAPPING_PIECEWISE_LINEAR
+{
+    int numpoints;                              /* [w] The number of <position, value> pairs in the piecewise mapping (at least 2). */
+    float *pointparamvalues;                    /* [w] The values in the parameter's units for each point */
+    float *pointpositions;                      /* [w] The positions along the control's scale (e.g. dial angle) corresponding to each parameter value.  The range of this scale is arbitrary and all positions will be relative to the minimum and maximum values (e.g. [0,1,3] is equivalent to [1,2,4] and [2,4,8]).  If this array is zero, pointparamvalues will be distributed with equal spacing. */
+} FMOD_DSP_PARAMETER_FLOAT_MAPPING_PIECEWISE_LINEAR;
+
 
 /*
 [STRUCTURE] 
@@ -219,18 +242,14 @@ typedef enum
 
     [SEE_ALSO]    
     FMOD_DSP_PARAMETER_FLOAT_MAPPING_TYPE
+    FMOD_DSP_PARAMETER_FLOAT_MAPPING_PIECEWISE_LINEAR
     FMOD_DSP_PARAMETER_DESC_FLOAT
 ]
 */
 typedef struct FMOD_DSP_PARAMETER_FLOAT_MAPPING
 {
     FMOD_DSP_PARAMETER_FLOAT_MAPPING_TYPE type;
-    struct
-    {
-        int numpoints;								/* [w] The number of <position, value> pairs in the piecewise mapping (at least 2). */
-        float* pointparamvalues;					/* [w] The values in the parameter's units for each point */
-        float* pointpositions;						/* [w] The positions along the control's scale (e.g. dial angle) corresponding to each parameter value.  The range of this scale is arbitrary and all positions will be relative to the minimum and maximum values (e.g. [0,1,3] is equivalent to [1,2,4] and [2,4,8]).  If this array is zero, pointparamvalues will be distributed with equal spacing. */
-    } piecewiselinearmapping;						/* [w] Only required for FMOD_DSP_PARAMETER_FLOAT_MAPPING_TYPE_PIECEWISE_LINEAR type mapping. */
+    FMOD_DSP_PARAMETER_FLOAT_MAPPING_PIECEWISE_LINEAR piecewiselinearmapping; /* [w] Only required for FMOD_DSP_PARAMETER_FLOAT_MAPPING_TYPE_PIECEWISE_LINEAR type mapping. */
 } FMOD_DSP_PARAMETER_FLOAT_MAPPING;
 
 
@@ -391,16 +410,18 @@ typedef struct FMOD_DSP_PARAMETER_DESC
     FMOD_DSP_PARAMETER_DESC_DATA
     FMOD_DSP_PARAMETER_OVERALLGAIN
     FMOD_DSP_PARAMETER_3DATTRIBUTES
+    FMOD_DSP_PARAMETER_3DATTRIBUTES_MULTI
     FMOD_DSP_PARAMETER_SIDECHAIN
 ]
 */
 typedef enum
 {
-    FMOD_DSP_PARAMETER_DATA_TYPE_USER = 0,              /* The default data type.  All user data types should be 0 or above. */
-    FMOD_DSP_PARAMETER_DATA_TYPE_OVERALLGAIN = -1,      /* The data type for FMOD_DSP_PARAMETER_OVERALLGAIN parameters.  There should a maximum of one per DSP. */
-    FMOD_DSP_PARAMETER_DATA_TYPE_3DATTRIBUTES = -2,     /* The data type for FMOD_DSP_PARAMETER_3DATTRIBUTES parameters.  There should a maximum of one per DSP. */
-    FMOD_DSP_PARAMETER_DATA_TYPE_SIDECHAIN = -3,        /* The data type for FMOD_DSP_PARAMETER_SIDECHAIN parameters.  There should a maximum of one per DSP. */
-    FMOD_DSP_PARAMETER_DATA_TYPE_FFT = -4,              /* The data type for FMOD_DSP_PARAMETER_FFT parameters.  There should a maximum of one per DSP. */
+    FMOD_DSP_PARAMETER_DATA_TYPE_USER = 0,                  /* The default data type.  All user data types should be 0 or above. */
+    FMOD_DSP_PARAMETER_DATA_TYPE_OVERALLGAIN = -1,          /* The data type for FMOD_DSP_PARAMETER_OVERALLGAIN parameters.  There should a maximum of one per DSP. */
+    FMOD_DSP_PARAMETER_DATA_TYPE_3DATTRIBUTES = -2,         /* The data type for FMOD_DSP_PARAMETER_3DATTRIBUTES parameters.  There should a maximum of one per DSP. */
+    FMOD_DSP_PARAMETER_DATA_TYPE_SIDECHAIN = -3,            /* The data type for FMOD_DSP_PARAMETER_SIDECHAIN parameters.  There should a maximum of one per DSP. */
+    FMOD_DSP_PARAMETER_DATA_TYPE_FFT = -4,                  /* The data type for FMOD_DSP_PARAMETER_FFT parameters.  There should a maximum of one per DSP. */
+    FMOD_DSP_PARAMETER_DATA_TYPE_3DATTRIBUTES_MULTI = -5,   /* The data type for FMOD_DSP_PARAMETER_3DATTRIBUTES_MULTI parameters.  There should a maximum of one per DSP. */
 } FMOD_DSP_PARAMETER_DATA_TYPE;
 
 
@@ -450,6 +471,32 @@ typedef struct FMOD_DSP_PARAMETER_3DATTRIBUTES
     FMOD_3D_ATTRIBUTES relative;                        /* [w] The position of the sound relative to the listener. */
     FMOD_3D_ATTRIBUTES absolute;                        /* [w] The position of the sound in world coordinates. */
 } FMOD_DSP_PARAMETER_3DATTRIBUTES;
+
+
+/*
+[STRUCTURE] 
+[
+    [DESCRIPTION]
+    Structure for data parameters of type FMOD_DSP_PARAMETER_DATA_TYPE_3DATTRIBUTES_MULTI.
+    A parameter of this type is used in effects that respond to a sound's 3D position, and
+    support multiple listeners.
+    The system will set this parameter automatically if a sound's position changes.
+
+    [REMARKS]
+    Members marked with [r] mean the variable is modified by FMOD and is for reading purposes only.  Do not change this value.<br>
+    Members marked with [w] mean the variable can be written to.  The user can set the value.<br>
+
+    [SEE_ALSO]    
+    FMOD_DSP_PARAMETER_DATA_TYPE
+    FMOD_DSP_PARAMETER_DESC
+]
+*/
+typedef struct FMOD_DSP_PARAMETER_3DATTRIBUTES_MULTI
+{
+    int                numlisteners;                    /* [w] The number of listeners. */
+    FMOD_3D_ATTRIBUTES relative[FMOD_MAX_LISTENERS];    /* [w] The position of the sound relative to the listeners. */
+    FMOD_3D_ATTRIBUTES absolute;                        /* [w] The position of the sound in world coordinates. */
+} FMOD_DSP_PARAMETER_3DATTRIBUTES_MULTI;
 
 
 /*
@@ -662,8 +709,8 @@ typedef struct FMOD_DSP_DESCRIPTION
 */
 typedef struct FMOD_DSP_STATE_DFTCALLBACKS
 {
-    FMOD_FFTREAL                            fftreal;        /* [r] Callback for performing an FFT on a real signal. */
-    FMOD_IFFTREAL                           inversefftreal; /* [r] Callback for performing an inverse FFT to get a real signal. */
+    FMOD_DSP_DFT_FFTREAL                            fftreal;        /* [r] Callback for performing an FFT on a real signal. */
+    FMOD_DSP_DFT_IFFTREAL                           inversefftreal; /* [r] Callback for performing an inverse FFT to get a real signal. */
 } FMOD_DSP_STATE_DFTCALLBACKS;
 
 /*
@@ -677,17 +724,17 @@ typedef struct FMOD_DSP_STATE_DFTCALLBACKS
 
     [SEE_ALSO]
     FMOD_DSP_STATE_SYSTEMCALLBACKS
-    FMOD_PAN_SURROUND_FLAGS
+    FMOD_DSP_PAN_SURROUND_FLAGS
 ]
 */
 typedef struct FMOD_DSP_STATE_PAN_CALLBACKS
 {
-    FMOD_PAN_SUM_MONO_MATRIX                summonomatrix;
-    FMOD_PAN_SUM_STEREO_MATRIX              sumstereomatrix;
-    FMOD_PAN_SUM_SURROUND_MATRIX            sumsurroundmatrix;
-    FMOD_PAN_SUM_MONO_TO_SURROUND_MATRIX    summonotosurroundmatrix;
-    FMOD_PAN_SUM_STEREO_TO_SURROUND_MATRIX  sumstereotosurroundmatrix;
-    FMOD_PAN_3D_GET_ROLLOFF_GAIN            getrolloffgain;
+    FMOD_DSP_PAN_SUM_MONO_MATRIX                summonomatrix;
+    FMOD_DSP_PAN_SUM_STEREO_MATRIX              sumstereomatrix;
+    FMOD_DSP_PAN_SUM_SURROUND_MATRIX            sumsurroundmatrix;
+    FMOD_DSP_PAN_SUM_MONO_TO_SURROUND_MATRIX    summonotosurroundmatrix;
+    FMOD_DSP_PAN_SUM_STEREO_TO_SURROUND_MATRIX  sumstereotosurroundmatrix;
+    FMOD_DSP_PAN_3D_GET_ROLLOFF_GAIN            getrolloffgain;
 } FMOD_DSP_STATE_PAN_CALLBACKS;
 
 /*

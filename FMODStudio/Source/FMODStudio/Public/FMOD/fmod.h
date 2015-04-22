@@ -111,6 +111,8 @@ FMOD_RESULT F_API FMOD_System_Get3DListenerAttributes   (FMOD_SYSTEM *system, in
 FMOD_RESULT F_API FMOD_System_Set3DRolloffCallback      (FMOD_SYSTEM *system, FMOD_3D_ROLLOFF_CALLBACK callback);
 FMOD_RESULT F_API FMOD_System_MixerSuspend              (FMOD_SYSTEM *system);
 FMOD_RESULT F_API FMOD_System_MixerResume               (FMOD_SYSTEM *system);
+FMOD_RESULT F_API FMOD_System_GetDefaultMixMatrix       (FMOD_SYSTEM *system, FMOD_SPEAKERMODE sourcespeakermode, FMOD_SPEAKERMODE targetspeakermode, float *matrix, int matrixhop);
+FMOD_RESULT F_API FMOD_System_GetSpeakerModeChannels    (FMOD_SYSTEM *system, FMOD_SPEAKERMODE mode, int *channels);
 
 /*
      System information functions.
@@ -165,10 +167,9 @@ FMOD_RESULT F_API FMOD_System_UnlockDSP                 (FMOD_SYSTEM *system);
      Recording API.
 */
 
-FMOD_RESULT F_API FMOD_System_GetRecordNumDrivers       (FMOD_SYSTEM *system, int *numdrivers);
-FMOD_RESULT F_API FMOD_System_GetRecordDriverInfo       (FMOD_SYSTEM *system, int id, char *name, int namelen, FMOD_GUID *guid, int *systemrate, FMOD_SPEAKERMODE *speakermode, int *speakermodechannels);
+FMOD_RESULT F_API FMOD_System_GetRecordNumDrivers       (FMOD_SYSTEM *system, int *numdrivers, int *numconnected);
+FMOD_RESULT F_API FMOD_System_GetRecordDriverInfo       (FMOD_SYSTEM *system, int id, char *name, int namelen, FMOD_GUID *guid, int *systemrate, FMOD_SPEAKERMODE *speakermode, int *speakermodechannels, FMOD_DRIVER_STATE *state);
 FMOD_RESULT F_API FMOD_System_GetRecordPosition         (FMOD_SYSTEM *system, int id, unsigned int *position);
-
 FMOD_RESULT F_API FMOD_System_RecordStart               (FMOD_SYSTEM *system, int id, FMOD_SOUND *sound, FMOD_BOOL loop);
 FMOD_RESULT F_API FMOD_System_RecordStop                (FMOD_SYSTEM *system, int id);
 FMOD_RESULT F_API FMOD_System_IsRecording               (FMOD_SYSTEM *system, int id, FMOD_BOOL *recording);
@@ -306,7 +307,7 @@ FMOD_RESULT F_API FMOD_Channel_SetCallback              (FMOD_CHANNEL *channel, 
 FMOD_RESULT F_API FMOD_Channel_IsPlaying                (FMOD_CHANNEL *channel, FMOD_BOOL *isplaying);
 
 /*
-     Panning and level adjustment.
+     Note all 'set' functions alter a final matrix, this is why the only get function is getMixMatrix, to avoid other get functions returning incorrect/obsolete values.
 */
 
 FMOD_RESULT F_API FMOD_Channel_SetPan                   (FMOD_CHANNEL *channel, float pan);
@@ -428,7 +429,7 @@ FMOD_RESULT F_API FMOD_ChannelGroup_SetCallback         (FMOD_CHANNELGROUP *chan
 FMOD_RESULT F_API FMOD_ChannelGroup_IsPlaying           (FMOD_CHANNELGROUP *channelgroup, FMOD_BOOL *isplaying);
 
 /*
-     Panning and level adjustment.
+     Note all 'set' functions alter a final matrix, this is why the only get function is getMixMatrix, to avoid other get functions returning incorrect/obsolete values.
 */
 
 FMOD_RESULT F_API FMOD_ChannelGroup_SetPan              (FMOD_CHANNELGROUP *channelgroup, float pan);

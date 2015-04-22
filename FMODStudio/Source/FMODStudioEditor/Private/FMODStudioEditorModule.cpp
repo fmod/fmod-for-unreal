@@ -336,7 +336,11 @@ void FFMODStudioEditorModule::ViewportDraw(UCanvas* Canvas, APlayerController*)
 			Attributes.position = FMODUtils::ConvertWorldVector(ViewLocation);
 			Attributes.forward = FMODUtils::ConvertUnitVector(ProjDir.GetSafeNormal());
 			Attributes.up = FMODUtils::ConvertUnitVector(ProjUp.GetSafeNormal());
+#if FMOD_VERSION >= 0x00010600
+			verifyfmod(StudioSystem->setListenerAttributes(0, &Attributes));
+#else
 			verifyfmod(StudioSystem->setListenerAttributes(&Attributes));
+#endif
 		}
 	}
 }

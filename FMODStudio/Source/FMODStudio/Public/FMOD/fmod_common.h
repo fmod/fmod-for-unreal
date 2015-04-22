@@ -15,7 +15,7 @@
     0xaaaabbcc -> aaaa = major version number.  bb = minor version number.  cc = development version number.
 */
 
-#define FMOD_VERSION    0x00010513
+#define FMOD_VERSION    0x00010601
 
 /*
     Compiler specific settings.
@@ -77,6 +77,7 @@ typedef unsigned int               FMOD_DEBUG_FLAGS;
 typedef unsigned int               FMOD_MEMORY_TYPE;
 typedef unsigned int               FMOD_SYSTEM_CALLBACK_TYPE;
 typedef unsigned int               FMOD_CHANNELMASK;
+typedef unsigned int               FMOD_DRIVER_STATE;
 typedef unsigned int               FMOD_PORT_TYPE;
 typedef unsigned long long         FMOD_PORT_INDEX;
 
@@ -286,6 +287,8 @@ typedef struct
     unsigned char  Data4[8];    /* Array of 8 bytes. The first 2 bytes contain the third group of 4 hexadecimal digits. The remaining 6 bytes contain the final 12 hexadecimal digits. */
 } FMOD_GUID;
 
+typedef void (F_CALLBACK *FMOD_FILE_ASYNCDONE)           (FMOD_ASYNCREADINFO *info, FMOD_RESULT result);
+
 /*
 [STRUCTURE] 
 [
@@ -308,6 +311,7 @@ typedef struct
     [SEE_ALSO]
     FMOD_FILE_ASYNCREAD_CALLBACK
     FMOD_FILE_ASYNCCANCEL_CALLBACK
+    FMOD_FILE_ASYNCDONE
 ]
 */
 struct FMOD_ASYNCREADINFO
@@ -322,7 +326,7 @@ struct FMOD_ASYNCREADINFO
     void                 *buffer;    /* [w] Buffer to read file data into. */
     unsigned int          bytesread; /* [w] Fill this in before setting result code to tell FMOD how many bytes were read. */
 
-    void (F_CALLBACK *done)(FMOD_ASYNCREADINFO *info, FMOD_RESULT result);    /* [r] FMOD file system wake up function.  Call this when user file read is finished.  Pass result of file read as a parameter. */
+    FMOD_FILE_ASYNCDONE   done;      /* [r] FMOD file system wake up function.  Call this when user file read is finished.  Pass result of file read as a parameter. */
 };
 
 
@@ -576,6 +580,51 @@ typedef enum
 
 
 /*
+[DEFINE]
+[
+    [NAME]
+    FMOD_MAX_CHANNEL_WIDTH
+
+    [DESCRIPTION]   
+    The maximum number of channels per frame of audio supported by audio files, buffers, connections and DSPs. <br>
+
+    [REMARKS]
+
+    [SEE_ALSO]
+    FMOD_CHANNELORDER
+    FMOD_CREATESOUNDEXINFO
+    System::setSoftwareFormat
+    System::getDefaultMixMatrix
+    ChannelControl::setMixMatrix
+    ChannelControl::getMixMatrix
+    FMOD::DSP::setChannelFormat
+]
+*/
+#define FMOD_MAX_CHANNEL_WIDTH 32
+/* [DEFINE_END] */
+
+/*
+[DEFINE]
+[
+    [NAME]
+    FMOD_MAX_LISTENERS
+
+    [DESCRIPTION]
+    The maximum number of listeners supported.
+
+    [REMARKS]
+
+    [SEE_ALSO]
+    System::set3DNumListeners
+    System::set3DListenerAttributes
+    System::get3DListenerAttributes
+]
+*/
+#define FMOD_MAX_LISTENERS 5
+/* [DEFINE_END] */
+
+
+/*
 [ENUM]
 [
     [DESCRIPTION]
@@ -657,6 +706,7 @@ typedef enum
 
     [SEE_ALSO]
     FMOD_CREATESOUNDEXINFO
+    FMOD_MAX_CHANNEL_WIDTH
 ]
 */
 typedef enum FMOD_CHANNELORDER
@@ -664,8 +714,8 @@ typedef enum FMOD_CHANNELORDER
     FMOD_CHANNELORDER_DEFAULT,              /* Left, Right, Center, LFE, Surround Left, Surround Right, Back Left, Back Right (see FMOD_SPEAKER enumeration)   */
     FMOD_CHANNELORDER_WAVEFORMAT,           /* Left, Right, Center, LFE, Back Left, Back Right, Surround Left, Surround Right (as per Microsoft .wav WAVEFORMAT structure master order) */
     FMOD_CHANNELORDER_PROTOOLS,             /* Left, Center, Right, Surround Left, Surround Right, LFE */
-    FMOD_CHANNELORDER_ALLMONO,              /* Mono, Mono, Mono, Mono, Mono, Mono, ... (each channel all the way up to 32 channels are treated as if they were mono) */
-    FMOD_CHANNELORDER_ALLSTEREO,            /* Left, Right, Left, Right, Left, Right, ... (each pair of channels is treated as stereo all the way up to 32 channels) */
+    FMOD_CHANNELORDER_ALLMONO,              /* Mono, Mono, Mono, Mono, Mono, Mono, ... (each channel all the way up to FMOD_MAX_CHANNEL_WIDTH channels are treated as if they were mono) */
+    FMOD_CHANNELORDER_ALLSTEREO,            /* Left, Right, Left, Right, Left, Right, ... (each pair of channels is treated as stereo all the way up to FMOD_MAX_CHANNEL_WIDTH channels) */
     FMOD_CHANNELORDER_ALSA,                 /* Left, Right, Surround Left, Surround Right, Center, LFE (as per Linux ALSA channel order) */
 
     FMOD_CHANNELORDER_MAX,                  /* Maximum number of channel orderings supported. */
@@ -775,6 +825,7 @@ typedef enum
     FMOD_SOUND_TYPE_VORBIS,          /* Vorbis */
     FMOD_SOUND_TYPE_MEDIA_FOUNDATION,/* Windows Store Application built in system codecs */
     FMOD_SOUND_TYPE_MEDIACODEC,      /* Android MediaCodec */
+    FMOD_SOUND_TYPE_FADPCM,          /* FMOD Adaptive Differential Pulse Code Modulation */
 
     FMOD_SOUND_TYPE_MAX,             /* Maximum number of sound types supported. */
     FMOD_SOUND_TYPE_FORCEINT = 65536 /* Makes sure this enum is signed 32bit. */
@@ -809,10 +860,11 @@ typedef enum
     FMOD_SOUND_FORMAT_HEVAG,            /* Compressed PSVita ADPCM data. */
     FMOD_SOUND_FORMAT_XMA,              /* Compressed Xbox360 XMA data. */
     FMOD_SOUND_FORMAT_MPEG,             /* Compressed MPEG layer 2 or 3 data. */
-    FMOD_SOUND_FORMAT_CELT,             /* Compressed CELT data. */
+    FMOD_SOUND_FORMAT_CELT,             /* Not supported. */
     FMOD_SOUND_FORMAT_AT9,              /* Compressed PSVita ATRAC9 data. */
     FMOD_SOUND_FORMAT_XWMA,             /* Compressed Xbox360 xWMA data. */
     FMOD_SOUND_FORMAT_VORBIS,           /* Compressed Vorbis data. */
+    FMOD_SOUND_FORMAT_FADPCM,           /* Compressed FADPCM data. */
 
     FMOD_SOUND_FORMAT_MAX,              /* Maximum number of sound formats supported. */   
     FMOD_SOUND_FORMAT_FORCEINT = 65536  /* Makes sure this enum is signed 32bit. */
@@ -866,7 +918,7 @@ typedef enum
 #define FMOD_3D                        0x00000010  /* Makes the sound positionable in 3D.  Overrides FMOD_2D. */
 #define FMOD_CREATESTREAM              0x00000080  /* Decompress at runtime, streaming from the source provided (ie from disk).  Overrides FMOD_CREATESAMPLE and FMOD_CREATECOMPRESSEDSAMPLE.  Note a stream can only be played once at a time due to a stream only having 1 stream buffer and file handle.  Open multiple streams to have them play concurrently. */
 #define FMOD_CREATESAMPLE              0x00000100  /* Decompress at loadtime, decompressing or decoding whole file into memory as the target sample format (ie PCM).  Fastest for playback and most flexible.  */
-#define FMOD_CREATECOMPRESSEDSAMPLE    0x00000200  /* Load MP2/MP3/IMAADPCM/CELT/Vorbis/AT9 or XMA into memory and leave it compressed.  CELT/Vorbis/AT9 encoding only supported in the FSB file format.  During playback the FMOD software mixer will decode it in realtime as a 'compressed sample'.  Overrides FMOD_CREATESAMPLE.  If the sound data is not one of the supported formats, it will behave as if it was created with FMOD_CREATESAMPLE and decode the sound into PCM. */
+#define FMOD_CREATECOMPRESSEDSAMPLE    0x00000200  /* Load MP2/MP3/IMAADPCM/Vorbis/AT9 or XMA into memory and leave it compressed.  Vorbis/AT9 encoding only supported in the FSB file format.  During playback the FMOD software mixer will decode it in realtime as a 'compressed sample'.  Overrides FMOD_CREATESAMPLE.  If the sound data is not one of the supported formats, it will behave as if it was created with FMOD_CREATESAMPLE and decode the sound into PCM. */
 #define FMOD_OPENUSER                  0x00000400  /* Opens a user created static sample or stream. Use FMOD_CREATESOUNDEXINFO to specify format and/or read callbacks.  If a user created 'sample' is created with no read callback, the sample will be empty.  Use Sound::lock and Sound::unlock to place sound data into the sound if this is the case. */
 #define FMOD_OPENMEMORY                0x00000800  /* "name_or_data" will be interpreted as a pointer to memory instead of filename for creating sounds.  Use FMOD_CREATESOUNDEXINFO to specify length.  If used with FMOD_CREATESAMPLE or FMOD_CREATECOMPRESSEDSAMPLE, FMOD duplicates the memory into its own buffers.  Your own buffer can be freed after open.  If used with FMOD_CREATESTREAM, FMOD will stream out of the buffer whose pointer you passed in.  In this case, your own buffer should not be freed until you have finished with and released the stream.*/
 #define FMOD_OPENMEMORY_POINT          0x10000000  /* "name_or_data" will be interpreted as a pointer to memory instead of filename for creating sounds.  Use FMOD_CREATESOUNDEXINFO to specify length.  This differs to FMOD_OPENMEMORY in that it uses the memory as is, without duplicating the memory into its own buffers.  Cannot be freed after open, only after Sound::release.   Will not work if the data is compressed and FMOD_CREATECOMPRESSEDSAMPLE is not used. */
@@ -1042,6 +1094,7 @@ typedef enum
     FMOD_ERRORCALLBACK_INSTANCETYPE_STUDIO_BUS,
     FMOD_ERRORCALLBACK_INSTANCETYPE_STUDIO_VCA,
     FMOD_ERRORCALLBACK_INSTANCETYPE_STUDIO_BANK,
+    FMOD_ERRORCALLBACK_INSTANCETYPE_STUDIO_COMMANDREPLAY,
 
     FMOD_ERRORCALLBACK_INSTANCETYPE_FORCEINT = 65536    /* Makes sure this enum is signed 32bit. */
 } FMOD_ERRORCALLBACK_INSTANCETYPE;
@@ -1423,6 +1476,7 @@ typedef struct FMOD_TAG
     FMOD_SOUND_TYPE
     FMOD_CHANNELMASK
     FMOD_CHANNELORDER
+    FMOD_MAX_CHANNEL_WIDTH
 ]
 */
 typedef struct FMOD_CREATESOUNDEXINFO
@@ -1430,7 +1484,7 @@ typedef struct FMOD_CREATESOUNDEXINFO
     int                            cbsize;             /* [w] Size of this structure.  This is used so the structure can be expanded in the future and still work on older versions of FMOD Studio. */
     unsigned int                   length;             /* [w] Optional. Specify 0 to ignore. Number of bytes to load starting at 'fileoffset', or size of sound to create (if FMOD_OPENUSER is used).  Required if loading from memory.  If 0 is specified, then it will use the size of the file (unless loading from memory then an error will be returned). */
     unsigned int                   fileoffset;         /* [w] Optional. Specify 0 to ignore. Offset from start of the file to start loading from.  This is useful for loading files from inside big data files. */
-    int                            numchannels;        /* [w] Optional. Specify 0 to ignore. Number of channels in a sound mandatory if FMOD_OPENUSER or FMOD_OPENRAW is used. */
+    int                            numchannels;        /* [w] Optional. Specify 0 to ignore. Number of channels in a sound mandatory if FMOD_OPENUSER or FMOD_OPENRAW is used.  Can be specified up to FMOD_MAX_CHANNEL_WIDTH. */
     int                            defaultfrequency;   /* [w] Optional. Specify 0 to ignore. Default frequency of sound in Hz, mandatory if FMOD_OPENUSER or FMOD_OPENRAW is used.  Other formats use the frequency determined by the file format. */
     FMOD_SOUND_FORMAT              format;             /* [w] Optional. Specify 0 or FMOD_SOUND_FORMAT_NONE to ignore. Format of the sound, mandatory if FMOD_OPENUSER or FMOD_OPENRAW is used.  Other formats use the format determined by the file format.   */
     unsigned int                   decodebuffersize;   /* [w] Optional. Specify 0 to ignore. For streams.  This determines the size of the double buffer (in PCM samples) that a stream uses.  Use this for user created streams if you want to determine the size of the callback buffer passed to you.  Specify 0 to use FMOD's default size which is currently equivalent to 400ms of the sound format created/loaded. */
@@ -1591,9 +1645,9 @@ typedef struct FMOD_ADVANCEDSETTINGS
     int                 maxMPEGCodecs;              /* [r/w] Optional. Specify 0 to ignore. For use with FMOD_CREATECOMPRESSEDSAMPLE only.  MPEG   codecs consume 30,528 bytes per instance and this number will determine how many MPEG   channels can be played simultaneously. Default = 32. */
     int                 maxADPCMCodecs;             /* [r/w] Optional. Specify 0 to ignore. For use with FMOD_CREATECOMPRESSEDSAMPLE only.  ADPCM  codecs consume  3,128 bytes per instance and this number will determine how many ADPCM  channels can be played simultaneously. Default = 32. */
     int                 maxXMACodecs;               /* [r/w] Optional. Specify 0 to ignore. For use with FMOD_CREATECOMPRESSEDSAMPLE only.  XMA    codecs consume 14,836 bytes per instance and this number will determine how many XMA    channels can be played simultaneously. Default = 32. */
-    int                 maxCELTCodecs;              /* [r/w] Optional. Specify 0 to ignore. For use with FMOD_CREATECOMPRESSEDSAMPLE only.  CELT   codecs consume 25,408 bytes per instance and this number will determine how many CELT   channels can be played simultaneously. Default = 32. */    
     int                 maxVorbisCodecs;            /* [r/w] Optional. Specify 0 to ignore. For use with FMOD_CREATECOMPRESSEDSAMPLE only.  Vorbis codecs consume 23,256 bytes per instance and this number will determine how many Vorbis channels can be played simultaneously. Default = 32. */    
     int                 maxAT9Codecs;               /* [r/w] Optional. Specify 0 to ignore. For use with FMOD_CREATECOMPRESSEDSAMPLE only.  AT9    codecs consume  8,720 bytes per instance and this number will determine how many AT9    channels can be played simultaneously. Default = 32. */    
+    int                 maxFADPCMCodecs;            /* [r/w] Optional. Specify 0 to ignore. For use with FMOD_CREATECOMPRESSEDSAMPLE only.  This number will determine how many FADPCM channels can be played simultaneously. Default = 32. */
     int                 maxPCMCodecs;               /* [r/w] Optional. Specify 0 to ignore. For use with PS3 only.                          PCM    codecs consume 12,672 bytes per instance and this number will determine how many streams and PCM voices can be played simultaneously. Default = 16. */
     int                 ASIONumChannels;            /* [r/w] Optional. Specify 0 to ignore. Number of channels available on the ASIO device. */
     char              **ASIOChannelList;            /* [r/w] Optional. Specify 0 to ignore. Pointer to an array of strings (number of entries defined by ASIONumChannels) with ASIO channel names. */
@@ -1615,6 +1669,27 @@ typedef struct FMOD_ADVANCEDSETTINGS
     unsigned int        commandQueueSize;           /* [r/w] Optional. Specify 0 to ignore. Specify the command queue size for thread safe processing.  Default 2048 (2kb) */
     unsigned int        randomSeed;                 /* [r/w] Optional. Specify 0 to ignore. Seed value that FMOD will use to initialize its internal random number generators. */
 } FMOD_ADVANCEDSETTINGS;
+
+
+/*
+[DEFINE] 
+[
+    [NAME] 
+    FMOD_DRIVER_STATE
+
+    [DESCRIPTION]
+    Flags that provide additional information about a particular driver.
+
+    [REMARKS]
+
+    [SEE_ALSO]
+    System::getRecordDriverInfo
+]
+*/
+#define FMOD_DRIVER_STATE_CONNECTED 0x00000001  /* Device is currently plugged in. */
+#define FMOD_DRIVER_STATE_DEFAULT   0x00000002  /* Device is the users preferred choice. */
+/* [DEFINE_END] */
+
 
 /*$ preserve start $*/
 

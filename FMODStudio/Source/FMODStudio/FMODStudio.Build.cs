@@ -130,10 +130,15 @@ namespace UnrealBuildTool.Rules
 					linkExtension = "_iphoneos.a";
 					libPrefix = "lib";
 					break;
+				case UnrealTargetPlatform.Linux:
+					BasePath += "x86_64/";
+					linkExtension = ".so";
+					dllExtension = ".so";
+					libPrefix = "lib";
+					break;
 				case UnrealTargetPlatform.WinRT:
 				case UnrealTargetPlatform.WinRT_ARM:
 				case UnrealTargetPlatform.HTML5:
-				case UnrealTargetPlatform.Linux:
 					//extName = ".a";
 					throw new System.Exception(System.String.Format("Unsupported platform {0}", Target.Platform.ToString()));
 					//break;

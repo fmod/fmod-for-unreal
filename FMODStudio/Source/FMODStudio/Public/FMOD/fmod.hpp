@@ -22,13 +22,14 @@ namespace FMOD
 {
     class System;
     class Sound;
+    class ChannelControl;
     class Channel;
     class ChannelGroup;
     class SoundGroup;
-    class Reverb3D;
     class DSP;
     class DSPConnection;
     class Geometry;
+    class Reverb3D;
 
     /*
         FMOD global system functions (optional).
@@ -47,13 +48,14 @@ namespace FMOD
     /*
        'System' API
     */
-
     class System
     {
       private:
 
-        System();   /* Constructor made private so user cannot statically instance a System class.
-                       System_Create must be used. */
+        // Constructor made private so user cannot statically instance a System class.  System_Create must be used.
+        System();
+        System(const System &);
+
       public:
 
         FMOD_RESULT F_API release                 ();
@@ -112,6 +114,8 @@ namespace FMOD
         FMOD_RESULT F_API set3DRolloffCallback    (FMOD_3D_ROLLOFF_CALLBACK callback);
         FMOD_RESULT F_API mixerSuspend            ();
         FMOD_RESULT F_API mixerResume             ();
+        FMOD_RESULT F_API getDefaultMixMatrix     (FMOD_SPEAKERMODE sourcespeakermode, FMOD_SPEAKERMODE targetspeakermode, float *matrix, int matrixhop);
+        FMOD_RESULT F_API getSpeakerModeChannels  (FMOD_SPEAKERMODE mode, int *channels);
 
         // System information functions.
         FMOD_RESULT F_API getVersion              (unsigned int *version);
@@ -148,10 +152,9 @@ namespace FMOD
         FMOD_RESULT F_API unlockDSP               ();
 
         // Recording API.
-        FMOD_RESULT F_API getRecordNumDrivers     (int *numdrivers);
-        FMOD_RESULT F_API getRecordDriverInfo     (int id, char *name, int namelen, FMOD_GUID *guid, int *systemrate, FMOD_SPEAKERMODE *speakermode, int *speakermodechannels);
+        FMOD_RESULT F_API getRecordNumDrivers     (int *numdrivers, int *numconnected);
+        FMOD_RESULT F_API getRecordDriverInfo     (int id, char *name, int namelen, FMOD_GUID *guid, int *systemrate, FMOD_SPEAKERMODE *speakermode, int *speakermodechannels, FMOD_DRIVER_STATE *state);
         FMOD_RESULT F_API getRecordPosition       (int id, unsigned int *position);
-
         FMOD_RESULT F_API recordStart             (int id, Sound *sound, bool loop);
         FMOD_RESULT F_API recordStop              (int id);
         FMOD_RESULT F_API isRecording             (int id, bool *recording);
@@ -181,8 +184,10 @@ namespace FMOD
     {
       private:
 
-        Sound();   /* Constructor made private so user cannot statically instance a Sound class.
-                      Appropriate Sound creation or retrieval function must be used. */
+        // Constructor made private so user cannot statically instance a Sound class.  Appropriate Sound creation or retrieval function must be used.
+        Sound();
+        Sound(const Sound &);
+
       public:
 
         FMOD_RESULT F_API release                ();
@@ -250,7 +255,9 @@ namespace FMOD
     {
       private:
 
-        ChannelControl();   /* Constructor made private so user cannot statically instance a Control class. */
+        // Constructor made private so user cannot statically instance a Control class.
+        ChannelControl();
+        ChannelControl(const ChannelControl &);
 
       public:
 
@@ -278,7 +285,7 @@ namespace FMOD
         FMOD_RESULT F_API setCallback            (FMOD_CHANNELCONTROL_CALLBACK callback);
         FMOD_RESULT F_API isPlaying              (bool *isplaying);
 
-        // Panning and level adjustment.  
+        // Panning and level adjustment.
         // Note all 'set' functions alter a final matrix, this is why the only get function is getMixMatrix, to avoid other get functions returning incorrect/obsolete values.
         FMOD_RESULT F_API setPan                 (float pan);
         FMOD_RESULT F_API setMixLevelsOutput     (float frontleft, float frontright, float center, float lfe, float surroundleft, float surroundright, float backleft, float backright);
@@ -338,8 +345,10 @@ namespace FMOD
     {
       private:
 
-        Channel();   /* Constructor made private so user cannot statically instance a Channel class.
-                        Appropriate Channel creation or retrieval function must be used. */
+        // Constructor made private so user cannot statically instance a Channel class.  Appropriate Channel creation or retrieval function must be used.
+        Channel();
+        Channel(const Channel &);
+
       public:
 
         // Channel specific control functionality.
@@ -369,8 +378,10 @@ namespace FMOD
     {
       private:
 
-        ChannelGroup();   /* Constructor made private so user cannot statically instance a ChannelGroup class.
-                             Appropriate ChannelGroup creation or retrieval function must be used. */
+        // Constructor made private so user cannot statically instance a ChannelGroup class.  Appropriate ChannelGroup creation or retrieval function must be used.
+        ChannelGroup();
+        ChannelGroup(const ChannelGroup &);
+
       public:
 
         FMOD_RESULT F_API release                 ();
@@ -394,8 +405,10 @@ namespace FMOD
     {
       private:
 
-        SoundGroup();       /* Constructor made private so user cannot statically instance a SoundGroup class.
-                               Appropriate SoundGroup creation or retrieval function must be used. */
+        // Constructor made private so user cannot statically instance a SoundGroup class.  Appropriate SoundGroup creation or retrieval function must be used.
+        SoundGroup();
+        SoundGroup(const SoundGroup &);
+
       public:
 
         FMOD_RESULT F_API release                ();
@@ -430,8 +443,10 @@ namespace FMOD
     {
       private:
 
-        DSP();   /* Constructor made private so user cannot statically instance a DSP class.
-                    Appropriate DSP creation or retrieval function must be used. */
+        // Constructor made private so user cannot statically instance a DSP class.  Appropriate DSP creation or retrieval function must be used.
+        DSP();
+        DSP(const DSP &);
+
       public:
 
         FMOD_RESULT F_API release                ();
@@ -456,7 +471,7 @@ namespace FMOD
         FMOD_RESULT F_API setChannelFormat       (FMOD_CHANNELMASK channelmask, int numchannels, FMOD_SPEAKERMODE source_speakermode);
         FMOD_RESULT F_API getChannelFormat       (FMOD_CHANNELMASK *channelmask, int *numchannels, FMOD_SPEAKERMODE *source_speakermode);
         FMOD_RESULT F_API getOutputChannelFormat (FMOD_CHANNELMASK inmask, int inchannels, FMOD_SPEAKERMODE inspeakermode, FMOD_CHANNELMASK *outmask, int *outchannels, FMOD_SPEAKERMODE *outspeakermode);
-        FMOD_RESULT F_API reset                  ();		
+        FMOD_RESULT F_API reset                  ();
 
         // DSP parameter control.
         FMOD_RESULT F_API setParameterFloat      (int index, float value);
@@ -495,8 +510,9 @@ namespace FMOD
     {
       private:
 
-        DSPConnection();    /* Constructor made private so user cannot statically instance a DSPConnection class.
-                               Appropriate DSPConnection creation or retrieval function must be used. */
+        // Constructor made private so user cannot statically instance a DSPConnection class.  Appropriate DSPConnection creation or retrieval function must be used.
+        DSPConnection();
+        DSPConnection(const DSPConnection &);
 
       public:
 
@@ -521,8 +537,9 @@ namespace FMOD
     {
       private:
 
-        Geometry();   /* Constructor made private so user cannot statically instance a Geometry class.
-                         Appropriate Geometry creation or retrieval function must be used. */
+        // Constructor made private so user cannot statically instance a Geometry class.  Appropriate Geometry creation or retrieval function must be used.
+        Geometry();
+        Geometry(const Geometry &);
 
       public:
 
@@ -562,8 +579,9 @@ namespace FMOD
     {
       private:
 
-        Reverb3D();    /*  Constructor made private so user cannot statically instance a Reverb3D class.
-                           Appropriate Reverb creation or retrieval function must be used. */
+        // Constructor made private so user cannot statically instance a Reverb3D class.  Appropriate Reverb creation or retrieval function must be used.
+        Reverb3D();
+        Reverb3D(const Reverb3D &);
 
       public:
 
