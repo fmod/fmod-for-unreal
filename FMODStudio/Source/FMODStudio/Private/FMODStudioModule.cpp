@@ -207,8 +207,10 @@ FString FFMODStudioModule::GetDllPath(const TCHAR* ShortName)
 	return FString::Printf(TEXT("/app0/sce_sys/lib%s.prx"), ShortName);
 #elif PLATFORM_XBOXONE
 	return FString::Printf(TEXT("%s.dll"), ShortName);
+#elif PLATFORM_ANDROID
+	return FString::Printf(TEXT("lib%s.so"), ShortName);
 #elif PLATFORM_64BITS
-	return FString::Printf(TEXT("%s/Binaries/ThirdParty/FMODStudio/Win64/%s64.dll"), *FPaths::EngineDir(), ShortName);
+	return FString::Printf(TEXT("%s/Binaries/ThirdParty/FMODStudio/Win64/%s.dll"), *FPaths::EngineDir(), ShortName);
 #else
 	return FString::Printf(TEXT("%s/Binaries/ThirdParty/FMODStudio/Win32/%s.dll"), *FPaths::EngineDir(), ShortName);
 #endif
@@ -229,6 +231,10 @@ bool FFMODStudioModule::LoadLibraries()
 	FString ConfigName = TEXT("");
 #else
 	#error FMODSTUDIO_LINK not defined
+#endif
+
+#if PLATFORM_WINDOWS && PLATFORM_64BITS
+	ConfigName += TEXT("64");
 #endif
 
 	FString LowLevelName = FString(TEXT("fmod")) + ConfigName;
