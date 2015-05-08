@@ -11,6 +11,8 @@
 #include "FMODBankUpdateNotifier.h"
 #include "FMODUtils.h"
 #include "FMODEvent.h"
+#include "FMODListener.h"
+#include "FMODSnapshotReverb.h"
 #include "FMODStudioOculusModule.h"
 
 #include "fmod_studio.hpp"
@@ -28,16 +30,62 @@
 
 DEFINE_LOG_CATEGORY(LogFMOD);
 
+struct FFMODSnapshotEntry
+{
+	FFMODSnapshotEntry(UFMODSnapshotReverb* InSnapshot=nullptr, FMOD::Studio::EventInstance* InInstance=nullptr)
+	:	Snapshot(InSnapshot),
+		Instance(InInstance),
+		StartTime(0.0),
+		FadeDuration(0.0f),
+		FadeIntensityStart(0.0f),
+		FadeIntensityEnd(0.0f)
+	{
+	}
+
+	float CurrentIntensity() const
+	{
+		double CurrentTime = FApp::GetCurrentTime();
+		if (StartTime + FadeDuration <= CurrentTime)
+		{
+			return FadeIntensityEnd;
+		}
+		else
+		{
+			float Factor = (CurrentTime - StartTime) / FadeDuration;
+			return FMath::Lerp<float>(FadeIntensityStart, FadeIntensityEnd, Factor);
+		}
+	}
+
+	void FadeTo(float Target, float Duration)
+	{
+		float StartIntensity = CurrentIntensity();
+
+		StartTime = FApp::GetCurrentTime();
+		FadeDuration = Duration;
+		FadeIntensityStart = StartIntensity;
+		FadeIntensityEnd = Target;
+	}
+
+	UFMODSnapshotReverb* Snapshot;
+	FMOD::Studio::EventInstance* Instance;
+	double StartTime;
+	float FadeDuration;
+	float FadeIntensityStart;
+	float FadeIntensityEnd;
+};
+
 class FFMODStudioModule : public IFMODStudioModule
 {
 public:
 	/** IModuleInterface implementation */
 	FFMODStudioModule()
 	:	AuditioningInstance(nullptr),
+        ListenerCount(1),
 		bSimulating(false),
 		bIsInPIE(false),
 		bUseSound(true),
-		bAllowLiveUpdate(true),
+		bListenerMoved(true),
+        bAllowLiveUpdate(true),
 		LowLevelLibHandle(nullptr),
 		StudioLibHandle(nullptr)
 	{
@@ -73,6 +121,13 @@ public:
 	virtual FMOD::Studio::EventInstance* CreateAuditioningInstance(const UFMODEvent* Event) override;
 	virtual void StopAuditioningInstance() override;
 
+	virtual void SetListenerPosition(int ListenerIndex, UWorld* World, const FTransform& ListenerTransform, float DeltaSeconds) override;
+	virtual void FinishSetListenerPosition(int ListenerCount, float DeltaSeconds) override;
+
+	virtual const FFMODListener& GetNearestListener(const FVector& Location) override;
+
+	virtual bool HasListenerMoved() override;
+
 	virtual void RefreshSettings();
 
 	virtual void SetSystemPaused(bool paused) override;
@@ -97,6 +152,8 @@ public:
 
 	virtual void LogError(int result, const char* function) override;
 
+	void ResetInterpolation();
+
 	/** The studio system handle. */
 	FMOD::Studio::System* StudioSystem[EFMODSystemContext::Max];
 	FMOD::Studio::EventInstance* AuditioningInstance;
@@ -113,6 +170,18 @@ public:
 	/** Periodically checks for updates of the strings.bank file */
 	FFMODBankUpdateNotifier BankUpdateNotifier;
 
+	/** Listener information */
+#if FMOD_VERSION >= 0x00010600
+	static const int MAX_LISTENERS = FMOD_MAX_LISTENERS;
+#else
+	static const int MAX_LISTENERS = 1;
+#endif
+	FFMODListener Listeners[MAX_LISTENERS];
+	int ListenerCount;
+
+	/** Current snapshot applied via reverb zones*/
+	TArray<FFMODSnapshotEntry> ReverbSnapshots;
+
 	/** True if simulating */
 	bool bSimulating;
 	
@@ -121,6 +190,9 @@ public:
 
 	/** True if we want sound enabled */
 	bool bUseSound;
+
+	/** True if we the listener has moved and may have changed audio settings*/
+	bool bListenerMoved;
 
 	/** True if we allow live update */
 	bool bAllowLiveUpdate;
@@ -355,6 +427,8 @@ void FFMODStudioModule::DestroyStudioSystem(EFMODSystemContext::Type Type)
 
 bool FFMODStudioModule::Tick( float DeltaTime )
 {
+	bListenerMoved = false;
+
 	if (GIsEditor)
 	{
 		BankUpdateNotifier.Update();
@@ -384,6 +458,9 @@ void FFMODStudioModule::UpdateViewportPosition()
 		ViewportWorld = GEngine->GameViewport->GetWorld();
 	}
 
+	bool bCameraCut = false; // Not sure how to get View->bCameraCut from here
+	float DeltaSeconds = (bCameraCut ? 0.f : ViewportWorld->GetDeltaSeconds());
+
 	if (ViewportWorld)
 	{
 		for( FConstPlayerControllerIterator Iterator = ViewportWorld->GetPlayerControllerIterator(); Iterator; ++Iterator )
@@ -404,27 +481,198 @@ void FFMODStudioModule::UpdateViewportPosition()
 					ListenerTransform.SetTranslation(Location);
 					ListenerTransform.NormalizeRotation();
 
-					FMOD_3D_ATTRIBUTES Attributes = {{0}};
-					Attributes.position = FMODUtils::ConvertWorldVector(Location);
-					Attributes.forward = FMODUtils::ConvertUnitVector(ProjFront);
-					Attributes.up = FMODUtils::ConvertUnitVector(ProjUp);
-					// For now, only apply the first listener position
-					if (ListenerIndex == 0)
-					{
-#if FMOD_VERSION >= 0x00010600
-						verifyfmod(StudioSystem[EFMODSystemContext::Runtime]->setListenerAttributes(0, &Attributes));
-#else
-						verifyfmod(StudioSystem[EFMODSystemContext::Runtime]->setListenerAttributes(&Attributes));
-#endif
-						break;
-					}
+					SetListenerPosition(ListenerIndex, ViewportWorld, ListenerTransform, DeltaSeconds);
 
 					ListenerIndex++;
 				}
 			}
 		}
+		FinishSetListenerPosition(ListenerIndex, DeltaSeconds);
 	}
 }
+
+bool FFMODStudioModule::HasListenerMoved()
+{
+	return bListenerMoved;
+}
+
+void FFMODStudioModule::ResetInterpolation()
+{
+	for (FFMODListener& Listener : Listeners)
+	{
+		Listener = FFMODListener();
+	}
+}
+
+const FFMODListener& FFMODStudioModule::GetNearestListener(const FVector& Location)
+{
+	float BestDistSq = FLT_MAX;
+	int BestListener = 0;
+	for (int i = 0; i < ListenerCount; ++i)
+	{
+		const float DistSq = FVector::DistSquared(Location, Listeners[i].Transform.GetTranslation());
+		if (DistSq < BestDistSq)
+		{
+			BestListener = i;
+			BestDistSq = DistSq;
+		}
+	}
+	return Listeners[BestListener];
+}
+
+// Partially copied from FAudioDevice::SetListener
+void FFMODStudioModule::SetListenerPosition(int ListenerIndex, UWorld* World, const FTransform& ListenerTransform, float DeltaSeconds)
+{
+	FMOD::Studio::System* StudioSystem = IFMODStudioModule::Get().GetStudioSystem(EFMODSystemContext::Runtime);
+	if (StudioSystem && ListenerIndex < MAX_LISTENERS)
+	{
+		FVector ListenerPos = ListenerTransform.GetTranslation();
+
+		FInteriorSettings InteriorSettings;
+		AAudioVolume* Volume = World->GetAudioSettings(ListenerPos, NULL, &InteriorSettings);
+
+		Listeners[ListenerIndex].Velocity = DeltaSeconds > 0.f ? 
+												(ListenerTransform.GetTranslation() - Listeners[ ListenerIndex ].Transform.GetTranslation()) / DeltaSeconds
+												: FVector::ZeroVector;
+
+		Listeners[ListenerIndex].Transform = ListenerTransform;
+
+		Listeners[ListenerIndex].ApplyInteriorSettings(Volume, InteriorSettings);
+
+		FMOD_3D_ATTRIBUTES Attributes = {{0}};
+		Attributes.position = FMODUtils::ConvertWorldVector(ListenerPos);
+		Attributes.forward = FMODUtils::ConvertUnitVector(Listeners[ListenerIndex].GetFront());
+		Attributes.up = FMODUtils::ConvertUnitVector(Listeners[ListenerIndex].GetUp());
+		Attributes.velocity = FMODUtils::ConvertWorldVector(Listeners[ListenerIndex].Velocity);
+
+#if FMOD_VERSION >= 0x00010600
+		// Expand number of listeners dynamically
+		if (ListenerIndex >= ListenerCount)
+		{
+			Listeners[ListenerIndex] = FFMODListener();
+			ListenerCount = ListenerIndex+1;
+			verifyfmod(StudioSystem->setNumListeners(ListenerCount));
+		}
+		verifyfmod(StudioSystem->setListenerAttributes(ListenerIndex, &Attributes));
+#else
+		verifyfmod(StudioSystem->setListenerAttributes(&Attributes));
+#endif
+
+		bListenerMoved = true;
+	}
+}
+
+void FFMODStudioModule::FinishSetListenerPosition(int NumListeners, float DeltaSeconds)
+{
+	FMOD::Studio::System* StudioSystem = IFMODStudioModule::Get().GetStudioSystem(EFMODSystemContext::Runtime);
+	if (!StudioSystem)
+	{
+		return;
+	}
+
+	// Shrink number of listeners if we have less than our current count
+	NumListeners = FMath::Min(NumListeners, 1);
+	if (StudioSystem && NumListeners < ListenerCount)
+	{
+		ListenerCount = NumListeners;
+#if FMOD_VERSION >= 0x00010600
+		verifyfmod(StudioSystem->setNumListeners(ListenerCount));
+#endif
+	}
+
+	for (int i = 0; i < ListenerCount; ++i)
+	{
+		Listeners[i].UpdateCurrentInteriorSettings();
+	}
+
+	// Apply a reverb snapshot from the listener position(s)
+	AAudioVolume* BestVolume = nullptr;
+	for (int i = 0; i < ListenerCount; ++i)
+	{
+		AAudioVolume* CandidateVolume = Listeners[i].Volume;
+		if (BestVolume == nullptr || (CandidateVolume != nullptr && CandidateVolume->Priority > BestVolume->Priority))
+		{
+			BestVolume = CandidateVolume;
+		}
+	}
+	UFMODSnapshotReverb* NewSnapshot = nullptr;
+	if (BestVolume && BestVolume->Settings.bApplyReverb)
+	{
+		NewSnapshot = Cast<UFMODSnapshotReverb>(BestVolume->Settings.ReverbEffect);
+	}
+
+	if (NewSnapshot != nullptr)
+	{
+		FString NewSnapshotName = FMODUtils::LookupNameFromGuid(StudioSystem, NewSnapshot->AssetGuid);
+		UE_LOG(LogFMOD, Verbose, TEXT("Starting new snapshot '%s'"), *NewSnapshotName);
+
+		// Try to steal old entry
+		FFMODSnapshotEntry SnapshotEntry;
+		int SnapshotEntryIndex = -1;
+		for (int i=0; i<ReverbSnapshots.Num(); ++i)
+		{
+			if (ReverbSnapshots[i].Snapshot == NewSnapshot)
+			{
+				UE_LOG(LogFMOD, Verbose, TEXT("Re-using old entry with intensity %f"), ReverbSnapshots[i].CurrentIntensity());
+				SnapshotEntryIndex = i;
+				break;
+			}
+		}
+		// Create new instance
+		if (SnapshotEntryIndex == -1)
+		{
+			UE_LOG(LogFMOD, Verbose, TEXT("Creating new instance"));
+
+			FMOD::Studio::ID Guid = FMODUtils::ConvertGuid(NewSnapshot->AssetGuid);
+			FMOD::Studio::EventInstance* NewInstance = nullptr;
+			FMOD::Studio::EventDescription* EventDesc = nullptr;
+			StudioSystem->getEventByID(&Guid, &EventDesc);
+			if (EventDesc)
+			{
+				EventDesc->createInstance(&NewInstance);
+				if (NewInstance)
+				{
+					NewInstance->setParameterValue("Intensity", 0.0f);
+					NewInstance->start();
+				}
+			}
+
+			SnapshotEntryIndex = ReverbSnapshots.Num();
+			ReverbSnapshots.Push(FFMODSnapshotEntry(NewSnapshot, NewInstance));
+		}
+		// Fade up
+		if (ReverbSnapshots[SnapshotEntryIndex].FadeIntensityEnd == 0.0f)
+		{
+			ReverbSnapshots[SnapshotEntryIndex].FadeTo(BestVolume->Settings.Volume, BestVolume->Settings.FadeTime);
+		}
+	}
+	// Fade out all other entries
+	for (int i=0; i<ReverbSnapshots.Num(); ++i)
+	{
+		UE_LOG(LogFMOD, Verbose, TEXT("Ramping intensity (%f,%f) -> %f"), ReverbSnapshots[i].FadeIntensityStart, ReverbSnapshots[i].FadeIntensityEnd, ReverbSnapshots[i].CurrentIntensity());
+		ReverbSnapshots[i].Instance->setParameterValue("Intensity", 100.0f * ReverbSnapshots[i].CurrentIntensity());
+
+		if (ReverbSnapshots[i].Snapshot != NewSnapshot)
+		{
+			// Start fading out if needed
+			if (ReverbSnapshots[i].FadeIntensityEnd != 0.0f)
+			{
+				ReverbSnapshots[i].FadeTo(0.0f, ReverbSnapshots[i].FadeDuration);
+			}
+			// Finish fading out and remove
+			else if (ReverbSnapshots[i].CurrentIntensity() == 0.0f)
+			{
+				UE_LOG(LogFMOD, Verbose, TEXT("Removing snapshot"));
+
+				ReverbSnapshots[i].Instance->stop(FMOD_STUDIO_STOP_ALLOWFADEOUT);
+				ReverbSnapshots[i].Instance->release();
+				ReverbSnapshots.RemoveAt(i);
+				--i; // removed entry, redo current index for next one
+			}
+		}
+	}
+}
+
 
 void FFMODStudioModule::RefreshSettings()
 {
@@ -441,6 +689,8 @@ void FFMODStudioModule::SetInPIE(bool bInPIE, bool simulating)
 {
 	bIsInPIE = bInPIE;
 	bSimulating = simulating;
+	bListenerMoved = true;
+	ResetInterpolation();
 
 	if (GIsEditor)
 	{
@@ -462,6 +712,7 @@ void FFMODStudioModule::SetInPIE(bool bInPIE, bool simulating)
 		}
 
 		UE_LOG(LogFMOD, Log, TEXT("Creating Studio System"));
+		ListenerCount = 1;
 		CreateStudioSystem(EFMODSystemContext::Runtime);
 
 		UE_LOG(LogFMOD, Log, TEXT("Triggering Initialized on other modules"));
@@ -476,6 +727,7 @@ void FFMODStudioModule::SetInPIE(bool bInPIE, bool simulating)
 	}
 	else
 	{
+		ReverbSnapshots.Reset();
 		DestroyStudioSystem(EFMODSystemContext::Runtime);
 	}
 }
@@ -545,13 +797,9 @@ void FFMODStudioModule::LoadBanks(EFMODSystemContext::Type Type)
 	if (StudioSystem[Type] != nullptr && Settings.IsBankPathSet())
 	{
 		/*
-			If auditioning in editor, we load all banks asynchronously in the background and return immediately.  We force a flush
-			whenever we want to audition anything, thus making sure they are all loaded at that point.
-
-			For the actual runtime, we load the banks immediately because the game may want to query events at any time.  If this
-			causes any stalls the user can always turn off the bank loading in the settings and do it via blueprints.
+			Queue up all banks to load asynchronously then wait at the end.
 		*/
-		FMOD_STUDIO_LOAD_BANK_FLAGS BankFlags = ((Type == EFMODSystemContext::Auditioning) ? FMOD_STUDIO_LOAD_BANK_NONBLOCKING : FMOD_STUDIO_LOAD_BANK_NORMAL);
+		FMOD_STUDIO_LOAD_BANK_FLAGS BankFlags = FMOD_STUDIO_LOAD_BANK_NONBLOCKING;
 		bool bLoadAllBanks = ((Type == EFMODSystemContext::Auditioning) || Settings.bLoadAllBanks);
 		bool bLoadSampleData = ((Type == EFMODSystemContext::Runtime) && Settings.bLoadAllSampleData);
 
@@ -572,7 +820,7 @@ void FFMODStudioModule::LoadBanks(EFMODSystemContext::Type Type)
 		}
 
 		// Auditioning needs string bank to get back full paths from events
-		if (Type == EFMODSystemContext::Auditioning)
+		// Runtime could do without it, but if we load it we can look up guids to names which is helpful
 		{
 			FString StringsBankPath = Settings.GetMasterStringsBankPath();
 			UE_LOG(LogFMOD, Verbose, TEXT("Loading strings bank: %s"), *StringsBankPath);
@@ -608,6 +856,9 @@ void FFMODStudioModule::LoadBanks(EFMODSystemContext::Type Type)
 				}
 			}
 		}
+
+		// Wait for all banks to load.
+		StudioSystem[Type]->flushCommands();
 	}
 }
 
@@ -642,13 +893,6 @@ FMOD::Studio::EventDescription* FFMODStudioModule::GetEventDescription(const UFM
 	}
 	if (StudioSystem[Context] != nullptr && Event != nullptr && Event->AssetGuid.IsValid())
 	{
-		if (Context == EFMODSystemContext::Auditioning)
-		{
-			// Because we loaded auditioning system asynchronously, do a flush here to make sure banks have 
-			// actually finished loading so we can query events in them.
-			StudioSystem[Context]->flushCommands();
-		}
-
 		FMOD::Studio::ID Guid = FMODUtils::ConvertGuid(Event->AssetGuid);
 		FMOD::Studio::EventDescription* EventDesc = nullptr;
 		StudioSystem[Context]->getEventByID(&Guid, &EventDesc);

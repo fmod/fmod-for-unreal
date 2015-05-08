@@ -441,7 +441,7 @@ typedef enum
     FMOD_DSP_COMPRESSOR_ATTACK,      /* (Type:float) - Attack time (milliseconds), in the range from 0.1 through 1000. The default value is 20. */
     FMOD_DSP_COMPRESSOR_RELEASE,     /* (Type:float) - Release time (milliseconds), in the range from 10 through 5000. The default value is 100 */
     FMOD_DSP_COMPRESSOR_GAINMAKEUP,  /* (Type:float) - Make-up gain (dB) applied after limiting, in the range from 0 through 30. The default value is 0. */
-    FMOD_DSP_COMPRESSOR_USESIDECHAIN /* (Type:bool)  - Whether to analyse the sidechain signal instead of the input signal. The default value is false */
+    FMOD_DSP_COMPRESSOR_USESIDECHAIN /* (Type:data)  - Data of type FMOD_DSP_PARAMETER_SIDECHAIN. Whether to analyse the sidechain signal instead of the input signal. Default is { false } */
 } FMOD_DSP_COMPRESSOR;
 
 /*
@@ -918,7 +918,7 @@ typedef enum
     FMOD_DSP_ENVELOPEFOLLOWER_ATTACK,      /* (Type:float) [r/w] - Attack time (milliseconds), in the range from 0.1 through 1000. The default value is 20. */
     FMOD_DSP_ENVELOPEFOLLOWER_RELEASE,     /* (Type:float) [r/w] - Release time (milliseconds), in the range from 10 through 5000. The default value is 100 */
     FMOD_DSP_ENVELOPEFOLLOWER_ENVELOPE,    /* (Type:float) [r]   - Current value of the envelope, in the range 0 to 1. Read-only. */
-    FMOD_DSP_ENVELOPEFOLLOWER_USESIDECHAIN /* (Type:bool)  [r/w] - Whether to analyse the sidechain signal instead of the input signal. The default value is false */
+    FMOD_DSP_ENVELOPEFOLLOWER_USESIDECHAIN /* (Type:data)  [r/w] - Data of type FMOD_DSP_PARAMETER_SIDECHAIN. Whether to analyse the sidechain signal instead of the input signal. Default is { false } */
 } FMOD_DSP_ENVELOPEFOLLOWER;
 
 /*

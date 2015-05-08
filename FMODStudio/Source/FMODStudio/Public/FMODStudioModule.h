@@ -16,6 +16,10 @@ namespace FMOD
 
 class UFMODAsset;
 class UFMODEvent;
+class UWorld;
+class AAudioVolume;
+struct FInteriorSettings;
+struct FFMODListener; // Currently only for private use, we don't export this type
 
 // Which FMOD Studio system to use
 namespace EFMODSystemContext
@@ -106,6 +110,26 @@ public:
 	 * Stop any auditioning instance
 	 */
 	virtual void StopAuditioningInstance() = 0;
+
+	/**
+	 * Return whether the listener(s) have moved
+	 */
+	virtual bool HasListenerMoved() = 0;
+
+	/**
+	 * Called to change the listener position for editor mode
+	 */
+	virtual void SetListenerPosition(int ListenerIndex, UWorld* World, const FTransform& ListenerTransform, float DeltaSeconds) = 0;
+
+	/**
+	 * Called to change the listener position for editor mode
+	 */
+	virtual void FinishSetListenerPosition(int NumListeners, float DeltaSeconds) = 0;
+
+	/**
+	 * Return the audio settings for the listener nearest the given location
+	 */
+	virtual const FFMODListener& GetNearestListener(const FVector& Location) = 0;
 
 	/** This event is fired after all banks were reloaded */
 	virtual FSimpleMulticastDelegate& BanksReloadedEvent() = 0;

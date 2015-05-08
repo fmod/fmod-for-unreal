@@ -51,4 +51,5 @@ private:
 	void HandleBanksReloaded();
 
 	FMOD::Studio::EventInstance* CurrentPreviewEventInstance;
+	FDelegateHandle BeginPIEDelegateHandle;
 };

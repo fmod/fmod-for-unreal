@@ -4,6 +4,7 @@
 #include "FMODAssetTable.h"
 #include "FMODEvent.h"
 #include "FMODSnapshot.h"
+#include "FMODSnapshotReverb.h"
 #include "FMODBank.h"
 #include "FMODBus.h"
 #include "FMODVCA.h"
@@ -217,7 +218,34 @@ void FFMODAssetTable::AddAsset(const FGuid& AssetGuid, const FString& AssetFullN
 		{
 			UE_LOG(LogFMOD, Warning, TEXT("Failed to construct package for asset %s"), *AssetPackagePath);
 		}
+
+		if (AssetClass == UFMODSnapshot::StaticClass())
+		{
+			FString ReverbFolderPath = Settings.ContentBrowserPrefix;
+			ReverbFolderPath += TEXT("Reverbs");
+			ReverbFolderPath += AssetPath;
+
+			FString ReverbAssetPackagePath = ReverbFolderPath + TEXT("/") + AssetShortName;
+
+			UPackage* NewPackage = CreatePackage(NULL, *ReverbAssetPackagePath);
+			if (NewPackage)
+			{
+				NewPackage->PackageFlags |= PKG_CompiledIn;
+
+				UFMODSnapshotReverb* AssetReverb = ConstructObject<UFMODSnapshotReverb>(UFMODSnapshotReverb::StaticClass(), NewPackage, FName(*AssetShortName), RF_Standalone | RF_Public /* | RF_Transient */);
+				AssetReverb->AssetGuid = AssetGuid;
+				AssetReverb->bShowAsAsset = true;
+
+#if WITH_EDITOR
+				FAssetRegistryModule& AssetRegistryModule = FModuleManager::LoadModuleChecked<FAssetRegistryModule>(TEXT("AssetRegistry"));
+				AssetRegistryModule.Get().AddPath(*ReverbFolderPath);
+				FAssetRegistryModule::AssetCreated(AssetReverb);
+#endif
+
+			}
+		}
 	}
+
 	UFMODAsset* AssetGuidObject = ExistingGuidAsset.Get();
 	if (AssetGuidObject != nullptr && AssetGuidObject != AssetNameObject)
 	{

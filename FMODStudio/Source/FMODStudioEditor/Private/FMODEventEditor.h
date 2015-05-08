@@ -75,4 +75,6 @@ private:
 	static const FName FMODEventEditorAppIdentifier;
 
 	class UFMODEvent* EditedEvent;
+
+	FDelegateHandle BeginPIEDelegateHandle;
 };

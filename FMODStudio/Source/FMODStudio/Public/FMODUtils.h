@@ -137,6 +137,33 @@ inline FString GetPath(StudioType* Instance)
 	}
 }
 
+inline FString LookupNameFromGuid(FMOD::Studio::System* StudioSystem, const FMOD::Studio::ID& Guid)
+{
+	int ActualSize = 128; // Start with expected enough space
+	TArray<char> RawBuffer;
+	FMOD_RESULT Result;
+	do
+	{
+		RawBuffer.SetNum(ActualSize);
+		Result = StudioSystem->lookupPath(&Guid, RawBuffer.GetData(), ActualSize, &ActualSize);
+	}
+	while (Result == FMOD_ERR_TRUNCATED);
+
+	if (Result == FMOD_OK)
+	{
+		return FString(UTF8_TO_TCHAR(RawBuffer.GetData()));
+	}
+	else
+	{
+		return FString();
+	}
+}
+
+inline FString LookupNameFromGuid(FMOD::Studio::System* StudioSystem, const FGuid& Guid)
+{
+	return LookupNameFromGuid(StudioSystem, ConvertGuid(Guid));
+}
+
 inline FString ParameterTypeToString(FMOD_STUDIO_PARAMETER_TYPE Type)
 {
 	switch (Type)

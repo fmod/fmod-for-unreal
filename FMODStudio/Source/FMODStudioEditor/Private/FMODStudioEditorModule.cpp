@@ -67,8 +67,10 @@ public:
 	void ShowVersion();
 	/** Open CHM */
 	void OpenCHM();
-	/** Open CHM */
-	void OpenHTML();
+	/** Open web page to online docs */
+	void OpenOnlineDocs();
+	/** Open Video tutorials page */
+	void OpenVideoTutorials();
 
 	/** Reload banks */
 	void ReloadBanks();
@@ -185,17 +187,23 @@ void FFMODStudioEditorModule::AddHelpMenuExtension(FMenuBuilder& MenuBuilder)
 
 #if PLATFORM_WINDOWS
 	MenuBuilder.AddMenuEntry(
-		LOCTEXT("FMODHelpMenuEntryTitle", "FMOD Integration CHM Documentation..."),
-		LOCTEXT("FMODHelpMenuEntryToolTip", "Opens up FMOD Integration CHM."),
+		LOCTEXT("FMODHelpCHMTitle", "FMOD Documentation..."),
+		LOCTEXT("FMODHelpCHMToolTip", "Opens the local FMOD documentation."),
 		FSlateIcon(FEditorStyle::GetStyleSetName(), "LevelEditor.BrowseAPIReference"),
 		FUIAction(FExecuteAction::CreateRaw(this, &FFMODStudioEditorModule::OpenCHM)));
-#else
-	MenuBuilder.AddMenuEntry(
-		LOCTEXT("FMODHelpMenuEntryTitle", "FMOD Integration HTML Documentation..."),
-		LOCTEXT("FMODHelpMenuEntryToolTip", "Opens up FMOD Integration HTML."),
-		FSlateIcon(FEditorStyle::GetStyleSetName(), "LevelEditor.BrowseAPIReference"),
-		FUIAction(FExecuteAction::CreateRaw(this, &FFMODStudioEditorModule::OpenHTML)));
 #endif
+	MenuBuilder.AddMenuEntry(
+		LOCTEXT("FMODHelpOnlineTitle", "FMOD Online Documentation..."),
+		LOCTEXT("FMODHelpOnlineToolTip", "Go to the online FMOD documentation."),
+		FSlateIcon(FEditorStyle::GetStyleSetName(), "LevelEditor.BrowseDocumentation"),
+		FUIAction(FExecuteAction::CreateRaw(this, &FFMODStudioEditorModule::OpenOnlineDocs)));
+
+	MenuBuilder.AddMenuEntry(
+		LOCTEXT("FMODHelpVideosTitle", "FMOD Tutorial Videos..."),
+		LOCTEXT("FMODHelpVideosToolTip", "Go to the online FMOD tutorial videos."),
+		FSlateIcon(FEditorStyle::GetStyleSetName(), "LevelEditor.Tutorials"),
+		FUIAction(FExecuteAction::CreateRaw(this, &FFMODStudioEditorModule::OpenVideoTutorials)));
+
 	MenuBuilder.EndSection();
 }
 
@@ -212,7 +220,8 @@ void FFMODStudioEditorModule::AddFileMenuExtension(FMenuBuilder& MenuBuilder)
 
 void FFMODStudioEditorModule::ShowVersion()
 {
-	unsigned int Version = 0;
+	unsigned int HeaderVersion = FMOD_VERSION;
+	unsigned int DLLVersion = 0;
 	// Just grab it from the audition context which is always valid
 	FMOD::Studio::System* StudioSystem = IFMODStudioModule::Get().GetStudioSystem(EFMODSystemContext::Auditioning);
 	if (StudioSystem)
@@ -220,18 +229,19 @@ void FFMODStudioEditorModule::ShowVersion()
 		FMOD::System* LowLevelSystem = nullptr;
 		if (StudioSystem->getLowLevelSystem(&LowLevelSystem) == FMOD_OK)
 		{
-			LowLevelSystem->getVersion(&Version);
+			LowLevelSystem->getVersion(&DLLVersion);
 		}
 	}
 
-	FString Message = FString::Printf(TEXT("FMOD Studio\nDLL Version: %x.%02x.%02x\nCopyright Firelight Technologies Pty Ltd"), 
-			(Version>>16), (Version>>8) & 0xFF, Version & 0xFF);
+	FString Message = FString::Printf(TEXT("FMOD Studio\nHeader API Version: %x.%02x.%02x\nDLL Version: %x.%02x.%02x\nCopyright Firelight Technologies Pty Ltd"), 
+			(HeaderVersion>>16), (HeaderVersion>>8) & 0xFF, HeaderVersion & 0xFF,
+			(DLLVersion>>16), (DLLVersion>>8) & 0xFF, DLLVersion & 0xFF);
 	FPlatformMisc::MessageBoxExt(EAppMsgType::Ok, *Message, TEXT("About"));
 }
 
 void FFMODStudioEditorModule::OpenCHM()
 {
-	FString APIPath = FPaths::Combine(*FPaths::EngineDir(), TEXT("Plugins/FMODStudio/Docs/FMOD Studio Integration.chm"));
+	FString APIPath = FPaths::Combine(*FPaths::EngineDir(), TEXT("Plugins/FMODStudio/Docs/FMOD UE4 Integration.chm"));
 	if( IFileManager::Get().FileSize( *APIPath ) != INDEX_NONE )
 	{
 		FString AbsoluteAPIPath = IFileManager::Get().ConvertToAbsolutePathForExternalAppForRead(*APIPath);
@@ -243,18 +253,14 @@ void FFMODStudioEditorModule::OpenCHM()
 	}
 }
 
-void FFMODStudioEditorModule::OpenHTML()
+void FFMODStudioEditorModule::OpenOnlineDocs()
 {
-	FString APIPath = FPaths::Combine(*FPaths::EngineDir(), TEXT("Plugins/FMODStudio/Docs/html/index.html"));
-	if( IFileManager::Get().FileSize( *APIPath ) != INDEX_NONE )
-	{
-		FString AbsoluteAPIPath = IFileManager::Get().ConvertToAbsolutePathForExternalAppForRead(*APIPath);
-		FPlatformProcess::LaunchFileInDefaultExternalApplication(*AbsoluteAPIPath);
-	}
-	else
-	{
-		FMessageDialog::Open(EAppMsgType::Ok, NSLOCTEXT("Documentation", "CannotFindFMODIntegration", "Cannot open FMOD Studio Integration HTML reference; help file not found."));
-	}
+	FPlatformProcess::LaunchFileInDefaultExternalApplication(TEXT("http://www.fmod.org/documentation"));
+}
+
+void FFMODStudioEditorModule::OpenVideoTutorials()
+{
+	FPlatformProcess::LaunchFileInDefaultExternalApplication(TEXT("http://www.youtube.com/user/FMODTV"));
 }
 
 void FFMODStudioEditorModule::ReloadBanks()
@@ -320,28 +326,21 @@ void FFMODStudioEditorModule::ViewportDraw(UCanvas* Canvas, APlayerController*)
 
 	const FSceneView* View = Canvas->SceneView;
 	
-	FMatrix CameraToWorld = View->ViewMatrices.ViewMatrix.Inverse();
-	FVector ProjDir = CameraToWorld.TransformVector(FVector(0, 0, 1000));
-	FVector ProjUp = CameraToWorld.TransformVector(FVector(0, 1000, 0));
-	FVector ProjRight = CameraToWorld.TransformVector(FVector(1000, 0, 0));
-	
 	if (View->Drawer == GCurrentLevelEditingViewportClient)
 	{
+		UWorld* World = GCurrentLevelEditingViewportClient->GetWorld();
 		const FVector& ViewLocation = GCurrentLevelEditingViewportClient->GetViewLocation();
 
-		FMOD::Studio::System* StudioSystem = IFMODStudioModule::Get().GetStudioSystem(EFMODSystemContext::Runtime);
-		if (StudioSystem)
-		{
-			FMOD_3D_ATTRIBUTES Attributes = {{0}};
-			Attributes.position = FMODUtils::ConvertWorldVector(ViewLocation);
-			Attributes.forward = FMODUtils::ConvertUnitVector(ProjDir.GetSafeNormal());
-			Attributes.up = FMODUtils::ConvertUnitVector(ProjUp.GetSafeNormal());
-#if FMOD_VERSION >= 0x00010600
-			verifyfmod(StudioSystem->setListenerAttributes(0, &Attributes));
-#else
-			verifyfmod(StudioSystem->setListenerAttributes(&Attributes));
-#endif
-		}
+		FMatrix CameraToWorld = View->ViewMatrices.ViewMatrix.InverseFast();
+		FVector ProjUp = CameraToWorld.TransformVector(FVector(0, 1000, 0));
+		FVector ProjRight = CameraToWorld.TransformVector(FVector(1000, 0, 0));
+
+		FTransform ListenerTransform(FRotationMatrix::MakeFromZY(ProjUp, ProjRight));
+		ListenerTransform.SetTranslation(ViewLocation);
+		ListenerTransform.NormalizeRotation();
+
+		IFMODStudioModule::Get().SetListenerPosition(0, World, ListenerTransform, 0.0f);
+		IFMODStudioModule::Get().FinishSetListenerPosition(1, 0.0f);
 	}
 }
 

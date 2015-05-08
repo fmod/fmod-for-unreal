@@ -89,8 +89,22 @@ class FMODSTUDIO_API UFMODAudioComponent : public USceneComponent
 	UFUNCTION(BlueprintCallable, Category="Audio|FMOD|Components")
 	float GetParameter(FName Name);
 
+	/** Set the timeline position in milliseconds  */
+	UFUNCTION(BlueprintCallable, Category="Audio|FMOD|Components")
+	void SetTimelinePosition(int32 Time);
+
+	/** Get the timeline position in milliseconds */
+	UFUNCTION(BlueprintCallable, Category="Audio|FMOD|Components")
+	int32 GetTimelinePosition();
+
 	/** Called when the event has finished stopping */
 	void OnPlaybackCompleted();
+
+	/** Update gain and low-pass based on interior volumes */
+	void UpdateInteriorVolumes();
+
+	/** Whether we apply gain and low-pass based on audio zones. */
+	uint32 bApplyAmbientVolumes:1;
 
 public:
 
@@ -123,6 +137,13 @@ private:
 #if WITH_EDITORONLY_DATA
 	void UpdateSpriteTexture();
 #endif
+
+	// Settings for ambient volume effects
+	double InteriorLastUpdateTime; 
+	float SourceInteriorVolume;
+	float SourceInteriorLPF;
+	float CurrentInteriorVolume;
+	float CurrentInteriorLPF;
 };
 
 

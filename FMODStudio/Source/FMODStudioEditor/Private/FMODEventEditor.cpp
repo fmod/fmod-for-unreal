@@ -42,13 +42,13 @@ FFMODEventEditor::FFMODEventEditor()
 	: CurrentPreviewEventInstance(nullptr)
 {
 	IFMODStudioModule::Get().BanksReloadedEvent().AddRaw(this, &FFMODEventEditor::HandleBanksReloaded);
-	FEditorDelegates::BeginPIE.AddRaw(this, &FFMODEventEditor::HandleBeginPIE);
+	BeginPIEDelegateHandle = FEditorDelegates::BeginPIE.AddRaw(this, &FFMODEventEditor::HandleBeginPIE);
 }
 
 FFMODEventEditor::~FFMODEventEditor()
 {
 	IFMODStudioModule::Get().BanksReloadedEvent().RemoveAll(this);
-	FEditorDelegates::BeginPIE.RemoveRaw(this, &FFMODEventEditor::HandleBeginPIE);
+	FEditorDelegates::BeginPIE.Remove(BeginPIEDelegateHandle);
 
 	CurrentPreviewEventInstance = nullptr;
 }

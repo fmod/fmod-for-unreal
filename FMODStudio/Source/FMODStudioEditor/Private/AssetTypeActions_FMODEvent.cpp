@@ -14,13 +14,13 @@
 FAssetTypeActions_FMODEvent::FAssetTypeActions_FMODEvent()
 	: CurrentPreviewEventInstance(nullptr)
 {
-	FEditorDelegates::BeginPIE.AddRaw(this, &FAssetTypeActions_FMODEvent::HandleBeginPIE);
+	BeginPIEDelegateHandle = FEditorDelegates::BeginPIE.AddRaw(this, &FAssetTypeActions_FMODEvent::HandleBeginPIE);
 	IFMODStudioModule::Get().BanksReloadedEvent().AddRaw(this, &FAssetTypeActions_FMODEvent::HandleBanksReloaded);
 }
 
 FAssetTypeActions_FMODEvent::~FAssetTypeActions_FMODEvent()
 {
-	FEditorDelegates::BeginPIE.RemoveRaw(this, &FAssetTypeActions_FMODEvent::HandleBeginPIE);
+	FEditorDelegates::BeginPIE.Remove(BeginPIEDelegateHandle);
 	IFMODStudioModule::Get().BanksReloadedEvent().RemoveAll(this);
 	IFMODStudioModule::Get().StopAuditioningInstance();
 }
