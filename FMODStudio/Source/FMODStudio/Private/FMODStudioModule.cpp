@@ -459,7 +459,7 @@ void FFMODStudioModule::UpdateViewportPosition()
 	}
 
 	bool bCameraCut = false; // Not sure how to get View->bCameraCut from here
-	float DeltaSeconds = (bCameraCut ? 0.f : ViewportWorld->GetDeltaSeconds());
+	float DeltaSeconds = ((bCameraCut || !ViewportWorld) ? 0.f : ViewportWorld->GetDeltaSeconds());
 
 	if (ViewportWorld)
 	{
