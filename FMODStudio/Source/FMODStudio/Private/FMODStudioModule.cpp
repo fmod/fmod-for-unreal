@@ -539,10 +539,16 @@ void FFMODStudioModule::SetListenerPosition(int ListenerIndex, UWorld* World, co
 
 		Listeners[ListenerIndex].ApplyInteriorSettings(Volume, InteriorSettings);
 
+		// We are using a direct copy of the inbuilt transforms but the directions come out wrong.
+		// Several of the audio functions use GetFront() for right, so we do the same here.
+		const FVector Up = Listeners[0].GetUp();
+		const FVector Right = Listeners[0].GetFront();
+		const FVector Forward = Right ^ Up;
+
 		FMOD_3D_ATTRIBUTES Attributes = {{0}};
 		Attributes.position = FMODUtils::ConvertWorldVector(ListenerPos);
-		Attributes.forward = FMODUtils::ConvertUnitVector(Listeners[ListenerIndex].GetFront());
-		Attributes.up = FMODUtils::ConvertUnitVector(Listeners[ListenerIndex].GetUp());
+		Attributes.forward = FMODUtils::ConvertUnitVector(Forward);
+		Attributes.up = FMODUtils::ConvertUnitVector(Up);
 		Attributes.velocity = FMODUtils::ConvertWorldVector(Listeners[ListenerIndex].Velocity);
 
 #if FMOD_VERSION >= 0x00010600
