@@ -176,7 +176,7 @@ namespace UnrealBuildTool.Rules
 				CopyFile(fmodStudioDllSource, fmodStudioDllDest);
 			}
 
-			if (Target.Platform == UnrealTargetPlatform.Win32 || Target.Platform == UnrealTargetPlatform.Win64)
+			if (Target.Platform == UnrealTargetPlatform.Win32 || Target.Platform == UnrealTargetPlatform.Win64 || Target.Platform == UnrealTargetPlatform.XboxOne)
 			{
 				PublicDelayLoadDLLs.AddRange(
 						new string[] {
