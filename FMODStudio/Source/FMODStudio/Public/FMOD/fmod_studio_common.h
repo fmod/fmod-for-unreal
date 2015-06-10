@@ -342,6 +342,8 @@ typedef unsigned int FMOD_STUDIO_SYSTEM_CALLBACK_TYPE;
 #define FMOD_STUDIO_EVENT_CALLBACK_CREATED                  0x00000080  /* Called when an instance is fully created. Parameters = unused. */
 #define FMOD_STUDIO_EVENT_CALLBACK_DESTROYED                0x00000100  /* Called when an instance is just about to be destroyed. Parameters = unused. */
 #define FMOD_STUDIO_EVENT_CALLBACK_START_FAILED             0x00000200  /* Called when an instance did not start, e.g. due to polyphony. Parameters = unused. */
+#define FMOD_STUDIO_EVENT_CALLBACK_TIMELINE_MARKER          0x00000400  /* Called when the timeline passes a named marker.  Parameters = FMOD_STUDIO_TIMELINE_MARKER_PROPERTIES. */
+#define FMOD_STUDIO_EVENT_CALLBACK_TIMELINE_BEAT            0x00000800  /* Called when the timeline hits a beat in a tempo section.  Parameters = FMOD_STUDIO_TIMELINE_BEAT_PROPERTIES. */
 #define FMOD_STUDIO_EVENT_CALLBACK_ALL                      0xFFFFFFFF  /* Pass this mask to Studio::EventDescription::setCallback or Studio::EventInstance::setCallback to receive all callback types. */
 /* [DEFINE_END] */
 
@@ -397,6 +399,51 @@ typedef struct FMOD_STUDIO_PLUGIN_INSTANCE_PROPERTIES
     FMOD_DSP *dsp;                              /* The DSP plugin instance. This can be cast to FMOD::DSP* type. */
 } FMOD_STUDIO_PLUGIN_INSTANCE_PROPERTIES;
 
+/*
+[STRUCTURE]
+[
+    [DESCRIPTION]
+    This structure holds information about a marker on the timeline.
+
+    [REMARKS]
+    This data is passed to the event callback function when type is FMOD_STUDIO_EVENT_CALLBACK_TIMELINE_MARKER.
+
+    [SEE_ALSO]
+    FMOD_STUDIO_EVENT_CALLBACK
+    Studio::EventDescription::setCallback
+    Studio::EventInstance::setCallback
+]
+*/
+typedef struct FMOD_STUDIO_TIMELINE_MARKER_PROPERTIES
+{
+    const char* name;                           /* The marker name */
+    int position;                               /* The position of the marker on the timeline in milliseconds. */
+} FMOD_STUDIO_TIMELINE_MARKER_PROPERTIES;
+
+/*
+[STRUCTURE]
+[
+    [DESCRIPTION]
+    This structure holds information about a beat on the timeline.
+
+    [REMARKS]
+    This data is passed to the event callback function when type is FMOD_STUDIO_EVENT_CALLBACK_TIMELINE_BEAT.
+
+    [SEE_ALSO]
+    FMOD_STUDIO_EVENT_CALLBACK
+    Studio::EventDescription::setCallback
+    Studio::EventInstance::setCallback
+]
+*/
+typedef struct FMOD_STUDIO_TIMELINE_BEAT_PROPERTIES
+{
+    int bar;                                    /* The bar number (starting from 1). */
+    int beat;                                   /* The beat number within the bar (starting from 1). */
+    int position;                               /* The position of the beat on the timeline in milliseconds. */
+    float tempo;                                /* The current tempo in beats per minute. */
+    int timeSignatureUpper;                     /* The current time signature upper number (beats per bar). */
+    int timeSignatureLower;                     /* The current time signature lower number (beat unit). */
+} FMOD_STUDIO_TIMELINE_BEAT_PROPERTIES;
 
 /*
 [ENUM]

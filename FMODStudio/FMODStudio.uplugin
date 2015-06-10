@@ -2,8 +2,8 @@
     "FileVersion" : 3,
 	
 	"FriendlyName" : "FMOD Studio Integration",
-	"Version" : 10603,
-	"VersionName" : "1.06.03",
+	"Version" : 10604,
+	"VersionName" : "1.06.04",
 	"CreatedBy" : "Firelight Technologies",
 	"CreatedByURL" : "http://fmod.com",
 	"EngineVersion" : "4.6.0",

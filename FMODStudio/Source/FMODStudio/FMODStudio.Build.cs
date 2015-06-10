@@ -56,21 +56,13 @@ namespace UnrealBuildTool.Rules
 
 			if (Target.Configuration == UnrealTargetConfiguration.Debug || Target.Configuration == UnrealTargetConfiguration.DebugGame)
 			{
-				configName = "D";
-				Definitions.Add("FMODSTUDIO_LINK_DEBUG=1");
-				//System.Console.WriteLine("Linking FMOD Studio debug build");
-			}
-			else if (Target.Configuration != UnrealTargetConfiguration.Shipping)
-			{
 				configName = "L";
 				Definitions.Add("FMODSTUDIO_LINK_LOGGING=1");
-				//System.Console.WriteLine("Linking FMOD Studio logging build");
 			}
 			else
 			{
 				configName = "";
 				Definitions.Add("FMODSTUDIO_LINK_RELEASE=1");
-				//System.Console.WriteLine("Linking FMOD Studio release build");
 			}
 
 			string platformName = Target.Platform.ToString();

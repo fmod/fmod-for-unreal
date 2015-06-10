@@ -112,10 +112,11 @@ typedef enum
 typedef FMOD_RESULT (F_CALLBACK *FMOD_DSP_CREATE_CALLBACK)              (FMOD_DSP_STATE *dsp_state);
 typedef FMOD_RESULT (F_CALLBACK *FMOD_DSP_RELEASE_CALLBACK)             (FMOD_DSP_STATE *dsp_state);
 typedef FMOD_RESULT (F_CALLBACK *FMOD_DSP_RESET_CALLBACK)               (FMOD_DSP_STATE *dsp_state);
-typedef FMOD_RESULT (F_CALLBACK *FMOD_DSP_SETPOSITION_CALLBACK)         (FMOD_DSP_STATE *dsp_state, unsigned int pos);
 typedef FMOD_RESULT (F_CALLBACK *FMOD_DSP_READ_CALLBACK)                (FMOD_DSP_STATE *dsp_state, float *inbuffer, float *outbuffer, unsigned int length, int inchannels, int *outchannels);
-typedef FMOD_RESULT (F_CALLBACK *FMOD_DSP_SHOULDIPROCESS_CALLBACK)      (FMOD_DSP_STATE *dsp_state, FMOD_BOOL inputsidle, unsigned int length, FMOD_CHANNELMASK inmask, int inchannels, FMOD_SPEAKERMODE speakermode);
 typedef FMOD_RESULT (F_CALLBACK *FMOD_DSP_PROCESS_CALLBACK)             (FMOD_DSP_STATE *dsp_state, unsigned int length, const FMOD_DSP_BUFFER_ARRAY *inbufferarray, FMOD_DSP_BUFFER_ARRAY *outbufferarray, FMOD_BOOL inputsidle, FMOD_DSP_PROCESS_OPERATION op);
+typedef FMOD_RESULT (F_CALLBACK *FMOD_DSP_SETPOSITION_CALLBACK)         (FMOD_DSP_STATE *dsp_state, unsigned int pos);
+typedef FMOD_RESULT (F_CALLBACK *FMOD_DSP_SHOULDIPROCESS_CALLBACK)      (FMOD_DSP_STATE *dsp_state, FMOD_BOOL inputsidle, unsigned int length, FMOD_CHANNELMASK inmask, int inchannels, FMOD_SPEAKERMODE speakermode);
+
 typedef FMOD_RESULT (F_CALLBACK *FMOD_DSP_SETPARAM_FLOAT_CALLBACK)      (FMOD_DSP_STATE *dsp_state, int index, float value);
 typedef FMOD_RESULT (F_CALLBACK *FMOD_DSP_SETPARAM_INT_CALLBACK)        (FMOD_DSP_STATE *dsp_state, int index, int value);
 typedef FMOD_RESULT (F_CALLBACK *FMOD_DSP_SETPARAM_BOOL_CALLBACK)       (FMOD_DSP_STATE *dsp_state, int index, FMOD_BOOL value);
@@ -124,6 +125,10 @@ typedef FMOD_RESULT (F_CALLBACK *FMOD_DSP_GETPARAM_FLOAT_CALLBACK)      (FMOD_DS
 typedef FMOD_RESULT (F_CALLBACK *FMOD_DSP_GETPARAM_INT_CALLBACK)        (FMOD_DSP_STATE *dsp_state, int index, int *value, char *valuestr);
 typedef FMOD_RESULT (F_CALLBACK *FMOD_DSP_GETPARAM_BOOL_CALLBACK)       (FMOD_DSP_STATE *dsp_state, int index, FMOD_BOOL *value, char *valuestr);
 typedef FMOD_RESULT (F_CALLBACK *FMOD_DSP_GETPARAM_DATA_CALLBACK)       (FMOD_DSP_STATE *dsp_state, int index, void **data, unsigned int *length, char *valuestr);
+
+typedef FMOD_RESULT (F_CALLBACK *FMOD_DSP_SYSTEM_REGISTER_CALLBACK)     (FMOD_DSP_STATE *dsp_state);
+typedef FMOD_RESULT (F_CALLBACK *FMOD_DSP_SYSTEM_DEREGISTER_CALLBACK)   (FMOD_DSP_STATE *dsp_state);
+typedef FMOD_RESULT (F_CALLBACK *FMOD_DSP_SYSTEM_MIX_CALLBACK)          (FMOD_DSP_STATE *dsp_state, int stage);
 
 typedef FMOD_RESULT (F_CALLBACK *FMOD_DSP_SYSTEM_GETSAMPLERATE)         (FMOD_DSP_STATE *dsp_state, int *rate);
 typedef FMOD_RESULT (F_CALLBACK *FMOD_DSP_SYSTEM_GETBLOCKSIZE)          (FMOD_DSP_STATE *dsp_state, unsigned int *blocksize);
@@ -622,7 +627,7 @@ typedef struct FMOD_DSP_PARAMETER_FFT
     (_paramstruct).description  = _description; \
     (_paramstruct).datadesc.datatype     = _datatype;
 
-#define FMOD_PLUGIN_SDK_VERSION 105
+#define FMOD_PLUGIN_SDK_VERSION 106
 
 /*
 [STRUCTURE] 
@@ -651,7 +656,6 @@ typedef struct FMOD_DSP_PARAMETER_FFT
     FMOD_DSP_READ_CALLBACK
     FMOD_DSP_PROCESS_CALLBACK
     FMOD_DSP_SETPOSITION_CALLBACK
-    FMOD_DSP_SHOULDIPROCESS_CALLBACK
     FMOD_DSP_PARAMETER_DESC
     FMOD_DSP_SETPARAM_FLOAT_CALLBACK
     FMOD_DSP_SETPARAM_INT_CALLBACK
@@ -662,34 +666,42 @@ typedef struct FMOD_DSP_PARAMETER_FFT
     FMOD_DSP_GETPARAM_BOOL_CALLBACK
     FMOD_DSP_GETPARAM_DATA_CALLBACK
     FMOD_DSP_SHOULDIPROCESS_CALLBACK
+    FMOD_DSP_SYSTEM_REGISTER_CALLBACK
+    FMOD_DSP_SYSTEM_DEREGISTER_CALLBACK
+    FMOD_DSP_SYSTEM_MIX_CALLBACK
 ]
 */
 typedef struct FMOD_DSP_DESCRIPTION
 {
-    unsigned int                     pluginsdkversion;   /* [w] The plugin SDK version this plugin is built for.  set to this to FMOD_PLUGIN_SDK_VERSION defined above. */
-    char                             name[32];           /* [w] The identifier of the DSP. This will also be used as the name of DSP and shouldn't change between versions. */
-    unsigned int                     version;            /* [w] Plugin writer's version number. */
-    int                              numinputbuffers;    /* [w] Number of input buffers to process.  Use 0 for DSPs that only generate sound and 1 for effects that process incoming sound. */
-    int                              numoutputbuffers;   /* [w] Number of audio output buffers.  Only one output buffer is currently supported. */
-    FMOD_DSP_CREATE_CALLBACK         create;             /* [w] Create callback.  This is called when DSP unit is created.  Can be null. */
-    FMOD_DSP_RELEASE_CALLBACK        release;            /* [w] Release callback.  This is called just before the unit is freed so the user can do any cleanup needed for the unit.  Can be null. */
-    FMOD_DSP_RESET_CALLBACK          reset;              /* [w] Reset callback.  This is called by the user to reset any history buffers that may need resetting for a filter, when it is to be used or re-used for the first time to its initial clean state.  Use to avoid clicks or artifacts. */
-    FMOD_DSP_READ_CALLBACK           read;               /* [w] Read callback.  Processing is done here.  Can be null. */
-    FMOD_DSP_PROCESS_CALLBACK        process;            /* [w] Process callback.  Can be specified instead of the read callback if any channel format changes occur between input and output.  This also replaces shouldiprocess and should return an error if the effect is to be bypassed.  Can be null. */
-    FMOD_DSP_SETPOSITION_CALLBACK    setposition;        /* [w] Set position callback.  This is called if the unit wants to update its position info but not process data, or reset a cursor position internally if it is reading data from a certain source.  Can be null. */
+    unsigned int                        pluginsdkversion;   /* [w] The plugin SDK version this plugin is built for.  set to this to FMOD_PLUGIN_SDK_VERSION defined above. */
+    char                                name[32];           /* [w] The identifier of the DSP. This will also be used as the name of DSP and shouldn't change between versions. */
+    unsigned int                        version;            /* [w] Plugin writer's version number. */
+    int                                 numinputbuffers;    /* [w] Number of input buffers to process.  Use 0 for DSPs that only generate sound and 1 for effects that process incoming sound. */
+    int                                 numoutputbuffers;   /* [w] Number of audio output buffers.  Only one output buffer is currently supported. */
+    FMOD_DSP_CREATE_CALLBACK            create;             /* [w] Create callback.  This is called when DSP unit is created.  Can be null. */
+    FMOD_DSP_RELEASE_CALLBACK           release;            /* [w] Release callback.  This is called just before the unit is freed so the user can do any cleanup needed for the unit.  Can be null. */
+    FMOD_DSP_RESET_CALLBACK             reset;              /* [w] Reset callback.  This is called by the user to reset any history buffers that may need resetting for a filter, when it is to be used or re-used for the first time to its initial clean state.  Use to avoid clicks or artifacts. */
+    FMOD_DSP_READ_CALLBACK              read;               /* [w] Read callback.  Processing is done here.  Can be null. */
+    FMOD_DSP_PROCESS_CALLBACK           process;            /* [w] Process callback.  Can be specified instead of the read callback if any channel format changes occur between input and output.  This also replaces shouldiprocess and should return an error if the effect is to be bypassed.  Can be null. */
+    FMOD_DSP_SETPOSITION_CALLBACK       setposition;        /* [w] Set position callback.  This is called if the unit wants to update its position info but not process data, or reset a cursor position internally if it is reading data from a certain source.  Can be null. */
 
-    int                              numparameters;      /* [w] Number of parameters used in this filter.  The user finds this with DSP::getNumParameters */
-    FMOD_DSP_PARAMETER_DESC        **paramdesc;          /* [w] Variable number of parameter structures. */
-    FMOD_DSP_SETPARAM_FLOAT_CALLBACK setparameterfloat;  /* [w] This is called when the user calls DSP::setParameterFloat. Can be null. */
-    FMOD_DSP_SETPARAM_INT_CALLBACK   setparameterint;    /* [w] This is called when the user calls DSP::setParameterInt.   Can be null. */
-    FMOD_DSP_SETPARAM_BOOL_CALLBACK  setparameterbool;   /* [w] This is called when the user calls DSP::setParameterBool.  Can be null. */
-    FMOD_DSP_SETPARAM_DATA_CALLBACK  setparameterdata;   /* [w] This is called when the user calls DSP::setParameterData.  Can be null. */
-    FMOD_DSP_GETPARAM_FLOAT_CALLBACK getparameterfloat;  /* [w] This is called when the user calls DSP::getParameterFloat. Can be null. */
-    FMOD_DSP_GETPARAM_INT_CALLBACK   getparameterint;    /* [w] This is called when the user calls DSP::getParameterInt.   Can be null. */
-    FMOD_DSP_GETPARAM_BOOL_CALLBACK  getparameterbool;   /* [w] This is called when the user calls DSP::getParameterBool.  Can be null. */
-    FMOD_DSP_GETPARAM_DATA_CALLBACK  getparameterdata;   /* [w] This is called when the user calls DSP::getParameterData.  Can be null. */
-    FMOD_DSP_SHOULDIPROCESS_CALLBACK shouldiprocess;     /* [w] This is called before processing.  You can detect if inputs are idle and return FMOD_OK to process, or any other error code to avoid processing the effect.  Use a count down timer to allow effect tails to process before idling! */
-    void                            *userdata;           /* [w] Optional. Specify 0 to ignore. This is user data to be attached to the DSP unit during creation.  Access via DSP::getUserData. */
+    int                                 numparameters;      /* [w] Number of parameters used in this filter.  The user finds this with DSP::getNumParameters */
+    FMOD_DSP_PARAMETER_DESC           **paramdesc;          /* [w] Variable number of parameter structures. */
+    FMOD_DSP_SETPARAM_FLOAT_CALLBACK    setparameterfloat;  /* [w] This is called when the user calls DSP::setParameterFloat. Can be null. */
+    FMOD_DSP_SETPARAM_INT_CALLBACK      setparameterint;    /* [w] This is called when the user calls DSP::setParameterInt.   Can be null. */
+    FMOD_DSP_SETPARAM_BOOL_CALLBACK     setparameterbool;   /* [w] This is called when the user calls DSP::setParameterBool.  Can be null. */
+    FMOD_DSP_SETPARAM_DATA_CALLBACK     setparameterdata;   /* [w] This is called when the user calls DSP::setParameterData.  Can be null. */
+    FMOD_DSP_GETPARAM_FLOAT_CALLBACK    getparameterfloat;  /* [w] This is called when the user calls DSP::getParameterFloat. Can be null. */
+    FMOD_DSP_GETPARAM_INT_CALLBACK      getparameterint;    /* [w] This is called when the user calls DSP::getParameterInt.   Can be null. */
+    FMOD_DSP_GETPARAM_BOOL_CALLBACK     getparameterbool;   /* [w] This is called when the user calls DSP::getParameterBool.  Can be null. */
+    FMOD_DSP_GETPARAM_DATA_CALLBACK     getparameterdata;   /* [w] This is called when the user calls DSP::getParameterData.  Can be null. */
+    FMOD_DSP_SHOULDIPROCESS_CALLBACK    shouldiprocess;     /* [w] This is called before processing.  You can detect if inputs are idle and return FMOD_OK to process, or any other error code to avoid processing the effect.  Use a count down timer to allow effect tails to process before idling! */
+    void                               *userdata;           /* [w] Optional. Specify 0 to ignore. This is user data to be attached to the DSP unit during creation.  Access via DSP::getUserData. */
+
+    FMOD_DSP_SYSTEM_REGISTER_CALLBACK   sys_register;       /* [w] Register callback.  This is called when DSP unit is loaded/registered.  Useful for 'global'/per system object init for plugin.  Can be null. */
+    FMOD_DSP_SYSTEM_DEREGISTER_CALLBACK sys_deregister;     /* [w] Deregister callback.  This is called when DSP unit is unloaded/deregistered.  Useful as 'global'/per system object shutdown for plugin.  Can be null. */
+    FMOD_DSP_SYSTEM_MIX_CALLBACK        sys_mix;            /* [w] System mix stage callback.  This is called when the mixer starts to execute or is just finishing executing.  Useful for 'global'/per system object once a mix update calls for a plugin.  Can be null. */
+
 } FMOD_DSP_DESCRIPTION;
 
 
@@ -774,6 +786,9 @@ typedef struct FMOD_DSP_STATE_SYSTEMCALLBACKS
     [REMARKS]
     Members marked with [r] mean the variable is modified by FMOD and is for reading purposes only.  Do not change this value.<br>
     Members marked with [w] mean the variable can be written to.  The user can set the value.<br>
+    <br>
+    'systemobject' is an integer that relates to the System object that created the DSP or registered the DSP plugin.  If only 1 System object is created then it should be 0.  A second object would be 1 and so on.
+    FMOD_DSP_STATE_SYSTEMCALLBACKS::getsamplerate and FMOD_DSP_STATE_SYSTEMCALLBACKS::getblocksize could return different results so it could be relevant to plugin developers to monitor which object is being used.
 
     [SEE_ALSO]
     FMOD_DSP_DESCRIPTION
@@ -789,6 +804,7 @@ struct FMOD_DSP_STATE
     float                          *sidechaindata;       /* [r] The mixed result of all incoming sidechains is stored at this pointer address. */
     int                             sidechainchannels;   /* [r] The number of channels of pcm data stored within the sidechain buffer. */
     FMOD_DSP_STATE_SYSTEMCALLBACKS *callbacks;           /* [r] Struct containing callbacks for system level functionality. */
+    int                             systemobject;        /* [r] FMOD::System object index, relating to the System object that created this DSP. */
 };
 
 
