@@ -25,6 +25,16 @@ FString UFMODSettings::GetFullBankPath() const
 	{
 		FullPath = FPaths::GameContentDir() / FullPath;
 	}
+
+	if (ForcePlatformName == TEXT("."))
+	{
+		// Leave path without subdirectory
+	}
+	else if (!ForcePlatformName.IsEmpty())
+	{
+		FullPath = FullPath / ForcePlatformName;
+	}
+	else
 	{
 #if PLATFORM_IOS || PLATFORM_ANDROID
 		FString PlatformName = "Mobile";

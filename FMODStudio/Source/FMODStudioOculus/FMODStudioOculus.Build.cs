@@ -30,17 +30,18 @@ namespace UnrealBuildTool.Rules
 				}
 				);
 
-			string BasePath = "../Plugins/FMODStudio/Lib/";
+			// ModuleDirectory points to FMODStudio\source\FMODStudio, need to get back to lib
+			string BasePath = System.IO.Path.Combine(ModuleDirectory, "../../Lib", Target.Platform.ToString());
 
 			switch (Target.Platform)
 			{
 				case UnrealTargetPlatform.Win32:
-					PublicAdditionalLibraries.Add(BasePath + "/Win32/ovrfmod32.lib");
+					PublicAdditionalLibraries.Add(System.IO.Path.Combine(BasePath, "ovrfmod32.lib"));
 					PublicDelayLoadDLLs.Add("ovrfmod32.dll");
 					Definitions.Add("FMOD_OSP_SUPPORTED=1");
 					break;
 				case UnrealTargetPlatform.Win64:
-					PublicAdditionalLibraries.Add(BasePath + "/Win64/ovrfmod64.lib");
+					PublicAdditionalLibraries.Add(System.IO.Path.Combine(BasePath, "ovrfmod64.lib"));
 					PublicDelayLoadDLLs.Add("ovrfmod64.dll");
 					Definitions.Add("FMOD_OSP_SUPPORTED=1");
 					break;

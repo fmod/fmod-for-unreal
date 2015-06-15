@@ -47,7 +47,7 @@ public:
 	/**
 	 * Path to find your studio bank output directory, relative to Content directory.
 	 */
-    UPROPERTY(config, EditAnywhere, Category = Basic, meta=(RelativeToGameContentDir))
+	UPROPERTY(config, EditAnywhere, Category = Basic, meta=(RelativeToGameContentDir))
 	FDirectoryPath BankOutputDirectory;
 
 	/** Project Output Format, should match the mode set up for the Studio project. */
@@ -66,6 +66,12 @@ public:
 	 */
 	UPROPERTY(config, EditAnywhere, Category = Advanced)
 	FString ContentBrowserPrefix;
+
+	/**
+	 * Force platform directory name, or leave empty for automatic (Desktop/Mobile/PS4/XBoxOne)
+	 */
+	UPROPERTY(config, EditAnywhere, Category = Advanced)
+	FString ForcePlatformName;
 
 	/**
 	 * Name of master bank.  The default in Studio is "Master Bank".

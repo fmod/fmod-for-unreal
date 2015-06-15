@@ -3,6 +3,11 @@
 #include "FMODStudioOculusPrivatePCH.h"
 
 #include "FMODStudioOculusModule.h"
+#include "FMODStudioModule.h"
+#include "FMODOculusSettings.h"
+#include "FMODOculusRoomParameters.h"
+#include "FMODOculusBlueprintStatics.h"
+#include "FMODUtils.h"
 
 #include "fmod.hpp"
 #include "fmod_studio.hpp"

@@ -31,6 +31,7 @@ namespace UnrealBuildTool.Rules
 					"Core",
 					"CoreUObject",
 					"Engine",
+					"Projects"
 				}
 				);
 
@@ -72,8 +73,9 @@ namespace UnrealBuildTool.Rules
 			string dllExtension = "";
 			string libPrefix = "";
 
-			// PublicAdditionalLibraries seems to load from the Engine/Source directory so make a path relative to there
-			string BasePath = "../Plugins/FMODStudio/Lib/" + platformName + "/";
+			// ModuleDirectory points to FMODStudio\source\FMODStudio, need to get back to lib
+			string BasePath = System.IO.Path.Combine(ModuleDirectory, "../../Lib", platformName);
+			System.Console.WriteLine(System.String.Format(" Path: {0}", BasePath));
 
 			string copyThirdPartyPath = "";
 
@@ -82,18 +84,15 @@ namespace UnrealBuildTool.Rules
 				case UnrealTargetPlatform.Win32:
 					linkExtension = "_vc.lib";
 					dllExtension = ".dll";
-					copyThirdPartyPath = "FMODStudio/Win32";
 					break;
 				case UnrealTargetPlatform.Win64:
 					platformMidName = "64";
 					linkExtension = "_vc.lib";
 					dllExtension = ".dll";
-					copyThirdPartyPath = "FMODStudio/Win64";
 					break;
 				case UnrealTargetPlatform.Mac:
 					linkExtension = dllExtension = ".dylib";
 					libPrefix = "lib";
-					copyThirdPartyPath = "FMODStudio/Mac";
 					break;
 				case UnrealTargetPlatform.XboxOne:
 					linkExtension = "_vc.lib";
@@ -110,12 +109,6 @@ namespace UnrealBuildTool.Rules
 				case UnrealTargetPlatform.Android:
 					linkExtension = dllExtension = ".so";
 					libPrefix = "lib";
-					// This is tricky to get right.
-					// Only external modules pass their PublicAdditionalLibraries as library directories for android linking
-					// But plugins can't use the external type in the .uproject file.
-					// Relative path is based off the linker in the game's intermediate directory so we need an absolute path
-					// The current working directory as of the build step is Engine\Source so we can base it from there
-					BasePath = System.IO.Path.Combine(System.IO.Path.GetFullPath("."), "../Plugins/FMODStudio/Lib/Android");
 					WriteAndroidDeploy(System.IO.Path.Combine(BasePath, "deploy.txt"), configName);
 					break;
 				case UnrealTargetPlatform.IOS:
@@ -123,7 +116,7 @@ namespace UnrealBuildTool.Rules
 					libPrefix = "lib";
 					break;
 				case UnrealTargetPlatform.Linux:
-					BasePath += "x86_64/";
+					BasePath = System.IO.Path.Combine(BasePath, "x86_64");
 					linkExtension = ".so";
 					dllExtension = ".so";
 					libPrefix = "lib";
@@ -150,22 +143,24 @@ namespace UnrealBuildTool.Rules
 			string fmodLibPath = System.IO.Path.Combine(BasePath, fmodLibName);
 			string fmodStudioLibPath = System.IO.Path.Combine(BasePath, fmodStudioLibName);
 
+			string fmodDllPath = System.IO.Path.Combine(BasePath, fmodDllName);
+			string fmodStudioDllPath = System.IO.Path.Combine(BasePath, fmodStudioDllName);
+
 			PublicAdditionalLibraries.Add(fmodLibPath);
 			PublicAdditionalLibraries.Add(fmodStudioLibPath);
+			RuntimeDependencies.Add(new RuntimeDependency(fmodDllPath));
+			RuntimeDependencies.Add(new RuntimeDependency(fmodStudioDllPath));
 
 			if (copyThirdPartyPath.Length != 0)
 			{
 				string destPath = System.IO.Path.Combine(UEBuildConfiguration.UEThirdPartyBinariesDirectory, copyThirdPartyPath);
 				System.IO.Directory.CreateDirectory(destPath);
 
-				string fmodDllSource = System.IO.Path.Combine(BasePath, fmodDllName);
-				string fmodStudioDllSource = System.IO.Path.Combine(BasePath, fmodStudioDllName);
-
 				string fmodDllDest = System.IO.Path.Combine(destPath, fmodDllName);
 				string fmodStudioDllDest = System.IO.Path.Combine(destPath, fmodStudioDllName);
 
-				CopyFile(fmodDllSource, fmodDllDest);
-				CopyFile(fmodStudioDllSource, fmodStudioDllDest);
+				CopyFile(fmodDllPath, fmodDllDest);
+				CopyFile(fmodStudioDllPath, fmodStudioDllDest);
 			}
 
 			if (Target.Platform == UnrealTargetPlatform.Win32 || Target.Platform == UnrealTargetPlatform.Win64 || Target.Platform == UnrealTargetPlatform.XboxOne)

@@ -14,6 +14,7 @@
 #include "FMODListener.h"
 #include "FMODSnapshotReverb.h"
 #include "FMODStudioOculusModule.h"
+#include "IPluginManager.h"
 
 #include "fmod_studio.hpp"
 #include "fmod_errors.h"
@@ -197,7 +198,8 @@ public:
 	/** True if we allow live update */
 	bool bAllowLiveUpdate;
 
-	/** Dynamic library handles */
+	/** Dynamic library */
+	FString BaseLibPath;
 	void* LowLevelLibHandle;
 	void* StudioLibHandle;
 };
@@ -274,17 +276,24 @@ void* FFMODStudioModule::LoadDll(const TCHAR* ShortName)
 FString FFMODStudioModule::GetDllPath(const TCHAR* ShortName)
 {
 #if PLATFORM_MAC
-	return FString::Printf(TEXT("%s/Binaries/ThirdParty/FMODStudio/Mac/lib%s.dylib"), *FPaths::EngineDir(), ShortName);
+	return FString::Printf(TEXT("%s/Mac/lib%s.dylib"), *BaseLibPath, ShortName);
 #elif PLATFORM_PS4
 	return FString::Printf(TEXT("/app0/sce_sys/lib%s.prx"), ShortName);
 #elif PLATFORM_XBOXONE
 	return FString::Printf(TEXT("%s.dll"), ShortName);
 #elif PLATFORM_ANDROID
 	return FString::Printf(TEXT("lib%s.so"), ShortName);
-#elif PLATFORM_64BITS
-	return FString::Printf(TEXT("%s/Binaries/ThirdParty/FMODStudio/Win64/%s.dll"), *FPaths::EngineDir(), ShortName);
+#elif PLATFORM_LINUX
+	return FString::Printf(TEXT("lib%s.so"), ShortName);
+#elif PLATFORM_WINDOWS
+	#if PLATFORM_64BITS
+		return FString::Printf(TEXT("%s/Win64/%s.dll"), *BaseLibPath, ShortName);
+	#else
+		return FString::Printf(TEXT("%s/Win32/%s.dll"), *BaseLibPath, ShortName);
+	#endif
 #else
-	return FString::Printf(TEXT("%s/Binaries/ThirdParty/FMODStudio/Win32/%s.dll"), *FPaths::EngineDir(), ShortName);
+	UE_LOG(LogFMOD, Error, TEXT("Unsupported platform for dynamic libs"));
+	return "";
 #endif
 }
 
@@ -292,6 +301,9 @@ bool FFMODStudioModule::LoadLibraries()
 {
 #if PLATFORM_IOS || PLATFORM_ANDROID || PLATFORM_LINUX
 	return true; // Nothing to do on those platforms
+#elif PLATFORM_HTML5
+	UE_LOG(LogFMOD, Error, TEXT("FMOD Studio not supported on HTML5"));
+	return false; // Explicitly don't support this
 #else
 	UE_LOG(LogFMOD, Verbose, TEXT("FFMODStudioModule::LoadLibraries"));
 
@@ -320,6 +332,8 @@ bool FFMODStudioModule::LoadLibraries()
 void FFMODStudioModule::StartupModule()
 {
 	UE_LOG(LogFMOD, Log, TEXT("FFMODStudioModule startup"));
+	BaseLibPath = IPluginManager::Get().FindPlugin(TEXT("FMODStudio"))->GetBaseDir() + TEXT("/Lib");
+	UE_LOG(LogFMOD, Log, TEXT(" Lib path = '%s'"), *BaseLibPath);
 
 	if(FParse::Param(FCommandLine::Get(),TEXT("nosound")) || FApp::IsBenchmarking() || IsRunningDedicatedServer() || IsRunningCommandlet())
 	{
