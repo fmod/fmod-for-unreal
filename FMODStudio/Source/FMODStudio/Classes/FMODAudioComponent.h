@@ -5,8 +5,30 @@
 #include "Map.h"
 #include "FMODAudioComponent.generated.h"
 
+/** Used to store callback info from FMOD thread to our event */
+struct FTimelineMarkerProperties
+{
+	FString Name;
+	int32 Position;
+};
+
+/** Used to store callback info from FMOD thread to our event */
+struct FTimelineBeatProperties
+{
+	int32 Bar;
+	int32 Beat;
+	int32 Position;
+	float Tempo;
+	int32 TimeSignatureUpper;
+	int32 TimeSignatureLower;
+};
+
 /** called when an event stops, either because it played to completion or because a Stop() call turned it off early */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnEventStopped);
+/** called when we reach a named marker on the timeline */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnTimelineMarker, FString, Name, int32, Position);
+/** called when we reach a beat on the timeline */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_SixParams(FOnTimelineBeat, int32, Bar, int32, Beat, int32, Position, float, Tempo, int32, TimeSignatureUpper, int32, TimeSignatureLower);
 
 namespace FMOD
 {
@@ -16,6 +38,10 @@ namespace FMOD
 		class EventInstance;
 	}
 }
+
+struct FMOD_STUDIO_TIMELINE_MARKER_PROPERTIES;
+struct FMOD_STUDIO_TIMELINE_BEAT_PROPERTIES;
+
 
 /* Purely for doxygen generation */
 #ifdef GENERATE_DOX
@@ -38,6 +64,10 @@ class FMODSTUDIO_API UFMODAudioComponent : public USceneComponent
 	/** Stored parameters to apply next time we create an instance */
 	TMap<FName, float> StoredParameters;
 
+	/** Enable timeline callbacks for this sound, so that OnTimelineMarker and OnTimelineBeat can be used */
+	UPROPERTY(EditAnywhere, Category=Callbacks)
+	uint32 bEnableTimelineCallbacks:1;
+
 	/** Auto destroy this component on completion */
 	UPROPERTY()
 	uint32 bAutoDestroy:1;
@@ -49,6 +79,14 @@ class FMODSTUDIO_API UFMODAudioComponent : public USceneComponent
 	/** called when an event stops, either because it played to completion or because a Stop() call turned it off early */
 	UPROPERTY(BlueprintAssignable)
 	FOnEventStopped OnEventStopped;
+
+	/** called when we reach a named marker (if bEnableTimelineCallbacks is true) */
+	UPROPERTY(BlueprintAssignable)
+	FOnTimelineMarker OnTimelineMarker;
+
+	/** called when we reach a beat of a tempo (if bEnableTimelineCallbacks is true) */
+	UPROPERTY(BlueprintAssignable)
+	FOnTimelineBeat OnTimelineBeat;
 
 	UFUNCTION(BlueprintCallable, Category="Audio|FMOD|Components")
 	void SetEvent(UFMODEvent* NewEvent);
@@ -111,6 +149,9 @@ public:
 	/** Actual Studio instance handle */
 	FMOD::Studio::EventInstance* StudioInstance;
 
+	void EventCallbackAddMarker(struct FMOD_STUDIO_TIMELINE_MARKER_PROPERTIES* props);
+	void EventCallbackAddBeat(struct FMOD_STUDIO_TIMELINE_BEAT_PROPERTIES* props);
+
 	// Begin UObject interface.
 #if WITH_EDITOR
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
@@ -144,6 +185,11 @@ private:
 	float SourceInteriorLPF;
 	float CurrentInteriorVolume;
 	float CurrentInteriorLPF;
+
+	// Tempo and marker callbacks
+	FCriticalSection CallbackLock;
+	TArray<FTimelineMarkerProperties> CallbackMarkerQueue;
+	TArray<FTimelineBeatProperties> CallbackBeatQueue;
 };
 
 

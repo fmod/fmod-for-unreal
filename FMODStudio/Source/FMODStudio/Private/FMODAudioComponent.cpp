@@ -13,6 +13,7 @@ UFMODAudioComponent::UFMODAudioComponent(const FObjectInitializer& ObjectInitial
 {
 	bAutoDestroy = false;
 	bAutoActivate = true;
+	bEnableTimelineCallbacks = false; // Default OFF for efficiency
 	bStopWhenOwnerDestroyed = true;
 	bNeverNeedsRenderUpdate = true;
 #if WITH_EDITORONLY_DATA
@@ -210,6 +211,7 @@ void UFMODAudioComponent::OnUnregister()
 
 	if (StudioInstance)
 	{
+		StudioInstance->setCallback(nullptr);
 		StudioInstance->release();
 		StudioInstance = nullptr;
 	}
@@ -224,6 +226,23 @@ void UFMODAudioComponent::TickComponent(float DeltaTime, enum ELevelTick TickTyp
 		if (bApplyAmbientVolumes && IFMODStudioModule::Get().HasListenerMoved())
 		{
 			UpdateInteriorVolumes();
+		}
+
+		TArray<FTimelineMarkerProperties> LocalMarkerQueue;
+		TArray<FTimelineBeatProperties> LocalBeatQueue;
+		{
+			FScopeLock Lock(&CallbackLock);
+			Swap(LocalMarkerQueue, CallbackMarkerQueue);
+			Swap(LocalBeatQueue, CallbackBeatQueue);
+		}
+
+		for(const FTimelineMarkerProperties& EachProps : LocalMarkerQueue)
+		{
+			OnTimelineMarker.Broadcast(EachProps.Name, EachProps.Position);
+		}
+		for(const FTimelineBeatProperties& EachProps : LocalBeatQueue)
+		{
+			OnTimelineBeat.Broadcast(EachProps.Bar, EachProps.Beat, EachProps.Position, EachProps.Tempo, EachProps.TimeSignatureUpper, EachProps.TimeSignatureLower);
 		}
 
 		FMOD_STUDIO_PLAYBACK_STATE state = FMOD_STUDIO_PLAYBACK_STOPPED;
@@ -269,6 +288,46 @@ void UFMODAudioComponent::Deactivate()
 	}
 }
 
+FMOD_RESULT F_CALLBACK UFMODAudioComponent_EventCallback(FMOD_STUDIO_EVENT_CALLBACK_TYPE type, FMOD_STUDIO_EVENTINSTANCE *event, void *parameters)
+{
+	UFMODAudioComponent* Component = nullptr;
+	FMOD::Studio::EventInstance* Instance = (FMOD::Studio::EventInstance*)event;
+	if (Instance->getUserData((void**)&Component) == FMOD_OK && Component != nullptr)
+	{
+		if (type == FMOD_STUDIO_EVENT_CALLBACK_TIMELINE_MARKER)
+		{
+			Component->EventCallbackAddMarker((FMOD_STUDIO_TIMELINE_MARKER_PROPERTIES*)parameters);
+		}
+		else if (type == FMOD_STUDIO_EVENT_CALLBACK_TIMELINE_BEAT)
+		{
+			Component->EventCallbackAddBeat((FMOD_STUDIO_TIMELINE_BEAT_PROPERTIES*)parameters);
+		}
+	}
+	return FMOD_OK;
+}
+
+void UFMODAudioComponent::EventCallbackAddMarker(FMOD_STUDIO_TIMELINE_MARKER_PROPERTIES* props)
+{
+	FScopeLock Lock(&CallbackLock);
+	FTimelineMarkerProperties info;
+	info.Name = props->name;
+	info.Position = props->position;
+	CallbackMarkerQueue.Push(info);
+}
+
+void UFMODAudioComponent::EventCallbackAddBeat(FMOD_STUDIO_TIMELINE_BEAT_PROPERTIES* props)
+{
+	FScopeLock Lock(&CallbackLock);
+	FTimelineBeatProperties info;
+	info.Bar = props->bar;
+	info.Beat = props->beat;
+	info.Position = props->position;
+	info.Tempo = props->tempo;
+	info.TimeSignatureUpper = props->timeSignatureUpper;
+	info.TimeSignatureLower = props->timeSignatureLower;
+	CallbackBeatQueue.Push(info);
+}
+
 void UFMODAudioComponent::Play()
 {
 	Stop();
@@ -306,6 +365,11 @@ void UFMODAudioComponent::Play()
 				}
 			}
 
+			if (bEnableTimelineCallbacks)
+			{
+				verifyfmod(StudioInstance->setUserData(this));
+				verifyfmod(StudioInstance->setCallback(UFMODAudioComponent_EventCallback));
+			}
 			verifyfmod(StudioInstance->start());
 			UE_LOG(LogFMOD, Verbose, TEXT("Playing component %p"), this);
 			bIsActive = true;
@@ -320,6 +384,7 @@ void UFMODAudioComponent::Stop()
 	if (StudioInstance)
 	{
 		StudioInstance->stop(FMOD_STUDIO_STOP_ALLOWFADEOUT);
+		StudioInstance->setCallback(nullptr);
 		StudioInstance->release();
 		StudioInstance = nullptr;
 	}
@@ -352,6 +417,7 @@ void UFMODAudioComponent::OnPlaybackCompleted()
 
 	if (StudioInstance)
 	{
+		StudioInstance->setCallback(nullptr);
 		StudioInstance->release();
 		StudioInstance = nullptr;
 	}
@@ -404,7 +470,6 @@ void UFMODAudioComponent::SetPaused(bool Paused)
 		}
 	}
 }
-
 
 void UFMODAudioComponent::SetParameter(FName Name, float Value)
 {
