@@ -55,7 +55,7 @@ namespace UnrealBuildTool.Rules
 
 			string configName = "";
 
-			if (Target.Configuration == UnrealTargetConfiguration.Debug || Target.Configuration == UnrealTargetConfiguration.DebugGame)
+			if (Target.Configuration != UnrealTargetConfiguration.Shipping)
 			{
 				configName = "L";
 				Definitions.Add("FMODSTUDIO_LINK_LOGGING=1");
@@ -73,8 +73,8 @@ namespace UnrealBuildTool.Rules
 			string dllExtension = "";
 			string libPrefix = "";
 
-			// ModuleDirectory points to FMODStudio\source\FMODStudio, need to get back to lib
-			string BasePath = System.IO.Path.Combine(ModuleDirectory, "../../Lib", platformName);
+			// ModuleDirectory points to FMODStudio\source\FMODStudio, need to get back to binaries directory for our libs
+			string BasePath = System.IO.Path.Combine(ModuleDirectory, "../../Binaries", platformName);
 			System.Console.WriteLine(System.String.Format(" Path: {0}", BasePath));
 
 			string copyThirdPartyPath = "";
@@ -97,14 +97,12 @@ namespace UnrealBuildTool.Rules
 				case UnrealTargetPlatform.XboxOne:
 					linkExtension = "_vc.lib";
 					dllExtension = ".dll";
-					copyThirdPartyPath = "../XBoxOne";
+					copyThirdPartyPath = "../XBoxOne"; // XBoxOne still doesn't seem to support plugins with .dlls
 					break;
 				case UnrealTargetPlatform.PS4:
 					linkExtension = "_stub.a";
 					dllExtension = ".prx";
 					libPrefix = "lib";
-					// Need to get it into the PS4 staging directory
-					copyThirdPartyPath = "../../Build/PS4/sce_sys";
 					break;
 				case UnrealTargetPlatform.Android:
 					linkExtension = dllExtension = ".so";
@@ -162,6 +160,7 @@ namespace UnrealBuildTool.Rules
 				CopyFile(fmodDllPath, fmodDllDest);
 				CopyFile(fmodStudioDllPath, fmodStudioDllDest);
 			}
+
 
 			if (Target.Platform == UnrealTargetPlatform.Win32 || Target.Platform == UnrealTargetPlatform.Win64 || Target.Platform == UnrealTargetPlatform.XboxOne)
 			{

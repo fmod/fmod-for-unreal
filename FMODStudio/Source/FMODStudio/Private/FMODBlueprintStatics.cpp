@@ -79,12 +79,12 @@ class UFMODAudioComponent* UFMODBlueprintStatics::PlayEventAttached(class UFMODE
 	if( Actor )
 	{
 		// Use actor as outer if we have one.
-		AudioComponent = ConstructObject<UFMODAudioComponent>( UFMODAudioComponent::StaticClass(), Actor );
+		AudioComponent = NewObject<UFMODAudioComponent>(Actor);
 	}
 	else
 	{
 		// Let engine pick the outer (transient package).
-		AudioComponent = ConstructObject<UFMODAudioComponent>( UFMODAudioComponent::StaticClass() );
+		AudioComponent = NewObject<UFMODAudioComponent>();
 	}
 	check( AudioComponent );
 	AudioComponent->Event = Event;

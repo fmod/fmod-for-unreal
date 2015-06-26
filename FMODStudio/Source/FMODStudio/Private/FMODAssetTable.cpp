@@ -204,7 +204,7 @@ void FFMODAssetTable::AddAsset(const FGuid& AssetGuid, const FString& AssetFullN
 		{
 			NewPackage->PackageFlags |= PKG_CompiledIn;
 
-			AssetNameObject = ConstructObject<UFMODAsset>(AssetClass, NewPackage, FName(*AssetShortName), RF_Standalone | RF_Public /* | RF_Transient */);
+			AssetNameObject = NewObject<UFMODAsset>(NewPackage, AssetClass, FName(*AssetShortName), RF_Standalone | RF_Public /* | RF_Transient */);
 			AssetNameObject->AssetGuid = AssetGuid;
 			AssetNameObject->bShowAsAsset = true;
 
@@ -227,12 +227,12 @@ void FFMODAssetTable::AddAsset(const FGuid& AssetGuid, const FString& AssetFullN
 
 			FString ReverbAssetPackagePath = ReverbFolderPath + TEXT("/") + AssetShortName;
 
-			UPackage* NewPackage = CreatePackage(NULL, *ReverbAssetPackagePath);
-			if (NewPackage)
+			UPackage* ReverbPackage = CreatePackage(NULL, *ReverbAssetPackagePath);
+			if (ReverbPackage)
 			{
-				NewPackage->PackageFlags |= PKG_CompiledIn;
+				ReverbPackage->PackageFlags |= PKG_CompiledIn;
 
-				UFMODSnapshotReverb* AssetReverb = ConstructObject<UFMODSnapshotReverb>(UFMODSnapshotReverb::StaticClass(), NewPackage, FName(*AssetShortName), RF_Standalone | RF_Public /* | RF_Transient */);
+				UFMODSnapshotReverb* AssetReverb = NewObject<UFMODSnapshotReverb>(ReverbPackage, UFMODSnapshotReverb::StaticClass(), FName(*AssetShortName), RF_Standalone | RF_Public /* | RF_Transient */);
 				AssetReverb->AssetGuid = AssetGuid;
 				AssetReverb->bShowAsAsset = true;
 

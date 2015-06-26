@@ -37,7 +37,7 @@ void UFMODAmbientSoundActorFactory::PostSpawnActor( UObject* Asset, AActor* NewA
 	if ( Event != NULL )
 	{
 		AFMODAmbientSound* NewSound = CastChecked<AFMODAmbientSound>( NewActor );
-		GEditor->SetActorLabelUnique(NewSound, Event->GetName());
+		FActorLabelUtilities::SetActorLabelUnique(NewSound, Event->GetName());
 		NewSound->AudioComponent->Event = Event;
 	}
 }

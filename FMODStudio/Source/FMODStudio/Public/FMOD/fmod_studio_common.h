@@ -512,8 +512,9 @@ typedef enum FMOD_STUDIO_STOP_MODE
     Studio::System::loadBankCustom
 ]
 */
-#define FMOD_STUDIO_LOAD_BANK_NORMAL         0x00000000         /* Standard behaviour. */
-#define FMOD_STUDIO_LOAD_BANK_NONBLOCKING    0x00000001         /* Bank loading occurs asynchronously rather than occurring immediately. */
+#define FMOD_STUDIO_LOAD_BANK_NORMAL                0x00000000         /* Standard behaviour. */
+#define FMOD_STUDIO_LOAD_BANK_NONBLOCKING           0x00000001         /* Bank loading occurs asynchronously rather than occurring immediately. */
+#define FMOD_STUDIO_LOAD_BANK_DECOMPRESS_SAMPLES    0x00000002         /* Force samples to decompress into memory when they are loaded, rather than staying compressed. */
 /* [DEFINE_END] */
 
 typedef unsigned int FMOD_STUDIO_LOAD_BANK_FLAGS;

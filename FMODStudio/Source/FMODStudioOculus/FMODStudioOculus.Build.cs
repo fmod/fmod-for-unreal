@@ -31,7 +31,7 @@ namespace UnrealBuildTool.Rules
 				);
 
 			// ModuleDirectory points to FMODStudio\source\FMODStudio, need to get back to lib
-			string BasePath = System.IO.Path.Combine(ModuleDirectory, "../../Lib", Target.Platform.ToString());
+			string BasePath = System.IO.Path.Combine(ModuleDirectory, "../../Binaries", Target.Platform.ToString());
 
 			switch (Target.Platform)
 			{

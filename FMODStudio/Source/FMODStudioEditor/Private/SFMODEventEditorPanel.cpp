@@ -174,7 +174,7 @@ void AddTextField(TSharedRef<SVerticalBox>& InfoBox, const TCHAR* Name, const FT
 		.FillWidth(0.3f)
 		[
 			SNew(STextBlock)
-			.Text(FString(Name))
+            .Text(FText::FromString(Name))
 		]
 		+ SHorizontalBox::Slot()
 		[
@@ -284,7 +284,7 @@ TSharedRef<SExpandableArea> SFMODEventEditorPanel::ConstructParameters(FMOD::Stu
 				.FillWidth(0.3f)
 				[
 					SNew(STextBlock)
-					.Text(ParameterName)
+					.Text(FText::FromString(ParameterName))
 				]
 				+ SHorizontalBox::Slot()
 				.MaxWidth(200.0f)

@@ -278,7 +278,12 @@ FString FFMODStudioModule::GetDllPath(const TCHAR* ShortName)
 #if PLATFORM_MAC
 	return FString::Printf(TEXT("%s/Mac/lib%s.dylib"), *BaseLibPath, ShortName);
 #elif PLATFORM_PS4
-	return FString::Printf(TEXT("/app0/sce_sys/lib%s.prx"), ShortName);
+	FString ShortLibPath = BaseLibPath.ToLower();
+	while (ShortLibPath.StartsWith(TEXT("../")))
+	{
+		ShortLibPath = ShortLibPath.RightChop(3);
+	}
+	return FString::Printf(TEXT("/app0/%s/ps4/lib%s.prx"), *ShortLibPath, ShortName);
 #elif PLATFORM_XBOXONE
 	return FString::Printf(TEXT("%s.dll"), ShortName);
 #elif PLATFORM_ANDROID
@@ -332,7 +337,7 @@ bool FFMODStudioModule::LoadLibraries()
 void FFMODStudioModule::StartupModule()
 {
 	UE_LOG(LogFMOD, Log, TEXT("FFMODStudioModule startup"));
-	BaseLibPath = IPluginManager::Get().FindPlugin(TEXT("FMODStudio"))->GetBaseDir() + TEXT("/Lib");
+	BaseLibPath = IPluginManager::Get().FindPlugin(TEXT("FMODStudio"))->GetBaseDir() + TEXT("/Binaries");
 	UE_LOG(LogFMOD, Log, TEXT(" Lib path = '%s'"), *BaseLibPath);
 
 	if(FParse::Param(FCommandLine::Get(),TEXT("nosound")) || FApp::IsBenchmarking() || IsRunningDedicatedServer() || IsRunningCommandlet())
@@ -537,8 +542,8 @@ const FFMODListener& FFMODStudioModule::GetNearestListener(const FVector& Locati
 // Partially copied from FAudioDevice::SetListener
 void FFMODStudioModule::SetListenerPosition(int ListenerIndex, UWorld* World, const FTransform& ListenerTransform, float DeltaSeconds)
 {
-	FMOD::Studio::System* StudioSystem = IFMODStudioModule::Get().GetStudioSystem(EFMODSystemContext::Runtime);
-	if (StudioSystem && ListenerIndex < MAX_LISTENERS)
+	FMOD::Studio::System* System = IFMODStudioModule::Get().GetStudioSystem(EFMODSystemContext::Runtime);
+	if (System && ListenerIndex < MAX_LISTENERS)
 	{
 		FVector ListenerPos = ListenerTransform.GetTranslation();
 
@@ -571,11 +576,11 @@ void FFMODStudioModule::SetListenerPosition(int ListenerIndex, UWorld* World, co
 		{
 			Listeners[ListenerIndex] = FFMODListener();
 			ListenerCount = ListenerIndex+1;
-			verifyfmod(StudioSystem->setNumListeners(ListenerCount));
+			verifyfmod(System->setNumListeners(ListenerCount));
 		}
-		verifyfmod(StudioSystem->setListenerAttributes(ListenerIndex, &Attributes));
+		verifyfmod(System->setListenerAttributes(ListenerIndex, &Attributes));
 #else
-		verifyfmod(StudioSystem->setListenerAttributes(&Attributes));
+		verifyfmod(System->setListenerAttributes(&Attributes));
 #endif
 
 		bListenerMoved = true;
@@ -584,19 +589,19 @@ void FFMODStudioModule::SetListenerPosition(int ListenerIndex, UWorld* World, co
 
 void FFMODStudioModule::FinishSetListenerPosition(int NumListeners, float DeltaSeconds)
 {
-	FMOD::Studio::System* StudioSystem = IFMODStudioModule::Get().GetStudioSystem(EFMODSystemContext::Runtime);
-	if (!StudioSystem)
+	FMOD::Studio::System* System = IFMODStudioModule::Get().GetStudioSystem(EFMODSystemContext::Runtime);
+	if (!System)
 	{
 		return;
 	}
 
 	// Shrink number of listeners if we have less than our current count
 	NumListeners = FMath::Min(NumListeners, 1);
-	if (StudioSystem && NumListeners < ListenerCount)
+	if (System && NumListeners < ListenerCount)
 	{
 		ListenerCount = NumListeners;
 #if FMOD_VERSION >= 0x00010600
-		verifyfmod(StudioSystem->setNumListeners(ListenerCount));
+		verifyfmod(System->setNumListeners(ListenerCount));
 #endif
 	}
 
@@ -623,7 +628,7 @@ void FFMODStudioModule::FinishSetListenerPosition(int NumListeners, float DeltaS
 
 	if (NewSnapshot != nullptr)
 	{
-		FString NewSnapshotName = FMODUtils::LookupNameFromGuid(StudioSystem, NewSnapshot->AssetGuid);
+		FString NewSnapshotName = FMODUtils::LookupNameFromGuid(System, NewSnapshot->AssetGuid);
 		UE_LOG(LogFMOD, Verbose, TEXT("Starting new snapshot '%s'"), *NewSnapshotName);
 
 		// Try to steal old entry
@@ -646,7 +651,7 @@ void FFMODStudioModule::FinishSetListenerPosition(int NumListeners, float DeltaS
 			FMOD::Studio::ID Guid = FMODUtils::ConvertGuid(NewSnapshot->AssetGuid);
 			FMOD::Studio::EventInstance* NewInstance = nullptr;
 			FMOD::Studio::EventDescription* EventDesc = nullptr;
-			StudioSystem->getEventByID(&Guid, &EventDesc);
+			System->getEventByID(&Guid, &EventDesc);
 			if (EventDesc)
 			{
 				EventDesc->createInstance(&NewInstance);
@@ -845,7 +850,6 @@ void FFMODStudioModule::LoadBanks(EFMODSystemContext::Type Type)
 			FString StringsBankPath = Settings.GetMasterStringsBankPath();
 			UE_LOG(LogFMOD, Verbose, TEXT("Loading strings bank: %s"), *StringsBankPath);
 			FMOD::Studio::Bank* StringsBank = nullptr;
-			FMOD_RESULT Result;
 			Result = StudioSystem[Type]->loadBankFile(TCHAR_TO_UTF8(*StringsBankPath), BankFlags, &StringsBank);
 			if (Result != FMOD_OK)
 			{
@@ -862,7 +866,7 @@ void FFMODStudioModule::LoadBanks(EFMODSystemContext::Type Type)
 			for ( const FString& OtherFile : BankFiles )
 			{
 				FMOD::Studio::Bank* OtherBank;
-				FMOD_RESULT Result = StudioSystem[Type]->loadBankFile(TCHAR_TO_UTF8(*OtherFile), BankFlags, &OtherBank);
+				Result = StudioSystem[Type]->loadBankFile(TCHAR_TO_UTF8(*OtherFile), BankFlags, &OtherBank);
 				if (Result == FMOD_OK)
 				{
 					if (bLoadSampleData)

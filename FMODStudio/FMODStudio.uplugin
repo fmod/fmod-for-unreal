@@ -2,13 +2,13 @@
     "FileVersion" : 3,
 	
 	"FriendlyName" : "FMOD Studio Integration",
-	"Version" : 10604,
-	"VersionName" : "1.06.04",
+	"Version" : 10605,
+	"VersionName" : "1.06.05",
 	"CreatedBy" : "Firelight Technologies",
 	"CreatedByURL" : "http://fmod.com",
 	"EngineVersion" : "4.6.0",
 	"Description" : "FMOD Studio Integration.",
-	"Category" : "Audio.Audio Integration",
+	"Category" : "Audio",
 	"EnabledByDefault" : true,
 	
 	"Modules" :
