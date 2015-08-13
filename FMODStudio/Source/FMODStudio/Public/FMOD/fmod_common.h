@@ -15,7 +15,7 @@
     0xaaaabbcc -> aaaa = major version number.  bb = minor version number.  cc = development version number.
 */
 
-#define FMOD_VERSION    0x00010605
+#define FMOD_VERSION    0x00010608
 
 /*
     Compiler specific settings.

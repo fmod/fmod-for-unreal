@@ -90,7 +90,11 @@ void UFMODAudioComponent::PostEditChangeProperty(FPropertyChangedEvent& Property
 }
 #endif // WITH_EDITOR
 
+#if ENGINE_MINOR_VERSION >= 9
+void UFMODAudioComponent::OnUpdateTransform(bool bSkipPhysicsMove, ETeleportType Teleport)
+#else
 void UFMODAudioComponent::OnUpdateTransform(bool bSkipPhysicsMove)
+#endif
 {
 	Super::OnUpdateTransform(bSkipPhysicsMove);
 	if (StudioInstance)

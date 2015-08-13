@@ -16,6 +16,14 @@ UFMODSettings::UFMODSettings(const FObjectInitializer& ObjectInitializer)
 	bLoadAllBanks = true;
 	bLoadAllSampleData = false;
 	bEnableLiveUpdate = true;
+	bVol0Virtual = true;
+	Vol0VirtualLevel = 0.0001f;
+	RealChannelCount = 64;
+	TotalChannelCount = 512;
+	DSPBufferLength = 0;
+	DSPBufferCount = 0;
+	StudioUpdatePeriod = 0;
+	LiveUpdatePort = 0;
 }
 
 FString UFMODSettings::GetFullBankPath() const

@@ -6,11 +6,7 @@ namespace UnrealBuildTool.Rules
 	{
 		public FMODStudio(TargetInfo Target)
 		{
-			// Turn off unity builds to catch errors (although the engine seems to error when building for Android!)
-			if (Target.Platform != UnrealTargetPlatform.Android)
-			{
-				bFasterWithoutUnity = true;
-			}
+			bFasterWithoutUnity = true;
 
 			PublicIncludePaths.AddRange(
 				new string[] {
@@ -75,7 +71,6 @@ namespace UnrealBuildTool.Rules
 
 			// ModuleDirectory points to FMODStudio\source\FMODStudio, need to get back to binaries directory for our libs
 			string BasePath = System.IO.Path.Combine(ModuleDirectory, "../../Binaries", platformName);
-			System.Console.WriteLine(System.String.Format(" Path: {0}", BasePath));
 
 			string copyThirdPartyPath = "";
 
@@ -148,6 +143,7 @@ namespace UnrealBuildTool.Rules
 			PublicAdditionalLibraries.Add(fmodStudioLibPath);
 			RuntimeDependencies.Add(new RuntimeDependency(fmodDllPath));
 			RuntimeDependencies.Add(new RuntimeDependency(fmodStudioDllPath));
+			RuntimeDependencies.Add(new RuntimeDependency(System.IO.Path.Combine(BasePath, "fmod_gain" + dllExtension)));
 
 			if (copyThirdPartyPath.Length != 0)
 			{
@@ -192,7 +188,6 @@ namespace UnrealBuildTool.Rules
 
 		private void WriteAndroidDeploy(string fileName, string configLetter)
 		{
-			System.Console.WriteLine("WriteAndroidDeploy {0}, {1}", fileName, configLetter);
 			string[] contents = new string[]
 			{
 				"fmod.jar",

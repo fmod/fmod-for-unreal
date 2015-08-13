@@ -419,9 +419,40 @@ void FFMODStudioModule::CreateStudioSystem(EFMODSystemContext::Type Type)
 	verifyfmod(FMOD::Studio::System::create(&StudioSystem[Type]));
 	FMOD::System* lowLevelSystem = nullptr;
 	verifyfmod(StudioSystem[Type]->getLowLevelSystem(&lowLevelSystem));
-	verifyfmod(lowLevelSystem->setSoftwareFormat(0, OutputMode, 0));
+	verifyfmod(lowLevelSystem->setSoftwareFormat(Settings.SampleRate, OutputMode, 0));
+	verifyfmod(lowLevelSystem->setSoftwareChannels(Settings.RealChannelCount));
 	verifyfmod(lowLevelSystem->setFileSystem(FMODOpen, FMODClose, FMODRead, FMODSeek, 0, 0, 2048));
-	verifyfmod(StudioSystem[Type]->initialize(256, StudioInitFlags, InitFlags, 0));
+
+	if (Settings.DSPBufferLength > 0 && Settings.DSPBufferCount > 0)
+	{
+		verifyfmod(lowLevelSystem->setDSPBufferSize(Settings.DSPBufferLength, Settings.DSPBufferCount));
+	}
+
+	FMOD_ADVANCEDSETTINGS advSettings = {0};
+	advSettings.cbSize = sizeof(advSettings);
+	if (Settings.bVol0Virtual)
+	{
+		advSettings.vol0virtualvol = Settings.Vol0VirtualLevel;
+		InitFlags |= FMOD_INIT_VOL0_BECOMES_VIRTUAL;
+	}
+#if PLATFORM_IOS || PLATFORM_ANDROID
+	advSettings.maxADPCMCodecs = Settings.RealChannelCount;
+#elif PLATFORM_PS4
+	advSettings.maxAT9Codecs = Settings.RealChannelCount;
+#elif PLATFORM_XBOXONE
+	advSettings.maxXMACodecs = Settings.RealChannelCount;
+#else
+	advSettings.maxVorbisCodecs = Settings.RealChannelCount;
+#endif
+	advSettings.profilePort = Settings.LiveUpdatePort;
+	verifyfmod(lowLevelSystem->setAdvancedSettings(&advSettings));
+
+	FMOD_STUDIO_ADVANCEDSETTINGS advStudioSettings = {0};
+	advStudioSettings.cbSize = sizeof(advStudioSettings);
+	advStudioSettings.studioUpdatePeriod = Settings.StudioUpdatePeriod;
+	verifyfmod(StudioSystem[Type]->setAdvancedSettings(&advStudioSettings));
+
+	verifyfmod(StudioSystem[Type]->initialize(Settings.TotalChannelCount, StudioInitFlags, InitFlags, 0));
 
 	// Don't bother loading plugins during editor, only during PIE or in game
 	if (Type == EFMODSystemContext::Runtime)
@@ -560,8 +591,8 @@ void FFMODStudioModule::SetListenerPosition(int ListenerIndex, UWorld* World, co
 
 		// We are using a direct copy of the inbuilt transforms but the directions come out wrong.
 		// Several of the audio functions use GetFront() for right, so we do the same here.
-		const FVector Up = Listeners[0].GetUp();
-		const FVector Right = Listeners[0].GetFront();
+		const FVector Up = Listeners[ListenerIndex].GetUp();
+		const FVector Right = Listeners[ListenerIndex].GetFront();
 		const FVector Forward = Right ^ Up;
 
 		FMOD_3D_ATTRIBUTES Attributes = {{0}};
@@ -596,7 +627,7 @@ void FFMODStudioModule::FinishSetListenerPosition(int NumListeners, float DeltaS
 	}
 
 	// Shrink number of listeners if we have less than our current count
-	NumListeners = FMath::Min(NumListeners, 1);
+	NumListeners = FMath::Max(NumListeners, 1);
 	if (System && NumListeners < ListenerCount)
 	{
 		ListenerCount = NumListeners;
@@ -824,9 +855,9 @@ void FFMODStudioModule::LoadBanks(EFMODSystemContext::Type Type)
 		/*
 			Queue up all banks to load asynchronously then wait at the end.
 		*/
-		FMOD_STUDIO_LOAD_BANK_FLAGS BankFlags = FMOD_STUDIO_LOAD_BANK_NONBLOCKING;
 		bool bLoadAllBanks = ((Type == EFMODSystemContext::Auditioning) || Settings.bLoadAllBanks);
 		bool bLoadSampleData = ((Type == EFMODSystemContext::Runtime) && Settings.bLoadAllSampleData);
+		FMOD_STUDIO_LOAD_BANK_FLAGS BankFlags = (bLoadSampleData ? FMOD_STUDIO_LOAD_BANK_NORMAL : FMOD_STUDIO_LOAD_BANK_NONBLOCKING);
 
 		// Always load the master bank at startup
 		FString MasterBankPath = Settings.GetMasterBankPath();

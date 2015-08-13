@@ -55,6 +55,60 @@ public:
 	TEnumAsByte<EFMODSpeakerMode::Type> OutputFormat;
 
 	/**
+	 * Whether to enable vol0virtual, which means voices with low volume will automatically go virtual to save CPU.
+	 */
+	UPROPERTY(config, EditAnywhere, Category = InitSettings)
+	bool bVol0Virtual;
+
+	/**
+	 * If vol0virtual is enabled, the signal level at which to make channels virtual.
+	 */
+	UPROPERTY(config, EditAnywhere, Category = InitSettings)
+	float Vol0VirtualLevel;
+
+	/**
+	 * Sample rate to use, or 0 to match system rate.
+	 */
+	UPROPERTY(config, EditAnywhere, Category = InitSettings)
+	int32 SampleRate;
+
+	/**
+	 * Number of actual software voices that can be used at once.
+	 */
+	UPROPERTY(config, EditAnywhere, Category = InitSettings)
+	int32 RealChannelCount;
+
+	/**
+	 * Total number of voices available that can be either real or virtual.
+	 */
+	UPROPERTY(config, EditAnywhere, Category = InitSettings)
+	int32 TotalChannelCount;
+
+	/**
+	 * DSP mixer buffer length, or 0 for system default.
+	 */
+	UPROPERTY(config, EditAnywhere, Category = InitSettings)
+	int32 DSPBufferLength;
+
+	/**
+	 * DSP mixer buffer count, or 0 for system default.
+	 */
+	UPROPERTY(config, EditAnywhere, Category = InitSettings)
+	int32 DSPBufferCount;
+
+	/**
+	 * Studio update period in milliseconds, or 0 for default (which means 20ms).
+	 */
+	UPROPERTY(config, EditAnywhere, Category = InitSettings)
+	int32 StudioUpdatePeriod;
+
+	/**
+	 * Live update port to use, or 0 for default.
+	 */
+	UPROPERTY(config, EditAnywhere, Category = Advanced)
+	int32 LiveUpdatePort;
+
+	/**
 	 * Extra plugin files to load.  
 	 * The plugin files should sit alongside the FMOD dynamic libraries in the ThirdParty directory.
 	 */
@@ -78,6 +132,7 @@ public:
 	 */
 	UPROPERTY(config, EditAnywhere, Category = Advanced)
 	FString MasterBankName;
+
 
 	/** Is the bank path set up . */
 	bool IsBankPathSet() const { return !BankOutputDirectory.Path.IsEmpty(); }

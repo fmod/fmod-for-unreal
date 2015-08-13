@@ -3,6 +3,7 @@
 #pragma once
 
 #include "Map.h"
+#include "Runtime/Launch/Resources/Version.h"
 #include "FMODAudioComponent.generated.h"
 
 /** Used to store callback info from FMOD thread to our event */
@@ -162,7 +163,11 @@ public:
 	// Begin USceneComponent Interface
 	virtual void Activate(bool bReset=false) override;
 	virtual void Deactivate() override;
+#if ENGINE_MINOR_VERSION >= 9
+	virtual void OnUpdateTransform(bool bSkipPhysicsMove, ETeleportType Teleport = ETeleportType::None) override;
+#else
 	virtual void OnUpdateTransform(bool bSkipPhysicsMove) override;
+#endif
 	// End USceneComponent Interface
 
 private:
