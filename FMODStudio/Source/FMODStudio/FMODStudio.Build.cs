@@ -143,7 +143,6 @@ namespace UnrealBuildTool.Rules
 			PublicAdditionalLibraries.Add(fmodStudioLibPath);
 			RuntimeDependencies.Add(new RuntimeDependency(fmodDllPath));
 			RuntimeDependencies.Add(new RuntimeDependency(fmodStudioDllPath));
-			RuntimeDependencies.Add(new RuntimeDependency(System.IO.Path.Combine(BasePath, "fmod_gain" + dllExtension)));
 
 			if (copyThirdPartyPath.Length != 0)
 			{
