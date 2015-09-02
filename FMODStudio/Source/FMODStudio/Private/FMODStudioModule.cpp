@@ -31,6 +31,12 @@
 
 DEFINE_LOG_CATEGORY(LogFMOD);
 
+const TCHAR* FMODSystemContextNames[EFMODSystemContext::Max] =
+{
+	TEXT("Auditioning"),
+	TEXT("Runtime"),
+};
+
 struct FFMODSnapshotEntry
 {
 	FFMODSnapshotEntry(UFMODSnapshotReverb* InSnapshot=nullptr, FMOD::Studio::EventInstance* InInstance=nullptr)
@@ -395,7 +401,7 @@ void FFMODStudioModule::CreateStudioSystem(EFMODSystemContext::Type Type)
 		return;
 	}
 
-	UE_LOG(LogFMOD, Verbose, TEXT("CreateStudioSystem"));
+	UE_LOG(LogFMOD, Verbose, TEXT("CreateStudioSystem for context %s"), FMODSystemContextNames[Type]);
 
 	const UFMODSettings& Settings = *GetDefault<UFMODSettings>();
 
@@ -466,7 +472,7 @@ void FFMODStudioModule::CreateStudioSystem(EFMODSystemContext::Type Type)
 
 void FFMODStudioModule::DestroyStudioSystem(EFMODSystemContext::Type Type)
 {
-	UE_LOG(LogFMOD, Verbose, TEXT("DestroyStudioSystem"));
+	UE_LOG(LogFMOD, Verbose, TEXT("DestroyStudioSystem for context %s"), FMODSystemContextNames[Type]);
 
 	if (StudioSystem[Type])
 	{
@@ -767,7 +773,7 @@ void FFMODStudioModule::SetInPIE(bool bInPIE, bool simulating)
 			StudioSystem[EFMODSystemContext::Auditioning]->flushCommands();
 		}
 
-		UE_LOG(LogFMOD, Log, TEXT("Creating Studio System"));
+		UE_LOG(LogFMOD, Log, TEXT("Creating runtime Studio System"));
 		ListenerCount = 1;
 		CreateStudioSystem(EFMODSystemContext::Runtime);
 
@@ -852,6 +858,8 @@ void FFMODStudioModule::LoadBanks(EFMODSystemContext::Type Type)
 	const UFMODSettings& Settings = *GetDefault<UFMODSettings>();
 	if (StudioSystem[Type] != nullptr && Settings.IsBankPathSet())
 	{
+		UE_LOG(LogFMOD, Verbose, TEXT("LoadBanks for context %s"), FMODSystemContextNames[Type]);
+
 		/*
 			Queue up all banks to load asynchronously then wait at the end.
 		*/
@@ -914,11 +922,21 @@ void FFMODStudioModule::LoadBanks(EFMODSystemContext::Type Type)
 
 		// Wait for all banks to load.
 		StudioSystem[Type]->flushCommands();
+
+		// Double check master bank loaded asynchronously
+		FMOD_STUDIO_LOADING_STATE MasterBankLoadingState = FMOD_STUDIO_LOADING_STATE_ERROR;
+		MasterBank->getLoadingState(&MasterBankLoadingState);
+		if (MasterBankLoadingState != FMOD_STUDIO_LOADING_STATE_LOADED)
+		{
+			UE_LOG(LogFMOD, Error, TEXT("Failed to load master bank, sounds may not play!"));
+		}
 	}
 }
 
 void FFMODStudioModule::HandleBanksUpdated()
 {
+	UE_LOG(LogFMOD, Verbose, TEXT("Refreshing auditioning system"));
+
 	DestroyStudioSystem(EFMODSystemContext::Auditioning);
 
 	AssetTable.Refresh();

@@ -6,7 +6,11 @@
 
 FMOD_RESULT F_CALLBACK FMODLogCallback(FMOD_DEBUG_FLAGS flags, const char *file, int line, const char *func, const char *message)
 {
-	if (flags & (FMOD_DEBUG_LEVEL_WARNING | FMOD_DEBUG_LEVEL_ERROR))
+	if (flags & FMOD_DEBUG_LEVEL_ERROR)
+	{
+		UE_LOG(LogFMOD, Error, TEXT("%s(%d) - %s"), UTF8_TO_TCHAR(file), line, UTF8_TO_TCHAR(message));
+	}
+	else if (flags & FMOD_DEBUG_LEVEL_WARNING)
 	{
 		UE_LOG(LogFMOD, Warning, TEXT("%s(%d) - %s"), UTF8_TO_TCHAR(file), line, UTF8_TO_TCHAR(message));
 	}
