@@ -15,7 +15,7 @@
     0xaaaabbcc -> aaaa = major version number.  bb = minor version number.  cc = development version number.
 */
 
-#define FMOD_VERSION    0x00010608
+#define FMOD_VERSION    0x00010702
 
 /*
     Compiler specific settings.
@@ -172,10 +172,11 @@ typedef enum
     FMOD_ERR_EVENT_NOTFOUND,        /* The requested event, bus or vca could not be found. */
     FMOD_ERR_STUDIO_UNINITIALIZED,  /* The Studio::System object is not yet initialized. */
     FMOD_ERR_STUDIO_NOT_LOADED,     /* The specified resource is not loaded, so it can't be unloaded. */
-
     FMOD_ERR_INVALID_STRING,        /* An invalid string was passed to this function. */
     FMOD_ERR_ALREADY_LOCKED,        /* The specified resource is already locked. */
     FMOD_ERR_NOT_LOCKED,            /* The specified resource is not locked, so it can't be unlocked. */
+    FMOD_ERR_RECORD_DISCONNECTED,   /* The specified recording driver has been disconnected. */
+    FMOD_ERR_TOOMANYSAMPLES,        /* The length provided exceed the allowable limit. */
 
     FMOD_RESULT_FORCEINT = 65536    /* Makes sure this enum is signed 32bit. */
 } FMOD_RESULT;
@@ -620,7 +621,7 @@ typedef enum
     System::get3DListenerAttributes
 ]
 */
-#define FMOD_MAX_LISTENERS 5
+#define FMOD_MAX_LISTENERS 8
 /* [DEFINE_END] */
 
 
@@ -800,13 +801,11 @@ typedef enum
     FMOD_SOUND_TYPE_UNKNOWN,         /* 3rd party / unknown plugin format. */
     FMOD_SOUND_TYPE_AIFF,            /* AIFF. */
     FMOD_SOUND_TYPE_ASF,             /* Microsoft Advanced Systems Format (ie WMA/ASF/WMV). */
-    FMOD_SOUND_TYPE_AT3,             /* Sony ATRAC 3 format */
     FMOD_SOUND_TYPE_DLS,             /* Sound font / downloadable sound bank. */
     FMOD_SOUND_TYPE_FLAC,            /* FLAC lossless codec. */
     FMOD_SOUND_TYPE_FSB,             /* FMOD Sample Bank. */
-    FMOD_SOUND_TYPE_GCADPCM,         /* Nintendo GameCube/Wii ADPCM */
     FMOD_SOUND_TYPE_IT,              /* Impulse Tracker. */
-    FMOD_SOUND_TYPE_MIDI,            /* MIDI. extracodecdata is a pointer to an FMOD_MIDI_EXTRACODECDATA structure. */
+    FMOD_SOUND_TYPE_MIDI,            /* MIDI. */
     FMOD_SOUND_TYPE_MOD,             /* Protracker / Fasttracker MOD. */
     FMOD_SOUND_TYPE_MPEG,            /* MP2/MP3 MPEG. */
     FMOD_SOUND_TYPE_OGGVORBIS,       /* Ogg vorbis. */
@@ -817,10 +816,7 @@ typedef enum
     FMOD_SOUND_TYPE_WAV,             /* Microsoft WAV. */
     FMOD_SOUND_TYPE_XM,              /* FastTracker 2 XM. */
     FMOD_SOUND_TYPE_XMA,             /* Xbox360 XMA */
-    FMOD_SOUND_TYPE_VAG,             /* PlayStation Portable ADPCM VAG format. */
-    FMOD_SOUND_TYPE_AUDIOQUEUE,      /* iPhone hardware decoder, supports AAC, ALAC and MP3. extracodecdata is a pointer to an FMOD_AUDIOQUEUE_EXTRACODECDATA structure. */
-    FMOD_SOUND_TYPE_XWMA,            /* Xbox360 XWMA */
-    FMOD_SOUND_TYPE_BCWAV,           /* 3DS BCWAV container format for DSP ADPCM and PCM */
+    FMOD_SOUND_TYPE_AUDIOQUEUE,      /* iPhone hardware decoder, supports AAC, ALAC and MP3. */
     FMOD_SOUND_TYPE_AT9,             /* PS4 / PSVita ATRAC 9 format */
     FMOD_SOUND_TYPE_VORBIS,          /* Vorbis */
     FMOD_SOUND_TYPE_MEDIA_FOUNDATION,/* Windows Store Application built in system codecs */
@@ -854,17 +850,7 @@ typedef enum
     FMOD_SOUND_FORMAT_PCM24,            /* 24bit integer PCM data. */
     FMOD_SOUND_FORMAT_PCM32,            /* 32bit integer PCM data. */
     FMOD_SOUND_FORMAT_PCMFLOAT,         /* 32bit floating point PCM data. */
-    FMOD_SOUND_FORMAT_GCADPCM,          /* Compressed Nintendo 3DS/Wii DSP data. */
-    FMOD_SOUND_FORMAT_IMAADPCM,         /* Compressed IMA ADPCM data. */
-    FMOD_SOUND_FORMAT_VAG,              /* Compressed PlayStation Portable ADPCM data. */
-    FMOD_SOUND_FORMAT_HEVAG,            /* Compressed PSVita ADPCM data. */
-    FMOD_SOUND_FORMAT_XMA,              /* Compressed Xbox360 XMA data. */
-    FMOD_SOUND_FORMAT_MPEG,             /* Compressed MPEG layer 2 or 3 data. */
-    FMOD_SOUND_FORMAT_CELT,             /* Not supported. */
-    FMOD_SOUND_FORMAT_AT9,              /* Compressed PSVita ATRAC9 data. */
-    FMOD_SOUND_FORMAT_XWMA,             /* Compressed Xbox360 xWMA data. */
-    FMOD_SOUND_FORMAT_VORBIS,           /* Compressed Vorbis data. */
-    FMOD_SOUND_FORMAT_FADPCM,           /* Compressed FADPCM data. */
+    FMOD_SOUND_FORMAT_BITSTREAM,        /* Sound data is in its native compressed format. */
 
     FMOD_SOUND_FORMAT_MAX,              /* Maximum number of sound formats supported. */   
     FMOD_SOUND_FORMAT_FORCEINT = 65536  /* Makes sure this enum is signed 32bit. */
@@ -1158,6 +1144,8 @@ typedef struct
 #define FMOD_SYSTEM_CALLBACK_THREADDESTROYED        0x00000200  /* Called directly when a thread is destroyed. */
 #define FMOD_SYSTEM_CALLBACK_PREUPDATE              0x00000400  /* Called at start of System::update function. */
 #define FMOD_SYSTEM_CALLBACK_POSTUPDATE             0x00000800  /* Called at end of System::update function. */
+#define FMOD_SYSTEM_CALLBACK_RECORDLISTCHANGED      0x00001000  /* Called from System::update when the enumerated list of recording devices has changed. */
+#define FMOD_SYSTEM_CALLBACK_ALL                    0xFFFFFFFF  /* Pass this mask to System::setCallback to receive all callback types. */
 
 /* [DEFINE_END] */
 
@@ -1642,13 +1630,13 @@ typedef struct FMOD_REVERB_PROPERTIES
 typedef struct FMOD_ADVANCEDSETTINGS
 {                       
     int                 cbSize;                     /* [w]   Size of this structure.  Use sizeof(FMOD_ADVANCEDSETTINGS)  NOTE: This must be set before calling System::getAdvancedSettings or System::setAdvancedSettings! */
-    int                 maxMPEGCodecs;              /* [r/w] Optional. Specify 0 to ignore. For use with FMOD_CREATECOMPRESSEDSAMPLE only.  MPEG   codecs consume 30,528 bytes per instance and this number will determine how many MPEG   channels can be played simultaneously. Default = 32. */
-    int                 maxADPCMCodecs;             /* [r/w] Optional. Specify 0 to ignore. For use with FMOD_CREATECOMPRESSEDSAMPLE only.  ADPCM  codecs consume  3,128 bytes per instance and this number will determine how many ADPCM  channels can be played simultaneously. Default = 32. */
-    int                 maxXMACodecs;               /* [r/w] Optional. Specify 0 to ignore. For use with FMOD_CREATECOMPRESSEDSAMPLE only.  XMA    codecs consume 14,836 bytes per instance and this number will determine how many XMA    channels can be played simultaneously. Default = 32. */
-    int                 maxVorbisCodecs;            /* [r/w] Optional. Specify 0 to ignore. For use with FMOD_CREATECOMPRESSEDSAMPLE only.  Vorbis codecs consume 23,256 bytes per instance and this number will determine how many Vorbis channels can be played simultaneously. Default = 32. */    
-    int                 maxAT9Codecs;               /* [r/w] Optional. Specify 0 to ignore. For use with FMOD_CREATECOMPRESSEDSAMPLE only.  AT9    codecs consume  8,720 bytes per instance and this number will determine how many AT9    channels can be played simultaneously. Default = 32. */    
-    int                 maxFADPCMCodecs;            /* [r/w] Optional. Specify 0 to ignore. For use with FMOD_CREATECOMPRESSEDSAMPLE only.  This number will determine how many FADPCM channels can be played simultaneously. Default = 32. */
-    int                 maxPCMCodecs;               /* [r/w] Optional. Specify 0 to ignore. For use with PS3 only.                          PCM    codecs consume 12,672 bytes per instance and this number will determine how many streams and PCM voices can be played simultaneously. Default = 16. */
+    int                 maxMPEGCodecs;              /* [r/w] Optional. Specify 0 to ignore. For use with FMOD_CREATECOMPRESSEDSAMPLE only.  MPEG   codecs consume 22,216 bytes per instance and this number will determine how many MPEG   channels can be played simultaneously. Default = 32. */
+    int                 maxADPCMCodecs;             /* [r/w] Optional. Specify 0 to ignore. For use with FMOD_CREATECOMPRESSEDSAMPLE only.  ADPCM  codecs consume  2,480 bytes per instance and this number will determine how many ADPCM  channels can be played simultaneously. Default = 32. */
+    int                 maxXMACodecs;               /* [r/w] Optional. Specify 0 to ignore. For use with FMOD_CREATECOMPRESSEDSAMPLE only.  XMA    codecs consume  6,263 bytes per instance and this number will determine how many XMA    channels can be played simultaneously. Default = 32. */
+    int                 maxVorbisCodecs;            /* [r/w] Optional. Specify 0 to ignore. For use with FMOD_CREATECOMPRESSEDSAMPLE only.  Vorbis codecs consume 16,512 bytes per instance and this number will determine how many Vorbis channels can be played simultaneously. Default = 32. */    
+    int                 maxAT9Codecs;               /* [r/w] Optional. Specify 0 to ignore. For use with FMOD_CREATECOMPRESSEDSAMPLE only.  AT9    codecs consume 20,664 bytes per instance and this number will determine how many AT9    channels can be played simultaneously. Default = 32. */    
+    int                 maxFADPCMCodecs;            /* [r/w] Optional. Specify 0 to ignore. For use with FMOD_CREATECOMPRESSEDSAMPLE only.  FADPCM codecs consume  2,232 bytes per instance and this number will determine how many FADPCM channels can be played simultaneously. Default = 32. */
+    int                 maxPCMCodecs;               /* [r/w] Optional. Specify 0 to ignore. For use with PS3 only.                          PCM    codecs consume  2,536 bytes per instance and this number will determine how many streams and PCM voices can be played simultaneously. Default = 32. */
     int                 ASIONumChannels;            /* [r/w] Optional. Specify 0 to ignore. Number of channels available on the ASIO device. */
     char              **ASIOChannelList;            /* [r/w] Optional. Specify 0 to ignore. Pointer to an array of strings (number of entries defined by ASIONumChannels) with ASIO channel names. */
     FMOD_SPEAKER       *ASIOSpeakerList;            /* [r/w] Optional. Specify 0 to ignore. Pointer to a list of speakers that the ASIO channels map to.  This can be called after System::init to remap ASIO output. */

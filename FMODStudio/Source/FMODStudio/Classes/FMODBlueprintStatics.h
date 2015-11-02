@@ -87,6 +87,37 @@ class FMODSTUDIO_API UFMODBlueprintStatics : public UBlueprintFunctionLibrary
 	UFUNCTION(BlueprintCallable, Category = "Audio|FMOD", meta = (UnsafeDuringActorConstruction = "true"))
 	static void UnloadBank(class UFMODBank* Bank);
 
+	/** Load bank sample data.
+	 * @param Bank - bank to load sample data from
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Audio|FMOD", meta = (UnsafeDuringActorConstruction = "true"))
+	static void LoadBankSampleData(class UFMODBank* Bank);
+	
+	/** Unload bank sample data.
+	 * @param Bank - bank to unload sample data from
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Audio|FMOD", meta = (UnsafeDuringActorConstruction = "true"))
+	static void UnloadBankSampleData(class UFMODBank* Bank);
+
+	/** Load event sample data.  This can be done ahead of time to avoid loading stalls.
+	 * @param Event - event to load sample data from.
+	 */
+	UFUNCTION(BlueprintCallable, Category="Audio|FMOD", meta=(HidePin="WorldContextObject", DefaultToSelf="WorldContextObject", UnsafeDuringActorConstruction = "true"))
+	static void LoadEventSampleData(UObject* WorldContextObject, UFMODEvent* Event);
+
+	/** Unload event sample data.
+	 * @param Event - event to load sample data from.
+	 */
+	UFUNCTION(BlueprintCallable, Category="Audio|FMOD", meta=(HidePin="WorldContextObject", DefaultToSelf="WorldContextObject", UnsafeDuringActorConstruction = "true"))
+	static void UnloadEventSampleData(UObject* WorldContextObject, UFMODEvent* Event);
+
+	/** Return a list of all event instances that are playing for this event.
+		Be careful using this function because it is possible to find and alter any playing sound, even ones owned by other audio components.
+	 * @param Event - event to find instances from.
+	 */
+	UFUNCTION(BlueprintCallable, Category="Audio|FMOD", meta=(HidePin="WorldContextObject", DefaultToSelf="WorldContextObject", UnsafeDuringActorConstruction = "true"))
+	static TArray<FFMODEventInstance> FindEventInstances(UObject* WorldContextObject, UFMODEvent* Event);
+
 	/** Set fader level on a bus
 	 * @param Bus - bus to use
 	 * @param Level - fader level

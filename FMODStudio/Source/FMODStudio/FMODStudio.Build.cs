@@ -73,6 +73,7 @@ namespace UnrealBuildTool.Rules
 			string BasePath = System.IO.Path.Combine(ModuleDirectory, "../../Binaries", platformName);
 
 			string copyThirdPartyPath = "";
+			bool bDynamicLibraries = true;
 
 			switch (Target.Platform)
 			{
@@ -107,6 +108,7 @@ namespace UnrealBuildTool.Rules
 				case UnrealTargetPlatform.IOS:
 					linkExtension = "_iphoneos.a";
 					libPrefix = "lib";
+					bDynamicLibraries = false;
 					break;
 				case UnrealTargetPlatform.Linux:
 					BasePath = System.IO.Path.Combine(BasePath, "x86_64");
@@ -141,8 +143,11 @@ namespace UnrealBuildTool.Rules
 
 			PublicAdditionalLibraries.Add(fmodLibPath);
 			PublicAdditionalLibraries.Add(fmodStudioLibPath);
-			RuntimeDependencies.Add(new RuntimeDependency(fmodDllPath));
-			RuntimeDependencies.Add(new RuntimeDependency(fmodStudioDllPath));
+			if (bDynamicLibraries)
+			{
+				RuntimeDependencies.Add(new RuntimeDependency(fmodDllPath));
+				RuntimeDependencies.Add(new RuntimeDependency(fmodStudioDllPath));
+			}
 
 			if (copyThirdPartyPath.Length != 0)
 			{

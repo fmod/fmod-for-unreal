@@ -138,6 +138,8 @@ void UFMODBlueprintStatics::LoadBank(class UFMODBank* Bank, bool bBlocking, bool
 		FMOD_RESULT result = StudioSystem->loadBankFile(TCHAR_TO_UTF8(*BankPath), flags, &bank);
 		if ( result == FMOD_OK && bank != nullptr && bLoadSampleData )
 		{
+			// Make sure bank is ready to load sample data from
+			StudioSystem->flushCommands();
 			bank->loadSampleData();
 		}
 	}
@@ -158,6 +160,75 @@ void UFMODBlueprintStatics::UnloadBank(class UFMODBank* Bank)
 			bank->unload();
 		}
 	}
+}
+
+void UFMODBlueprintStatics::LoadBankSampleData(class UFMODBank* Bank)
+{
+	FMOD::Studio::System* StudioSystem = IFMODStudioModule::Get().GetStudioSystem(EFMODSystemContext::Runtime);
+	if (StudioSystem != nullptr && Bank != nullptr)
+	{
+		FMOD::Studio::ID guid = FMODUtils::ConvertGuid(Bank->AssetGuid);
+		FMOD::Studio::Bank* bank = nullptr;
+		FMOD_RESULT result = StudioSystem->getBankByID(&guid, &bank);
+		if (result == FMOD_OK && bank != nullptr)
+		{
+			bank->loadSampleData();
+		}
+	}
+}
+
+void UFMODBlueprintStatics::UnloadBankSampleData(class UFMODBank* Bank)
+{
+	FMOD::Studio::System* StudioSystem = IFMODStudioModule::Get().GetStudioSystem(EFMODSystemContext::Runtime);
+	if (StudioSystem != nullptr && Bank != nullptr)
+	{
+		FMOD::Studio::ID guid = FMODUtils::ConvertGuid(Bank->AssetGuid);
+		FMOD::Studio::Bank* bank = nullptr;
+		FMOD_RESULT result = StudioSystem->getBankByID(&guid, &bank);
+		if (result == FMOD_OK && bank != nullptr)
+		{
+			bank->unloadSampleData();
+		}
+	}
+}
+
+void UFMODBlueprintStatics::LoadEventSampleData(UObject* WorldContextObject, class UFMODEvent* Event)
+{
+	FMOD::Studio::EventDescription* EventDesc = IFMODStudioModule::Get().GetEventDescription(Event);
+	if (EventDesc != nullptr)
+	{
+		EventDesc->loadSampleData();
+	}
+}
+
+void UFMODBlueprintStatics::UnloadEventSampleData(UObject* WorldContextObject, class UFMODEvent* Event)
+{
+	FMOD::Studio::EventDescription* EventDesc = IFMODStudioModule::Get().GetEventDescription(Event);
+	if (EventDesc != nullptr)
+	{
+		EventDesc->unloadSampleData();
+	}
+}
+
+TArray<FFMODEventInstance> UFMODBlueprintStatics::FindEventInstances(UObject* WorldContextObject, UFMODEvent* Event)
+{
+	FMOD::Studio::EventDescription* EventDesc = IFMODStudioModule::Get().GetEventDescription(Event);
+	TArray<FFMODEventInstance> Instances;
+	if (EventDesc != nullptr)
+	{
+		int Capacity = 0;
+		EventDesc->getInstanceCount(&Capacity);
+		TArray<FMOD::Studio::EventInstance*> InstancePointers;
+		InstancePointers.SetNum(Capacity, true);
+		int Count = 0;
+		EventDesc->getInstanceList(InstancePointers.GetData(), Capacity, &Count);
+		Instances.SetNum(Count, true);
+		for (int i=0; i<Count; ++i)
+		{
+			Instances[i].Instance = InstancePointers[i];
+		}
+	}
+	return Instances;
 }
 
 void UFMODBlueprintStatics::BusSetFaderLevel(class UFMODBus* Bus, float Level)

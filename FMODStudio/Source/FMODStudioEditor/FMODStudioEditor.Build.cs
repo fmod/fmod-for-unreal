@@ -43,7 +43,8 @@ namespace UnrealBuildTool.Rules
 					"AssetTools",
 					"AssetRegistry",
 					"PropertyEditor",
-					"WorkspaceMenuStructure"
+					"WorkspaceMenuStructure",
+					"Sockets"
 				}
 				);
 

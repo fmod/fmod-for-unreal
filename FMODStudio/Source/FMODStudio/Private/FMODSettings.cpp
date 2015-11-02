@@ -68,7 +68,7 @@ FString UFMODSettings::GetMasterStringsBankPath() const
 	return GetFullBankPath() / (MasterBankName + TEXT(".strings.bank"));
 }
 
-void UFMODSettings::GetAllBankPaths(TArray<FString>& Paths) const
+void UFMODSettings::GetAllBankPaths(TArray<FString>& Paths, bool IncludeMasterBank) const
 {
 	FString BankDir = GetFullBankPath();
 	FString SearchDir = BankDir / FString(TEXT("*"));
@@ -77,11 +77,14 @@ void UFMODSettings::GetAllBankPaths(TArray<FString>& Paths) const
 	IFileManager::Get().FindFiles(AllFiles, *SearchDir, true, false);
 	for ( FString& CurFile : AllFiles )
 	{
-		if (CurFile.EndsWith(".bank") &&
-			CurFile != MasterBankName + TEXT(".bank") &&
-			CurFile != MasterBankName + TEXT(".strings.bank"))
+		if (CurFile.EndsWith(".bank"))
 		{
-			Paths.Push(BankDir / CurFile);
+			bool IsMaster = (CurFile == MasterBankName + TEXT(".bank") ||
+							 CurFile == MasterBankName + TEXT(".strings.bank"));
+			if (IncludeMasterBank || !IsMaster)
+			{
+				Paths.Push(BankDir / CurFile);
+			}
 		}
 	}
 }

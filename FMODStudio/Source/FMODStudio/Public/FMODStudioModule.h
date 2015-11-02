@@ -134,6 +134,15 @@ public:
 	/** This event is fired after all banks were reloaded */
 	virtual FSimpleMulticastDelegate& BanksReloadedEvent() = 0;
 
+	/** Return a list of banks that failed to load due to an error */
+	virtual TArray<FString> GetFailedBankLoads(EFMODSystemContext::Type Context) = 0;
+
+	/** Return a list of plugins that appear to be needed  */
+	virtual TArray<FString> GetRequiredPlugins() = 0;
+
+	/** Register a plugin that is required */
+	virtual void AddRequiredPlugin(const FString& Plugin) = 0;
+
 	/** Returns whether sound is enabled for the game */
 	virtual bool UseSound() = 0;
 

@@ -129,6 +129,7 @@ namespace Studio
         FMOD_RESULT F_API getLength(int *length) const;
         FMOD_RESULT F_API getMinimumDistance(float *distance) const;
         FMOD_RESULT F_API getMaximumDistance(float *distance) const;
+        FMOD_RESULT F_API getSoundSize(float *size) const;
 
         FMOD_RESULT F_API isOneshot(bool *oneshot) const;
         FMOD_RESULT F_API isStream(bool *isStream) const;

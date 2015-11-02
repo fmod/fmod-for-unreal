@@ -12,7 +12,22 @@ FMOD_RESULT F_CALLBACK FMODLogCallback(FMOD_DEBUG_FLAGS flags, const char *file,
 	}
 	else if (flags & FMOD_DEBUG_LEVEL_WARNING)
 	{
-		UE_LOG(LogFMOD, Warning, TEXT("%s(%d) - %s"), UTF8_TO_TCHAR(file), line, UTF8_TO_TCHAR(message));
+		FString Message = UTF8_TO_TCHAR(message);
+		UE_LOG(LogFMOD, Warning, TEXT("%s(%d) - %s"), UTF8_TO_TCHAR(file), line, *Message);
+		if (GIsEditor)
+		{
+			int32 StartIndex = Message.Find(TEXT("Missing DSP plugin '"));
+			if (StartIndex != INDEX_NONE)
+			{
+				int32 Len = FString(TEXT("Missing DSP plugin '")).Len();
+				int32 EndIndex;
+				if (Message.FindLastChar('\'', EndIndex) && EndIndex != INDEX_NONE && StartIndex+Len < EndIndex)
+				{
+					FString PluginName = Message.Mid(StartIndex + Len, EndIndex - StartIndex - Len);
+					IFMODStudioModule::Get().AddRequiredPlugin(PluginName);
+				}
+			}
+		}
 	}
 	else
 	{

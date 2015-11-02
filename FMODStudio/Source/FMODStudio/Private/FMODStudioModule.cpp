@@ -87,12 +87,12 @@ public:
 	/** IModuleInterface implementation */
 	FFMODStudioModule()
 	:	AuditioningInstance(nullptr),
-        ListenerCount(1),
+		ListenerCount(1),
 		bSimulating(false),
 		bIsInPIE(false),
 		bUseSound(true),
 		bListenerMoved(true),
-        bAllowLiveUpdate(true),
+		bAllowLiveUpdate(true),
 		LowLevelLibHandle(nullptr),
 		StudioLibHandle(nullptr)
 	{
@@ -150,6 +150,24 @@ public:
 		return BanksReloadedDelegate;
 	}
 
+	virtual TArray<FString> GetFailedBankLoads(EFMODSystemContext::Type Context) override
+	{
+		return FailedBankLoads[Context];
+	}
+
+	virtual TArray<FString> GetRequiredPlugins() override
+	{
+		return RequiredPlugins;
+	}
+
+	virtual void AddRequiredPlugin(const FString& Plugin)
+	{
+		if (!RequiredPlugins.Contains(Plugin))
+		{
+			RequiredPlugins.Add(Plugin);
+		}
+	}
+
 	virtual bool UseSound() override
 	{
 		return bUseSound;
@@ -176,6 +194,12 @@ public:
 
 	/** Periodically checks for updates of the strings.bank file */
 	FFMODBankUpdateNotifier BankUpdateNotifier;
+
+	/** List of failed bank files */
+	TArray<FString> FailedBankLoads[EFMODSystemContext::Max];
+
+	/** List of required plugins we found when loading banks. */
+	TArray<FString> RequiredPlugins;
 
 	/** Listener information */
 #if FMOD_VERSION >= 0x00010600
@@ -362,7 +386,11 @@ void FFMODStudioModule::StartupModule()
 		AssetTable.Create();
 		RefreshSettings();
 		
-		if (!GIsEditor)
+		if (GIsEditor)
+		{
+			CreateStudioSystem(EFMODSystemContext::Auditioning);
+		}
+		else
 		{
 			SetInPIE(true, false);
 		}
@@ -853,9 +881,26 @@ void FFMODStudioModule::ShutdownModule()
 	UE_LOG(LogFMOD, Verbose, TEXT("FFMODStudioModule finished unloading"));
 }
 
+struct NamedBankEntry
+{
+	NamedBankEntry() : Bank(nullptr) { }
+	NamedBankEntry(const FString& InName, FMOD::Studio::Bank* InBank, FMOD_RESULT InResult) : Name(InName), Bank(InBank), Result(InResult) { }
+
+	FString Name;
+	FMOD::Studio::Bank* Bank;
+	FMOD_RESULT Result;
+};
+
 void FFMODStudioModule::LoadBanks(EFMODSystemContext::Type Type)
 {
 	const UFMODSettings& Settings = *GetDefault<UFMODSettings>();
+
+	FailedBankLoads[Type].Reset();
+	if (Type == EFMODSystemContext::Auditioning)
+	{
+		RequiredPlugins.Reset();
+	}
+
 	if (StudioSystem[Type] != nullptr && Settings.IsBankPathSet())
 	{
 		UE_LOG(LogFMOD, Verbose, TEXT("LoadBanks for context %s"), FMODSystemContextNames[Type]);
@@ -870,65 +915,80 @@ void FFMODStudioModule::LoadBanks(EFMODSystemContext::Type Type)
 		// Always load the master bank at startup
 		FString MasterBankPath = Settings.GetMasterBankPath();
 		UE_LOG(LogFMOD, Verbose, TEXT("Loading master bank: %s"), *MasterBankPath);
+		
+		TArray<NamedBankEntry> BankEntries;
+
 		FMOD::Studio::Bank* MasterBank = nullptr;
 		FMOD_RESULT Result;
 		Result = StudioSystem[Type]->loadBankFile(TCHAR_TO_UTF8(*MasterBankPath), BankFlags, &MasterBank);
-		if (Result != FMOD_OK)
+		BankEntries.Add(NamedBankEntry(MasterBankPath, MasterBank, Result));
+		if (Result == FMOD_OK)
 		{
-			UE_LOG(LogFMOD, Warning, TEXT("Failed to master bank: %s"), *MasterBankPath);
-			return;
-		}
-		if (bLoadSampleData)
-		{
-			verifyfmod(MasterBank->loadSampleData());
-		}
-
-		// Auditioning needs string bank to get back full paths from events
-		// Runtime could do without it, but if we load it we can look up guids to names which is helpful
-		{
-			FString StringsBankPath = Settings.GetMasterStringsBankPath();
-			UE_LOG(LogFMOD, Verbose, TEXT("Loading strings bank: %s"), *StringsBankPath);
-			FMOD::Studio::Bank* StringsBank = nullptr;
-			Result = StudioSystem[Type]->loadBankFile(TCHAR_TO_UTF8(*StringsBankPath), BankFlags, &StringsBank);
-			if (Result != FMOD_OK)
+			if (bLoadSampleData)
 			{
-				UE_LOG(LogFMOD, Warning, TEXT("Failed to strings bank: %s"), *MasterBankPath);
+				verifyfmod(MasterBank->loadSampleData());
 			}
-		}
 
-		// Optionally load all banks in the directory
-		if (bLoadAllBanks)
-		{
-			UE_LOG(LogFMOD, Verbose, TEXT("Loading all banks"));
-			TArray<FString> BankFiles;
-			Settings.GetAllBankPaths(BankFiles);
-			for ( const FString& OtherFile : BankFiles )
+			// Auditioning needs string bank to get back full paths from events
+			// Runtime could do without it, but if we load it we can look up guids to names which is helpful
 			{
-				FMOD::Studio::Bank* OtherBank;
-				Result = StudioSystem[Type]->loadBankFile(TCHAR_TO_UTF8(*OtherFile), BankFlags, &OtherBank);
-				if (Result == FMOD_OK)
+				FString StringsBankPath = Settings.GetMasterStringsBankPath();
+				UE_LOG(LogFMOD, Verbose, TEXT("Loading strings bank: %s"), *StringsBankPath);
+				FMOD::Studio::Bank* StringsBank = nullptr;
+				Result = StudioSystem[Type]->loadBankFile(TCHAR_TO_UTF8(*StringsBankPath), BankFlags, &StringsBank);
+				BankEntries.Add(NamedBankEntry(StringsBankPath, StringsBank, Result));
+			}
+
+			// Optionally load all banks in the directory
+			if (bLoadAllBanks)
+			{
+				UE_LOG(LogFMOD, Verbose, TEXT("Loading all banks"));
+				TArray<FString> BankFiles;
+				Settings.GetAllBankPaths(BankFiles);
+				for ( const FString& OtherFile : BankFiles )
 				{
-					if (bLoadSampleData)
+					FMOD::Studio::Bank* OtherBank;
+					Result = StudioSystem[Type]->loadBankFile(TCHAR_TO_UTF8(*OtherFile), BankFlags, &OtherBank);
+					BankEntries.Add(NamedBankEntry(OtherFile, OtherBank, Result));
+					if (Result == FMOD_OK)
 					{
-						verifyfmod(OtherBank->loadSampleData());
+						if (bLoadSampleData)
+						{
+							verifyfmod(OtherBank->loadSampleData());
+						}
 					}
 				}
-				else
-				{
-					UE_LOG(LogFMOD, Warning, TEXT("Failed to load bank (Error %d): %s"), (int32)Result, *OtherFile);
-				}
 			}
 		}
-
 		// Wait for all banks to load.
 		StudioSystem[Type]->flushCommands();
 
-		// Double check master bank loaded asynchronously
-		FMOD_STUDIO_LOADING_STATE MasterBankLoadingState = FMOD_STUDIO_LOADING_STATE_ERROR;
-		MasterBank->getLoadingState(&MasterBankLoadingState);
-		if (MasterBankLoadingState != FMOD_STUDIO_LOADING_STATE_LOADED)
+		for (NamedBankEntry& Entry : BankEntries)
 		{
-			UE_LOG(LogFMOD, Error, TEXT("Failed to load master bank, sounds may not play!"));
+			if (Entry.Result == FMOD_OK)
+			{
+				FMOD_STUDIO_LOADING_STATE BankLoadingState = FMOD_STUDIO_LOADING_STATE_ERROR;
+				Entry.Result = Entry.Bank->getLoadingState(&BankLoadingState);
+				if (BankLoadingState == FMOD_STUDIO_LOADING_STATE_ERROR)
+				{
+					Entry.Bank->unload();
+					Entry.Bank = nullptr;
+				}
+			}
+			if (Entry.Bank == nullptr || Entry.Result != FMOD_OK)
+			{
+				FString ErrorMessage;
+				if (!FPaths::FileExists(Entry.Name))
+				{
+					ErrorMessage = "File does not exist";
+				}
+				else
+				{
+					ErrorMessage = UTF8_TO_TCHAR(FMOD_ErrorString(Entry.Result));
+				}
+				UE_LOG(LogFMOD, Warning, TEXT("Failed to bank: %s (%s)"), *Entry.Name, *ErrorMessage);
+				FailedBankLoads[Type].Add(FString::Printf(TEXT("%s (%s)"), *FPaths::GetBaseFilename(Entry.Name), *ErrorMessage));
+			}
 		}
 	}
 }

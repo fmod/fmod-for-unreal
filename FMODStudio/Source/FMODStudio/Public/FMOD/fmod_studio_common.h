@@ -46,6 +46,7 @@ typedef struct FMOD_STUDIO_COMMANDREPLAY FMOD_STUDIO_COMMANDREPLAY;
 #define FMOD_STUDIO_INIT_LIVEUPDATE                 0x00000001  /* Enable live update. */
 #define FMOD_STUDIO_INIT_ALLOW_MISSING_PLUGINS      0x00000002  /* Load banks even if they reference plugins that have not been loaded. */
 #define FMOD_STUDIO_INIT_SYNCHRONOUS_UPDATE         0x00000004  /* Disable asynchronous processing and perform all processing on the calling thread instead. */
+#define FMOD_STUDIO_INIT_DEFERRED_CALLBACKS         0x00000008  /* Defer timeline callbacks until the main update. See Studio::EventInstance::setCallback for more information. */
 /* [DEFINE_END] */
 
 typedef unsigned int FMOD_STUDIO_INITFLAGS;
@@ -224,8 +225,8 @@ typedef enum FMOD_STUDIO_USER_PROPERTY_TYPE
     (i.e. 0 is the highest priority while 256 is the lowest).
 
     [SEE_ALSO]
-    EventInstance::getProperty
-    EventInstance::setProperty
+    Studio::EventInstance::getProperty
+    Studio::EventInstance::setProperty
 ]
 */
 typedef enum FMOD_STUDIO_EVENT_PROPERTY
@@ -233,6 +234,8 @@ typedef enum FMOD_STUDIO_EVENT_PROPERTY
     FMOD_STUDIO_EVENT_PROPERTY_CHANNELPRIORITY,     /* Priority to set on low-level channels created by this event instance (-1 to 256). */
     FMOD_STUDIO_EVENT_PROPERTY_SCHEDULE_DELAY,      /* Schedule delay to synchronized playback for multiple tracks in DSP clocks, or -1 for default. */
     FMOD_STUDIO_EVENT_PROPERTY_SCHEDULE_LOOKAHEAD,  /* Schedule look-ahead on the timeline in DSP clocks, or -1 for default. */
+    FMOD_STUDIO_EVENT_PROPERTY_MINIMUM_DISTANCE,    /* Override the event's 3D minimum distance, or -1 for default. */
+    FMOD_STUDIO_EVENT_PROPERTY_MAXIMUM_DISTANCE,    /* Override the event's 3D maximum distance, or -1 for default. */
     FMOD_STUDIO_EVENT_PROPERTY_MAX,                 /* Maximum number of event properties supported. */
 
     FMOD_STUDIO_EVENT_PROPERTY_FORCEINT = 65536 /* Makes sure this enum is signed 32bit. */

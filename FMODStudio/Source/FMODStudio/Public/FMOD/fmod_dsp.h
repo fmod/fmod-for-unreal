@@ -132,6 +132,7 @@ typedef FMOD_RESULT (F_CALLBACK *FMOD_DSP_SYSTEM_MIX_CALLBACK)          (FMOD_DS
 
 typedef FMOD_RESULT (F_CALLBACK *FMOD_DSP_SYSTEM_GETSAMPLERATE)         (FMOD_DSP_STATE *dsp_state, int *rate);
 typedef FMOD_RESULT (F_CALLBACK *FMOD_DSP_SYSTEM_GETBLOCKSIZE)          (FMOD_DSP_STATE *dsp_state, unsigned int *blocksize);
+typedef FMOD_RESULT (F_CALLBACK *FMOD_DSP_SYSTEM_GETSPEAKERMODE)        (FMOD_DSP_STATE *dsp_state, FMOD_SPEAKERMODE *speakermode_mixer, FMOD_SPEAKERMODE *speakermode_output);
 
 typedef FMOD_RESULT (F_CALLBACK *FMOD_DSP_DFT_FFTREAL)                  (FMOD_DSP_STATE* thisdsp, int size, const float *signal, FMOD_COMPLEX* dft, const float *window, int signalhop);
 typedef FMOD_RESULT (F_CALLBACK *FMOD_DSP_DFT_IFFTREAL)                 (FMOD_DSP_STATE* thisdsp, int size, const FMOD_COMPLEX *dft, float* signal, const float *window, int signalhop);
@@ -627,7 +628,7 @@ typedef struct FMOD_DSP_PARAMETER_FFT
     (_paramstruct).description  = _description; \
     (_paramstruct).datadesc.datatype     = _datatype;
 
-#define FMOD_PLUGIN_SDK_VERSION 106
+#define FMOD_PLUGIN_SDK_VERSION 107
 
 /*
 [STRUCTURE] 
@@ -774,6 +775,7 @@ typedef struct FMOD_DSP_STATE_SYSTEMCALLBACKS
     FMOD_DSP_SYSTEM_GETBLOCKSIZE            getblocksize;   /* [r] Callback for getting the system's block size.  DSPs will be requested to process blocks of varying length up to this size.*/
     FMOD_DSP_STATE_DFTCALLBACKS            *dft;            /* [r] Struct containing callbacks for performing FFTs and inverse FFTs. */
     FMOD_DSP_STATE_PAN_CALLBACKS           *pancallbacks;   /* [r] Pointer to a structure of callbacks for calculating pan, up-mix and down-mix matrices. */
+    FMOD_DSP_SYSTEM_GETSPEAKERMODE          getspeakermode; /* [r] Callback for getting the system's speaker modes.  One is the mixer's default speaker mode, the other is the output mode the system is downmixing or upmixing to.*/
 } FMOD_DSP_STATE_SYSTEMCALLBACKS;
 
 
@@ -788,7 +790,7 @@ typedef struct FMOD_DSP_STATE_SYSTEMCALLBACKS
     Members marked with [w] mean the variable can be written to.  The user can set the value.<br>
     <br>
     'systemobject' is an integer that relates to the System object that created the DSP or registered the DSP plugin.  If only 1 System object is created then it should be 0.  A second object would be 1 and so on.
-    FMOD_DSP_STATE_SYSTEMCALLBACKS::getsamplerate and FMOD_DSP_STATE_SYSTEMCALLBACKS::getblocksize could return different results so it could be relevant to plugin developers to monitor which object is being used.
+    FMOD_DSP_STATE_SYSTEMCALLBACKS::getsamplerate/getblocksize/getspeakermode could return different results so it could be relevant to plugin developers to monitor which object is being used.
 
     [SEE_ALSO]
     FMOD_DSP_DESCRIPTION
@@ -816,6 +818,7 @@ struct FMOD_DSP_STATE
 #define FMOD_DSP_STATE_MEMFREE(_state, _ptr, _type, _str)                          (_state)->callbacks->free          (_ptr, _type, _str);                                      /* Pass in the FMOD_DSP_STATE handle, existing memory pointer, FMOD_MEMORY_TYPE type and optional char * string to identify where the free came from. */
 #define FMOD_DSP_STATE_GETSAMPLERATE(_state, _rate)                                (_state)->callbacks->getsamplerate (_state, _rate);                                          /* Pass in the FMOD_DSP_STATE handle, and the address of an int to receive the system DSP sample rate. */
 #define FMOD_DSP_STATE_GETBLOCKSIZE(_state, _blocksize)                            (_state)->callbacks->getblocksize  (_state, _blocksize);                                     /* Pass in the FMOD_DSP_STATE handle, and the address of an unsigned int to receive the system DSP block size. */
+#define FMOD_DSP_STATE_GETSPEAKERMODE(_state, _speakermode_mix, _speakermode_out)  (_state)->callbacks->getspeakermode(_state, _speakermode_mix, _speakermode_out);             /* Pass in the FMOD_DSP_STATE handle, and the address of an unsigned int to receive the FMOD_SPEAKERMODE for the mixer, and for the mode the system is set to. */
 #define FMOD_DSP_STATE_FFTREAL(_state, _size, _signal, _dft, _window, _signalhop)  (_state)->callbacks->dft->fftreal  (_state, _size, _signal, _dft, _window, _signalhop);      /* Pass in the FMOD_DSP_STATE handle, size of the signal and its DFT, a float buffer containing the signal and an FMOD_COMPLEX buffer to store the calculated DFT. */
 #define FMOD_DSP_STATE_IFFTREAL(_state, _size, _dft, _signal, _window, _signalhop) (_state)->callbacks->dft->inversefftreal(_state, _size, _dft, _signal, _window, _signalhop); /* Pass in the FMOD_DSP_STATE handle, size of the DFT and its signal, an FMOD_COMPLEX buffer containing the DFT and a float buffer to store the calculated signal. */
 

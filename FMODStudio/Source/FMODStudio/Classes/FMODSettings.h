@@ -147,5 +147,5 @@ public:
 	FString GetMasterStringsBankPath() const;
 
 	/** Get all banks in our bank directory excluding the master and strings bank. */
-	void GetAllBankPaths(TArray<FString>& Paths) const;
+	void GetAllBankPaths(TArray<FString>& Paths, bool IncludeMasterBank=false) const;
 };

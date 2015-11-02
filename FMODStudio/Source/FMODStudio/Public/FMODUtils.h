@@ -21,24 +21,24 @@ inline void LogError(FMOD_RESULT result, const char* function)
 	IFMODStudioModule::Get().LogError(result, function);
 }
 
-inline void Assign(FMOD_VECTOR& Dest, const FVector& Src)
+inline void Assign(FMOD_VECTOR& Dest, const FVector& Src, float Scale=1.0f)
 {
-	Dest.x = Src.X * FMOD_VECTOR_SCALE_DEFAULT;
-	Dest.y = Src.Y * FMOD_VECTOR_SCALE_DEFAULT;
-	Dest.z = Src.Z * FMOD_VECTOR_SCALE_DEFAULT;
+	Dest.x = Src.X * Scale;
+	Dest.y = Src.Y * Scale;
+	Dest.z = Src.Z * Scale;
 }
 
 inline void Assign(FMOD_3D_ATTRIBUTES& Dest, const FTransform& Src)
 {
-	Assign(Dest.position, Src.GetTranslation());
-	Assign(Dest.forward, Src.GetUnitAxis(EAxis::X));
-	Assign(Dest.up, Src.GetUnitAxis(EAxis::Z));
+	Assign(Dest.position, Src.GetTranslation(), FMOD_VECTOR_SCALE_DEFAULT);
+	Assign(Dest.forward, Src.GetUnitAxis(EAxis::X), 1.0f);
+	Assign(Dest.up, Src.GetUnitAxis(EAxis::Z), 1.0f);
 }
 
 inline FMOD_VECTOR ConvertWorldVector(const FVector& Src)
 {
 	FMOD_VECTOR Dest;
-	Assign(Dest, Src);
+	Assign(Dest, Src, FMOD_VECTOR_SCALE_DEFAULT);
 	return Dest;
 }
 
