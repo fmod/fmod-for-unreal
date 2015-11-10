@@ -141,12 +141,20 @@ namespace UnrealBuildTool.Rules
 			string fmodDllPath = System.IO.Path.Combine(BasePath, fmodDllName);
 			string fmodStudioDllPath = System.IO.Path.Combine(BasePath, fmodStudioDllName);
 
+			System.Collections.Generic.List<string> plugins = GetPlugins(BasePath);
+
 			PublicAdditionalLibraries.Add(fmodLibPath);
 			PublicAdditionalLibraries.Add(fmodStudioLibPath);
 			if (bDynamicLibraries)
 			{
 				RuntimeDependencies.Add(new RuntimeDependency(fmodDllPath));
 				RuntimeDependencies.Add(new RuntimeDependency(fmodStudioDllPath));
+				foreach (string plugin in plugins)
+				{
+					string pluginPath = System.IO.Path.Combine(BasePath, plugin + dllExtension);
+					System.Console.WriteLine("Adding reference to FMOD plugin: " + pluginPath);
+					RuntimeDependencies.Add(new RuntimeDependency(pluginPath));
+				}
 			}
 
 			if (copyThirdPartyPath.Length != 0)
@@ -199,6 +207,31 @@ namespace UnrealBuildTool.Rules
 				System.String.Format("libfmodstudio{0}.so", configLetter)
 			};
 			System.IO.File.WriteAllLines(fileName, contents);
+		}
+
+		private System.Collections.Generic.List<string> GetPlugins(string BasePath)
+		{
+			System.Collections.Generic.List<string> AllPlugins = new System.Collections.Generic.List<string>();
+			string PluginListName = System.IO.Path.Combine(BasePath, "plugins.txt");
+			if (System.IO.File.Exists(PluginListName))
+			{
+				try
+				{
+					foreach (string FullEntry in System.IO.File.ReadAllLines(PluginListName))
+					{
+						string Entry = FullEntry.Trim();
+						if (Entry.Length > 0)
+						{
+							AllPlugins.Add(Entry);
+						}
+					}
+				}
+				catch (System.Exception ex)
+				{
+					System.Console.WriteLine("Failed to read plugin list file: {0}", ex.Message);
+				}
+			}
+			return AllPlugins;
 		}
 	}
 }
