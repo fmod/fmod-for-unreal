@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2015.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2016.
 
 #include "FMODStudioPrivatePCH.h"
 
@@ -36,6 +36,20 @@ const TCHAR* FMODSystemContextNames[EFMODSystemContext::Max] =
 	TEXT("Auditioning"),
 	TEXT("Runtime"),
 };
+
+void* F_CALLBACK FMODMemoryAlloc(unsigned int size, FMOD_MEMORY_TYPE type, const char *sourcestr)
+{
+	return FMemory::Malloc(size);
+}
+void* F_CALLBACK FMODMemoryRealloc(void *ptr, unsigned int size, FMOD_MEMORY_TYPE type, const char *sourcestr)
+{
+	return FMemory::Realloc(ptr, size);
+}
+void F_CALLBACK FMODMemoryFree(void *ptr, FMOD_MEMORY_TYPE type, const char *sourcestr)
+{
+	FMemory::Free(ptr);
+}
+
 
 struct FFMODSnapshotEntry
 {
@@ -382,10 +396,12 @@ void FFMODStudioModule::StartupModule()
 
 	if (LoadLibraries())
 	{
+		verifyfmod(FMOD::Memory_Initialize(0, 0, FMODMemoryAlloc, FMODMemoryRealloc, FMODMemoryFree));
+
 		// Create sandbox system just for asset loading
 		AssetTable.Create();
 		RefreshSettings();
-		
+
 		if (GIsEditor)
 		{
 			CreateStudioSystem(EFMODSystemContext::Auditioning);
@@ -462,6 +478,8 @@ void FFMODStudioModule::CreateStudioSystem(EFMODSystemContext::Type Type)
 		verifyfmod(lowLevelSystem->setDSPBufferSize(Settings.DSPBufferLength, Settings.DSPBufferCount));
 	}
 
+	verifyfmod(FMODPlatformSystemSetup());
+
 	FMOD_ADVANCEDSETTINGS advSettings = {0};
 	advSettings.cbSize = sizeof(advSettings);
 	if (Settings.bVol0Virtual)
@@ -479,6 +497,7 @@ void FFMODStudioModule::CreateStudioSystem(EFMODSystemContext::Type Type)
 	advSettings.maxVorbisCodecs = Settings.RealChannelCount;
 #endif
 	advSettings.profilePort = Settings.LiveUpdatePort;
+	advSettings.randomSeed = FMath::Rand();
 	verifyfmod(lowLevelSystem->setAdvancedSettings(&advSettings));
 
 	FMOD_STUDIO_ADVANCEDSETTINGS advStudioSettings = {0};
@@ -947,6 +966,13 @@ void FFMODStudioModule::LoadBanks(EFMODSystemContext::Type Type)
 				Settings.GetAllBankPaths(BankFiles);
 				for ( const FString& OtherFile : BankFiles )
 				{
+					if (Settings.SkipLoadBankName.Len() && OtherFile.Contains(Settings.SkipLoadBankName))
+					{
+						UE_LOG(LogFMOD, Log, TEXT("Skipping bank: %s"), *OtherFile);
+						continue;
+					}
+					UE_LOG(LogFMOD, Log, TEXT("Loading bank: %s"), *OtherFile);
+
 					FMOD::Studio::Bank* OtherBank;
 					Result = StudioSystem[Type]->loadBankFile(TCHAR_TO_UTF8(*OtherFile), BankFlags, &OtherBank);
 					BankEntries.Add(NamedBankEntry(OtherFile, OtherBank, Result));

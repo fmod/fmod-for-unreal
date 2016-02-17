@@ -1,5 +1,5 @@
 /* ========================================================================================== */
-/* FMOD Studio - DSP header file. Copyright (c), Firelight Technologies Pty, Ltd. 2004-2015.  */
+/* FMOD Studio - DSP header file. Copyright (c), Firelight Technologies Pty, Ltd. 2004-2016.  */
 /*                                                                                            */
 /* Use this header if you are interested in delving deeper into the FMOD software mixing /    */
 /* DSP engine.                                                                                */
@@ -827,7 +827,7 @@ struct FMOD_DSP_STATE
 [STRUCTURE] 
 [
     [DESCRIPTION]
-    DSP metering info used for retrieving metering info
+    DSP metering info used for retrieving metering info with DSP::getMeteringInfo
 
     [REMARKS]
     Members marked with [r] mean the variable is modified by FMOD and is for reading purposes only.  Do not change this value.<br>
@@ -835,6 +835,7 @@ struct FMOD_DSP_STATE
 
     [SEE_ALSO]
     FMOD_SPEAKER
+    DSP::getMeteringInfo
 ]
 */
 typedef struct FMOD_DSP_METERING_INFO

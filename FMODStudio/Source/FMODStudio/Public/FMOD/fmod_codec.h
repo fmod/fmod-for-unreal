@@ -1,5 +1,5 @@
 /* ======================================================================================================== */
-/* FMOD Studio - codec development header file. Copyright (c), Firelight Technologies Pty, Ltd. 2004-2015.  */
+/* FMOD Studio - codec development header file. Copyright (c), Firelight Technologies Pty, Ltd. 2004-2016.  */
 /*                                                                                                          */
 /* Use this header if you are wanting to develop your own file format plugin to use with                    */
 /* FMOD's codec system.  With this header you can make your own fileformat plugin that FMOD                 */

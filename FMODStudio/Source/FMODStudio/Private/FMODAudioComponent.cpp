@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2015.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2016.
 
 #include "FMODStudioPrivatePCH.h"
 #include "FMODAudioComponent.h"
@@ -25,6 +25,7 @@ UFMODAudioComponent::UFMODAudioComponent(const FObjectInitializer& ObjectInitial
 	PrimaryComponentTick.TickGroup = TG_PrePhysics;
 
 	StudioInstance = nullptr;
+	ProgrammerSound = nullptr;
 
 	InteriorLastUpdateTime = 0.0;
 	SourceInteriorVolume = 0.0f;
@@ -301,13 +302,21 @@ FMOD_RESULT F_CALLBACK UFMODAudioComponent_EventCallback(FMOD_STUDIO_EVENT_CALLB
 	FMOD::Studio::EventInstance* Instance = (FMOD::Studio::EventInstance*)event;
 	if (Instance->getUserData((void**)&Component) == FMOD_OK && Component != nullptr)
 	{
-		if (type == FMOD_STUDIO_EVENT_CALLBACK_TIMELINE_MARKER)
+		if (type == FMOD_STUDIO_EVENT_CALLBACK_TIMELINE_MARKER && Component->bEnableTimelineCallbacks)
 		{
 			Component->EventCallbackAddMarker((FMOD_STUDIO_TIMELINE_MARKER_PROPERTIES*)parameters);
 		}
-		else if (type == FMOD_STUDIO_EVENT_CALLBACK_TIMELINE_BEAT)
+		else if (type == FMOD_STUDIO_EVENT_CALLBACK_TIMELINE_BEAT && Component->bEnableTimelineCallbacks)
 		{
 			Component->EventCallbackAddBeat((FMOD_STUDIO_TIMELINE_BEAT_PROPERTIES*)parameters);
+		}
+		else if (type == FMOD_STUDIO_EVENT_CALLBACK_CREATE_PROGRAMMER_SOUND)
+		{
+			Component->EventCallbackCreateProgrammerSound((FMOD_STUDIO_PROGRAMMER_SOUND_PROPERTIES*)parameters);
+		}
+		else if (type == FMOD_STUDIO_EVENT_CALLBACK_DESTROY_PROGRAMMER_SOUND)
+		{
+			Component->EventCallbackDestroyProgrammerSound((FMOD_STUDIO_PROGRAMMER_SOUND_PROPERTIES*)parameters);
 		}
 	}
 	return FMOD_OK;
@@ -333,6 +342,99 @@ void UFMODAudioComponent::EventCallbackAddBeat(FMOD_STUDIO_TIMELINE_BEAT_PROPERT
 	info.TimeSignatureUpper = props->timeSignatureUpper;
 	info.TimeSignatureLower = props->timeSignatureLower;
 	CallbackBeatQueue.Push(info);
+}
+
+void UFMODAudioComponent::EventCallbackCreateProgrammerSound(FMOD_STUDIO_PROGRAMMER_SOUND_PROPERTIES* props)
+{
+	// Make sure name isn't being changed as we are reading it
+	FString ProgrammerSoundNameCopy;
+	{
+		FScopeLock Lock(&CallbackLock);
+		ProgrammerSoundNameCopy = ProgrammerSoundName;
+	}
+
+	if (ProgrammerSound)
+	{
+		props->sound = (FMOD_SOUND*)ProgrammerSound;
+		props->subsoundIndex = -1;
+	}
+	else if (ProgrammerSoundNameCopy.Len() || strlen(props->name) != 0)
+	{
+		FMOD::Studio::System* System = IFMODStudioModule::Get().GetStudioSystem(EFMODSystemContext::Runtime);
+		FMOD::System* LowLevelSystem = nullptr;
+		System->getLowLevelSystem(&LowLevelSystem);
+		FString SoundName = ProgrammerSoundNameCopy.Len() ? ProgrammerSoundNameCopy : UTF8_TO_TCHAR(props->name);
+
+		if (SoundName.Contains(TEXT(".")))
+		{
+			// Load via file
+			FString SoundPath = SoundName;
+			if (FPaths::IsRelative(SoundPath))
+			{
+				SoundPath = FPaths::GameContentDir() / SoundPath;
+			}
+
+			FMOD::Sound* Sound = nullptr;
+			if (LowLevelSystem->createSound(TCHAR_TO_UTF8(*SoundPath), FMOD_DEFAULT, nullptr, &Sound) == FMOD_OK)
+			{
+				UE_LOG(LogFMOD, Verbose, TEXT("Creating programmer sound from file '%s'"), *SoundPath);
+				props->sound = (FMOD_SOUND*)Sound;
+				props->subsoundIndex = -1;
+			}
+			else
+			{
+				UE_LOG(LogFMOD, Warning, TEXT("Failed to load programmer sound file '%s'"), *SoundPath);
+			}
+		}
+		else
+		{
+			// Load via FMOD Studio asset table
+			FMOD_STUDIO_SOUND_INFO SoundInfo = {0};
+			FMOD_RESULT Result = System->getSoundInfo(TCHAR_TO_UTF8(*SoundName), &SoundInfo);
+			if (Result == FMOD_OK)
+			{
+				FMOD::Sound* Sound = nullptr;
+				Result = LowLevelSystem->createSound(SoundInfo.name_or_data, SoundInfo.mode, &SoundInfo.exinfo, &Sound);
+				if (Result == FMOD_OK)
+				{
+					UE_LOG(LogFMOD, Verbose, TEXT("Creating programmer sound using audio entry '%s'"), *SoundName);
+
+					props->sound = (FMOD_SOUND*)Sound;
+					props->subsoundIndex = SoundInfo.subsoundIndex;
+				}
+				else
+				{
+					UE_LOG(LogFMOD, Warning, TEXT("Failed to load FMOD audio entry '%s'"), *SoundName);
+				}
+			}
+			else
+			{
+				UE_LOG(LogFMOD, Warning, TEXT("Failed to find FMOD audio entry '%s'"), *SoundName);
+			}
+		}
+	}
+}
+
+void UFMODAudioComponent::EventCallbackDestroyProgrammerSound(FMOD_STUDIO_PROGRAMMER_SOUND_PROPERTIES* props)
+{
+	if (props->sound && ProgrammerSound == nullptr)
+	{
+		UE_LOG(LogFMOD, Verbose, TEXT("Destroying programmer sound"));
+		FMOD_RESULT Result = ((FMOD::Sound*)props->sound)->release();
+		verifyfmod(Result);
+	}
+}
+
+void UFMODAudioComponent::SetProgrammerSoundName(FString Value)
+{
+	FScopeLock Lock(&CallbackLock);
+	ProgrammerSoundName = Value;
+}
+
+void UFMODAudioComponent::SetProgrammerSound(FMOD::Sound* Sound)
+{
+	FScopeLock Lock(&CallbackLock);
+	ProgrammerSound = Sound;
 }
 
 void UFMODAudioComponent::Play()
@@ -372,11 +474,8 @@ void UFMODAudioComponent::Play()
 				}
 			}
 
-			if (bEnableTimelineCallbacks)
-			{
-				verifyfmod(StudioInstance->setUserData(this));
-				verifyfmod(StudioInstance->setCallback(UFMODAudioComponent_EventCallback));
-			}
+			verifyfmod(StudioInstance->setUserData(this));
+			verifyfmod(StudioInstance->setCallback(UFMODAudioComponent_EventCallback));
 			verifyfmod(StudioInstance->start());
 			UE_LOG(LogFMOD, Verbose, TEXT("Playing component %p"), this);
 			bIsActive = true;

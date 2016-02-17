@@ -1,7 +1,7 @@
 /*$ preserve start $*/
 
 /* ================================================================================================== */
-/* FMOD Studio - Common C/C++ header file. Copyright (c), Firelight Technologies Pty, Ltd. 2004-2015. */
+/* FMOD Studio - Common C/C++ header file. Copyright (c), Firelight Technologies Pty, Ltd. 2004-2016. */
 /*                                                                                                    */
 /* This header is included by fmod.hpp (C++ interface) and fmod.h (C interface) therefore is the      */
 /* base header for all FMOD headers.                                                                  */
@@ -15,7 +15,7 @@
     0xaaaabbcc -> aaaa = major version number.  bb = minor version number.  cc = development version number.
 */
 
-#define FMOD_VERSION    0x00010702
+#define FMOD_VERSION    0x00010707
 
 /*
     Compiler specific settings.
@@ -23,29 +23,26 @@
 
 #if defined(__CYGWIN32__) || defined(__MINGW32__)
     #define F_STDCALL __stdcall
-    #define F_DECLSPEC __declspec
-    #define F_DLLEXPORT ( dllexport )
 #elif defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(_WIN64)
     #define F_STDCALL _stdcall
-    #define F_DECLSPEC __declspec
-    #define F_DLLEXPORT ( dllexport )
-#elif defined(__MACH__) || defined(__ANDROID__) || defined(__linux__)
-    #define F_STDCALL
-    #define F_DECLSPEC
-    #define F_DLLEXPORT __attribute__ ((visibility("default")))
-#elif defined(__ORBIS__) || defined(__psp2__)
-    #define F_CDECL
-    #define F_STDCALL
-    #define F_DECLSPEC __declspec
-    #define F_DLLEXPORT ( dllexport )
+#elif defined(__ANDROID__) && defined(__arm__) && !defined(__LP64__) && !defined(__clang__)
+    #define F_STDCALL __attribute__((pcs("aapcs")))
 #else
     #define F_STDCALL
-    #define F_DECLSPEC
+#endif
+
+#define F_DECLSPEC
+
+#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(_WIN64) || defined(__CYGWIN32__) || defined(__MINGW32__) || defined(__ORBIS__) || defined(__psp2__)
+    #define F_DLLEXPORT __declspec(dllexport)
+#elif defined(__MACH__) || defined(__ANDROID__) || defined(__linux__)
+    #define F_DLLEXPORT __attribute__((visibility("default")))
+#else
     #define F_DLLEXPORT
 #endif
 
 #ifdef DLL_EXPORTS
-    #define F_API F_DECLSPEC F_DLLEXPORT F_STDCALL
+    #define F_API F_DLLEXPORT F_STDCALL
 #else
     #define F_API F_STDCALL
 #endif

@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2015.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2016.
 
 #pragma once
 
@@ -133,6 +133,12 @@ public:
 	UPROPERTY(config, EditAnywhere, Category = Advanced)
 	FString MasterBankName;
 
+	/**
+	 * Skip bank files of the given name.
+	 * Can be used to load all banks except for a certain set, such as localization banks.
+	 */
+	UPROPERTY(config, EditAnywhere, Category = Advanced)
+	FString SkipLoadBankName;
 
 	/** Is the bank path set up . */
 	bool IsBankPathSet() const { return !BankOutputDirectory.Path.IsEmpty(); }

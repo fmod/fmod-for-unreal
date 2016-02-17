@@ -2,7 +2,7 @@
 
 /* ======================================================================================== */
 /* FMOD Studio Low Level API - C header file.                                               */
-/* Copyright (c), Firelight Technologies Pty, Ltd. 2012-2015.                               */
+/* Copyright (c), Firelight Technologies Pty, Ltd. 2012-2016.                               */
 /*                                                                                          */
 /* Use this header in conjunction with fmod_common.h (which contains all the constants /    */
 /* callbacks) to develop using C interface.                                                 */

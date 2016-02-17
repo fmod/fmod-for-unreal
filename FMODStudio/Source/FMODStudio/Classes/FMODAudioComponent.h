@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2015.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2016.
 
 #pragma once
 
@@ -33,6 +33,8 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_SixParams(FOnTimelineBeat, int32, Bar, int32,
 
 namespace FMOD
 {
+	class Sound;
+
 	namespace Studio
 	{
 		class EventDescription;
@@ -145,6 +147,17 @@ class FMODSTUDIO_API UFMODAudioComponent : public USceneComponent
 	/** Whether we apply gain and low-pass based on audio zones. */
 	uint32 bApplyAmbientVolumes:1;
 
+	/** Sound name used for programmer sound.  Will look up the name in any loaded audio table. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category=Sound)
+	FString ProgrammerSoundName;
+
+	/** Set the sound name to use for programmer sound.  Will look up the name in any loaded audio table. */
+	UFUNCTION(BlueprintCallable, Category="Audio|FMOD|Components")
+	void SetProgrammerSoundName(FString Value);
+
+	/** Set a programmer sound to use for this audio component.  Lifetime of sound must exceed that of the audio component. */
+	void SetProgrammerSound(FMOD::Sound* Sound);
+
 public:
 
 	/** Actual Studio instance handle */
@@ -152,6 +165,8 @@ public:
 
 	void EventCallbackAddMarker(struct FMOD_STUDIO_TIMELINE_MARKER_PROPERTIES* props);
 	void EventCallbackAddBeat(struct FMOD_STUDIO_TIMELINE_BEAT_PROPERTIES* props);
+	void EventCallbackCreateProgrammerSound(struct FMOD_STUDIO_PROGRAMMER_SOUND_PROPERTIES* props);
+	void EventCallbackDestroyProgrammerSound(struct FMOD_STUDIO_PROGRAMMER_SOUND_PROPERTIES* props);
 
 	// Begin UObject interface.
 #if WITH_EDITOR
@@ -195,6 +210,9 @@ private:
 	FCriticalSection CallbackLock;
 	TArray<FTimelineMarkerProperties> CallbackMarkerQueue;
 	TArray<FTimelineBeatProperties> CallbackBeatQueue;
+
+	// Direct assignment of programmer sound from other C++ code
+	FMOD::Sound* ProgrammerSound;
 };
 
 
