@@ -24,6 +24,7 @@ UFMODSettings::UFMODSettings(const FObjectInitializer& ObjectInitializer)
 	DSPBufferCount = 0;
 	StudioUpdatePeriod = 0;
 	LiveUpdatePort = 0;
+	bMatchHardwareSampleRate = true;
 }
 
 FString UFMODSettings::GetFullBankPath() const

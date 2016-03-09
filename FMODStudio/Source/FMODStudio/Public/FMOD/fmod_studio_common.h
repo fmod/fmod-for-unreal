@@ -18,7 +18,6 @@
 typedef struct FMOD_STUDIO_SYSTEM FMOD_STUDIO_SYSTEM;
 typedef struct FMOD_STUDIO_EVENTDESCRIPTION FMOD_STUDIO_EVENTDESCRIPTION;
 typedef struct FMOD_STUDIO_EVENTINSTANCE FMOD_STUDIO_EVENTINSTANCE;
-typedef struct FMOD_STUDIO_CUEINSTANCE FMOD_STUDIO_CUEINSTANCE;
 typedef struct FMOD_STUDIO_PARAMETERINSTANCE FMOD_STUDIO_PARAMETERINSTANCE;
 typedef struct FMOD_STUDIO_BUS FMOD_STUDIO_BUS;
 typedef struct FMOD_STUDIO_VCA FMOD_STUDIO_VCA;
@@ -114,7 +113,7 @@ typedef enum FMOD_STUDIO_LOAD_MEMORY_MODE
     [REMARKS]
     There are two primary types of parameters: game controlled and automatic.
     Game controlled parameters receive their value from the API using
-    Studio::ParameterInstance::setValue. Automatic parameters are updated inside
+    Studio::EventInstance::setParameterValue. Automatic parameters are updated inside
     FMOD based on the positional information of the event and listener.
 
     **Horizontal angle** means the angle between vectors projected onto the
@@ -123,14 +122,14 @@ typedef enum FMOD_STUDIO_LOAD_MEMORY_MODE
 
     [SEE_ALSO]
     FMOD_STUDIO_PARAMETER_DESCRIPTION
-    Studio::ParameterInstance::setValue
+    Studio::EventInstance::setParameterValue
     Studio::EventInstance::set3DAttributes
     Studio::System::setListenerAttributes
 ]
 */
 typedef enum FMOD_STUDIO_PARAMETER_TYPE
 {
-    FMOD_STUDIO_PARAMETER_GAME_CONTROLLED,                  /* Controlled via the API using Studio::ParameterInstance::setValue. */
+    FMOD_STUDIO_PARAMETER_GAME_CONTROLLED,                  /* Controlled via the API using Studio::EventInstance::setParameterValue. */
     FMOD_STUDIO_PARAMETER_AUTOMATIC_DISTANCE,               /* Distance between the event and the listener. */
     FMOD_STUDIO_PARAMETER_AUTOMATIC_EVENT_CONE_ANGLE,       /* Angle between the event's forward vector and the vector pointing from the event to the listener (0 to 180 degrees). */
     FMOD_STUDIO_PARAMETER_AUTOMATIC_EVENT_ORIENTATION,      /* Horizontal angle between the event's forward vector and listener's forward vector (-180 to 180 degrees). */
@@ -183,8 +182,10 @@ typedef struct FMOD_STUDIO_BANK_INFO
 typedef struct FMOD_STUDIO_PARAMETER_DESCRIPTION
 {
     const char *name;                           /* Name of the parameter. */
+    int index;                                  /* Index of parameter */
     float minimum;                              /* Minimum parameter value. */
     float maximum;                              /* Maximum parameter value. */
+    float defaultValue;                         /* Default value */
     FMOD_STUDIO_PARAMETER_TYPE type;            /* Type of the parameter */
 } FMOD_STUDIO_PARAMETER_DESCRIPTION;
 
@@ -306,9 +307,16 @@ typedef unsigned int FMOD_STUDIO_SYSTEM_CALLBACK_TYPE;
     [REMARKS]
     The data passed to the event callback function in the *parameters* argument varies based on the callback type.
 
+    FMOD_STUDIO_EVENT_CALLBACK_STARTING is called when:
+
+     * Studio::EventInstance::start has been called on an event which was not already playing.  The event will
+       remain in this state until its sample data has been loaded.  If the event could not be started due to
+       polyphony, then FMOD_STUDIO_EVENT_CALLBACK_START_FAILED will be called instead.
+
     FMOD_STUDIO_EVENT_CALLBACK_STARTED is called when:
 
-     * Studio::EventInstance::start has been called on an event which was not already playing.
+     * The event has commenced playing.  Normally this callback will be issued immediately
+       after FMOD_STUDIO_EVENT_CALLBACK_STARTING, but may be delayed until sample data has loaded.
 
     FMOD_STUDIO_EVENT_CALLBACK_RESTARTED is called when:
 
@@ -320,6 +328,12 @@ typedef unsigned int FMOD_STUDIO_SYSTEM_CALLBACK_TYPE;
      * The event has finished fading out after Studio::EventInstance::stop was called with FMOD_STUDIO_STOP_ALLOWFADEOUT.
      * The event has stopped naturally by reaching the end of the timeline, and no further sounds can be triggered due to
        parameter changes.
+
+    FMOD_STUDIO_EVENT_CALLBACK_START_FAILED is called when:
+
+     * Studio::EventInstance::start has been called but the polyphony settings did not allow the event to start.  In 
+       this case none of FMOD_STUDIO_EVENT_CALLBACK_STARTING, FMOD_STUDIO_EVENT_CALLBACK_STARTED and FMOD_STUDIO_EVENT_CALLBACK_STOPPED 
+       will not be called.
 
     FMOD_STUDIO_EVENT_CALLBACK_CREATE_PROGRAMMER_SOUND is called when:
 
@@ -335,18 +349,19 @@ typedef unsigned int FMOD_STUDIO_SYSTEM_CALLBACK_TYPE;
     FMOD_STUDIO_EVENT_CALLBACK
 ]
 */
-#define FMOD_STUDIO_EVENT_CALLBACK_STARTED                  0x00000001  /* Called when an instance starts. Parameters = unused. */
-#define FMOD_STUDIO_EVENT_CALLBACK_RESTARTED                0x00000002  /* Called when an instance is restarted. Parameters = unused. */
-#define FMOD_STUDIO_EVENT_CALLBACK_STOPPED                  0x00000004  /* Called when an instance stops. Parameters = unused. */
-#define FMOD_STUDIO_EVENT_CALLBACK_CREATE_PROGRAMMER_SOUND  0x00000008  /* Called when a programmer sound needs to be created in order to play a programmer instrument. Parameters = FMOD_STUDIO_PROGRAMMER_SOUND_PROPERTIES. */
-#define FMOD_STUDIO_EVENT_CALLBACK_DESTROY_PROGRAMMER_SOUND 0x00000010  /* Called when a programmer sound needs to be destroyed. Parameters = FMOD_STUDIO_PROGRAMMER_SOUND_PROPERTIES. */
-#define FMOD_STUDIO_EVENT_CALLBACK_PLUGIN_CREATED           0x00000020  /* Called when a DSP plugin instance has just been created. Parameters = FMOD_STUDIO_PLUGIN_INSTANCE_PROPERTIES. */
-#define FMOD_STUDIO_EVENT_CALLBACK_PLUGIN_DESTROYED         0x00000040  /* Called when a DSP plugin instance is about to be destroyed. Parameters = FMOD_STUDIO_PLUGIN_INSTANCE_PROPERTIES. */
-#define FMOD_STUDIO_EVENT_CALLBACK_CREATED                  0x00000080  /* Called when an instance is fully created. Parameters = unused. */
-#define FMOD_STUDIO_EVENT_CALLBACK_DESTROYED                0x00000100  /* Called when an instance is just about to be destroyed. Parameters = unused. */
-#define FMOD_STUDIO_EVENT_CALLBACK_START_FAILED             0x00000200  /* Called when an instance did not start, e.g. due to polyphony. Parameters = unused. */
-#define FMOD_STUDIO_EVENT_CALLBACK_TIMELINE_MARKER          0x00000400  /* Called when the timeline passes a named marker.  Parameters = FMOD_STUDIO_TIMELINE_MARKER_PROPERTIES. */
-#define FMOD_STUDIO_EVENT_CALLBACK_TIMELINE_BEAT            0x00000800  /* Called when the timeline hits a beat in a tempo section.  Parameters = FMOD_STUDIO_TIMELINE_BEAT_PROPERTIES. */
+#define FMOD_STUDIO_EVENT_CALLBACK_CREATED                  0x00000001  /* Called when an instance is fully created. Parameters = unused. */
+#define FMOD_STUDIO_EVENT_CALLBACK_DESTROYED                0x00000002  /* Called when an instance is just about to be destroyed. Parameters = unused. */
+#define FMOD_STUDIO_EVENT_CALLBACK_STARTING                 0x00000004  /* Called when an instance is preparing to start. Parameters = unused. */
+#define FMOD_STUDIO_EVENT_CALLBACK_STARTED                  0x00000008  /* Called when an instance starts playing. Parameters = unused. */
+#define FMOD_STUDIO_EVENT_CALLBACK_RESTARTED                0x00000010  /* Called when an instance is restarted. Parameters = unused. */
+#define FMOD_STUDIO_EVENT_CALLBACK_STOPPED                  0x00000020  /* Called when an instance stops. Parameters = unused. */
+#define FMOD_STUDIO_EVENT_CALLBACK_START_FAILED             0x00000040  /* Called when an instance did not start, e.g. due to polyphony. Parameters = unused. */
+#define FMOD_STUDIO_EVENT_CALLBACK_CREATE_PROGRAMMER_SOUND  0x00000080  /* Called when a programmer sound needs to be created in order to play a programmer instrument. Parameters = FMOD_STUDIO_PROGRAMMER_SOUND_PROPERTIES. */
+#define FMOD_STUDIO_EVENT_CALLBACK_DESTROY_PROGRAMMER_SOUND 0x00000100  /* Called when a programmer sound needs to be destroyed. Parameters = FMOD_STUDIO_PROGRAMMER_SOUND_PROPERTIES. */
+#define FMOD_STUDIO_EVENT_CALLBACK_PLUGIN_CREATED           0x00000200  /* Called when a DSP plugin instance has just been created. Parameters = FMOD_STUDIO_PLUGIN_INSTANCE_PROPERTIES. */
+#define FMOD_STUDIO_EVENT_CALLBACK_PLUGIN_DESTROYED         0x00000400  /* Called when a DSP plugin instance is about to be destroyed. Parameters = FMOD_STUDIO_PLUGIN_INSTANCE_PROPERTIES. */
+#define FMOD_STUDIO_EVENT_CALLBACK_TIMELINE_MARKER          0x00000800  /* Called when the timeline passes a named marker.  Parameters = FMOD_STUDIO_TIMELINE_MARKER_PROPERTIES. */
+#define FMOD_STUDIO_EVENT_CALLBACK_TIMELINE_BEAT            0x00001000  /* Called when the timeline hits a beat in a tempo section.  Parameters = FMOD_STUDIO_TIMELINE_BEAT_PROPERTIES. */
 #define FMOD_STUDIO_EVENT_CALLBACK_ALL                      0xFFFFFFFF  /* Pass this mask to Studio::EventDescription::setCallback or Studio::EventInstance::setCallback to receive all callback types. */
 /* [DEFINE_END] */
 
@@ -460,8 +475,7 @@ typedef struct FMOD_STUDIO_TIMELINE_BEAT_PROPERTIES
     Studio::EventInstance::getPlaybackState
     Studio::EventInstance::start
     Studio::EventInstance::stop
-    Studio::CueInstance::trigger
-    Studio::ParameterInstance::setValue
+    FMOD_STUDIO_EVENT_CALLBACK_TYPE
 ]
 */
 typedef enum FMOD_STUDIO_PLAYBACK_STATE
@@ -546,6 +560,7 @@ typedef struct FMOD_STUDIO_ADVANCEDSETTINGS
     unsigned int        commandQueueSize;           /* [r/w] Optional. Specify 0 to ignore. Specify the command queue size for studio async processing.  Default 32kB. */
     unsigned int        handleInitialSize;          /* [r/w] Optional. Specify 0 to ignore. Specify the initial size to allocate for handles.  Memory for handles will grow as needed in pages. Default 8192 * sizeof(void*) */
     int                 studioUpdatePeriod;         /* [r/w] Optional. Specify 0 to ignore. Specify the update period of Studio when in async mode, in milliseconds.  Will be quantised to the nearest multiple of mixer duration.  Default is 20ms. */
+    int                 idleSampleDataPoolSize;       /* [r/w] Optional. Specify 0 to ignore. Specify the amount of sample data to keep in memory when no longer used, to avoid repeated disk IO.  Use -1 to disable.  Default is 256kB. */
 } FMOD_STUDIO_ADVANCEDSETTINGS;
 
 
@@ -704,7 +719,6 @@ typedef enum FMOD_STUDIO_INSTANCETYPE
     FMOD_STUDIO_INSTANCETYPE_EVENTDESCRIPTION,
     FMOD_STUDIO_INSTANCETYPE_EVENTINSTANCE,
     FMOD_STUDIO_INSTANCETYPE_PARAMETERINSTANCE,
-    FMOD_STUDIO_INSTANCETYPE_CUEINSTANCE,
     FMOD_STUDIO_INSTANCETYPE_BUS,
     FMOD_STUDIO_INSTANCETYPE_VCA,
     FMOD_STUDIO_INSTANCETYPE_BANK,

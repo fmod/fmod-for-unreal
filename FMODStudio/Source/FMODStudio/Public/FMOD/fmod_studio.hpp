@@ -23,7 +23,6 @@ namespace Studio
     class System;
     class EventDescription;
     class EventInstance;
-    class CueInstance;
     class ParameterInstance;
     class Bus;
     class VCA;
@@ -52,6 +51,7 @@ namespace Studio
         // Update processing
         FMOD_RESULT F_API update();
         FMOD_RESULT F_API flushCommands();
+        FMOD_RESULT F_API flushSampleLoading();
 
         // Low-level API access
         FMOD_RESULT F_API getLowLevelSystem(FMOD::System **system) const;
@@ -134,6 +134,7 @@ namespace Studio
         FMOD_RESULT F_API isOneshot(bool *oneshot) const;
         FMOD_RESULT F_API isStream(bool *isStream) const;
         FMOD_RESULT F_API is3D(bool *is3D) const;
+        FMOD_RESULT F_API hasCue(bool *cue) const;
 
         // Playback control
         FMOD_RESULT F_API createInstance(EventInstance **instance) const;
@@ -198,16 +199,18 @@ namespace Studio
 
         FMOD_RESULT F_API isVirtual(bool *virtualState) const;
 
+        FMOD_RESULT F_API getParameterValue(const char *name, float *value);
+        FMOD_RESULT F_API setParameterValue(const char *name, float value);
+
+        FMOD_RESULT F_API getParameterValueByIndex(int index, float *value);
+        FMOD_RESULT F_API setParameterValueByIndex(int index, float value);
+
+        // Deprecated - please use getParameterValue, setParameterValue, getParameterValueByIndex and setParameterValueByIndex instead
         FMOD_RESULT F_API getParameter(const char *name, ParameterInstance **parameter) const;
         FMOD_RESULT F_API getParameterByIndex(int index, ParameterInstance **parameter) const;
         FMOD_RESULT F_API getParameterCount(int *count) const;
 
-        FMOD_RESULT F_API setParameterValue(const char *name, float value);
-        FMOD_RESULT F_API setParameterValueByIndex(int index, float value);
-
-        FMOD_RESULT F_API getCue(const char *name, CueInstance **cue) const;
-        FMOD_RESULT F_API getCueByIndex(int index, CueInstance **cue) const;
-        FMOD_RESULT F_API getCueCount(int *count) const;
+        FMOD_RESULT F_API triggerCue();
 
         // Callbacks
         FMOD_RESULT F_API setCallback(FMOD_STUDIO_EVENT_CALLBACK callback, FMOD_STUDIO_EVENT_CALLBACK_TYPE callbackmask = FMOD_STUDIO_EVENT_CALLBACK_ALL);
@@ -215,20 +218,7 @@ namespace Studio
         FMOD_RESULT F_API setUserData(void *userData);
     };
 
-    class CueInstance
-    {
-    private:
-        // Constructor made private so user cannot statically instance the class.
-        CueInstance();
-        CueInstance(const CueInstance &);
-
-    public:
-        // Handle validity
-        bool F_API isValid() const;
-
-        FMOD_RESULT F_API trigger();
-    };
-
+    // Deprecated
     class ParameterInstance
     {
     private:

@@ -144,6 +144,8 @@ typedef FMOD_RESULT (F_CALLBACK *FMOD_DSP_PAN_SUM_MONO_TO_SURROUND_MATRIX)  (FMO
 typedef FMOD_RESULT (F_CALLBACK *FMOD_DSP_PAN_SUM_STEREO_TO_SURROUND_MATRIX)(FMOD_DSP_STATE *dsp_state, int targetSpeakerMode, float direction, float extent, float rotation, float lowFrequencyGain, float overallGain, int matrixHop, float *matrix);
 typedef FMOD_RESULT (F_CALLBACK *FMOD_DSP_PAN_3D_GET_ROLLOFF_GAIN)          (FMOD_DSP_STATE *dsp_state, FMOD_DSP_PAN_3D_ROLLOFF_TYPE rolloff, float distance, float mindistance, float maxdistance, float *gain);
 
+typedef FMOD_RESULT (F_CALLBACK *FMOD_DSP_STATE_GETCLOCK) (FMOD_DSP_STATE *dsp_state, unsigned long long *clock, unsigned int *offset, unsigned int *length);
+
 
 /*
 [DEFINE]
@@ -484,8 +486,7 @@ typedef struct FMOD_DSP_PARAMETER_3DATTRIBUTES
 [
     [DESCRIPTION]
     Structure for data parameters of type FMOD_DSP_PARAMETER_DATA_TYPE_3DATTRIBUTES_MULTI.
-    A parameter of this type is used in effects that respond to a sound's 3D position, and
-    support multiple listeners.
+    A parameter of this type is used in effects that respond to a sound's 3D position, and support multiple listeners.
     The system will set this parameter automatically if a sound's position changes.
 
     [REMARKS]
@@ -628,7 +629,7 @@ typedef struct FMOD_DSP_PARAMETER_FFT
     (_paramstruct).description  = _description; \
     (_paramstruct).datadesc.datatype     = _datatype;
 
-#define FMOD_PLUGIN_SDK_VERSION 107
+#define FMOD_PLUGIN_SDK_VERSION 108
 
 /*
 [STRUCTURE] 
@@ -776,6 +777,7 @@ typedef struct FMOD_DSP_STATE_SYSTEMCALLBACKS
     FMOD_DSP_STATE_DFTCALLBACKS            *dft;            /* [r] Struct containing callbacks for performing FFTs and inverse FFTs. */
     FMOD_DSP_STATE_PAN_CALLBACKS           *pancallbacks;   /* [r] Pointer to a structure of callbacks for calculating pan, up-mix and down-mix matrices. */
     FMOD_DSP_SYSTEM_GETSPEAKERMODE          getspeakermode; /* [r] Callback for getting the system's speaker modes.  One is the mixer's default speaker mode, the other is the output mode the system is downmixing or upmixing to.*/
+    FMOD_DSP_STATE_GETCLOCK                 getclock;       /* [r] Callback for getting the clock of the current DSP, as well as the subset of the input buffer that contains the signal */
 } FMOD_DSP_STATE_SYSTEMCALLBACKS;
 
 

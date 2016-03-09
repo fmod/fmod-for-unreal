@@ -83,6 +83,8 @@ namespace FMOD
         FMOD_RESULT F_API setPluginPath           (const char *path);
         FMOD_RESULT F_API loadPlugin              (const char *filename, unsigned int *handle, unsigned int priority = 0);
         FMOD_RESULT F_API unloadPlugin            (unsigned int handle);
+        FMOD_RESULT F_API getNumNestedPlugins     (unsigned int handle, int *count);
+        FMOD_RESULT F_API getNestedPlugin         (unsigned int handle, int index, unsigned int *nestedhandle);
         FMOD_RESULT F_API getNumPlugins           (FMOD_PLUGINTYPE plugintype, int *numplugins);
         FMOD_RESULT F_API getPluginHandle         (FMOD_PLUGINTYPE plugintype, int index, unsigned int *handle);
         FMOD_RESULT F_API getPluginInfo           (unsigned int handle, FMOD_PLUGINTYPE *plugintype, char *name, int namelen, unsigned int *version);
@@ -120,9 +122,9 @@ namespace FMOD
         // System information functions.
         FMOD_RESULT F_API getVersion              (unsigned int *version);
         FMOD_RESULT F_API getOutputHandle         (void **handle);
-        FMOD_RESULT F_API getChannelsPlaying      (int *channels);
-        FMOD_RESULT F_API getChannelsReal         (int *realchannels);
+        FMOD_RESULT F_API getChannelsPlaying      (int *channels, int *realchannels = 0);
         FMOD_RESULT F_API getCPUUsage             (float *dsp, float *stream, float *geometry, float *update, float *total);
+        FMOD_RESULT F_API getFileUsage            (long long *sampleBytesRead, long long *streamBytesRead, long long *otherBytesRead);
         FMOD_RESULT F_API getSoundRAM             (int *currentalloced, int *maxalloced, int *total);
 
         // Sound/DSP/Channel/FX creation and retrieval.

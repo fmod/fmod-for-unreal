@@ -103,7 +103,7 @@ static const char *FMOD_ErrorString(FMOD_RESULT errcode)
         case FMOD_ERR_ALREADY_LOCKED:            return "The specified resource is already locked.";
         case FMOD_ERR_NOT_LOCKED:                return "The specified resource is not locked, so it can't be unlocked.";
         case FMOD_ERR_RECORD_DISCONNECTED:       return "The specified recording driver has been disconnected.";
-        case FMOD_ERR_TOOMANYSAMPLES:            return "The length provided exceed the allowable limit.";
+        case FMOD_ERR_TOOMANYSAMPLES:            return "The length provided exceeds the allowable limit.";
         default :                                return "Unknown error.";
 /*$ preserve start $*/
     };

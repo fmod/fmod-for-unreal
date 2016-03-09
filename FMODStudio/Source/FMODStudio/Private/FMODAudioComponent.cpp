@@ -503,12 +503,16 @@ void UFMODAudioComponent::TriggerCue()
 	if (StudioInstance)
 	{
 		// Studio only supports a single cue so try to get it
+#if FMOD_VERSION >= 0x00010800
+		StudioInstance->triggerCue();
+#else
 		FMOD::Studio::CueInstance* Cue = nullptr;
 		StudioInstance->getCueByIndex(0, &Cue);
 		if (Cue)
 		{
 			Cue->trigger();
 		}
+#endif
 	}
 }
 

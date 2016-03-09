@@ -383,12 +383,16 @@ void UFMODBlueprintStatics::EventInstanceTriggerCue(FFMODEventInstance EventInst
 	if (EventInstance.Instance)
 	{
 		// Studio only supports a single cue so try to get it
+#if FMOD_VERSION >= 0x00010800
+		EventInstance.Instance->triggerCue();
+#else
 		FMOD::Studio::CueInstance* Cue = nullptr;
 		EventInstance.Instance->getCueByIndex(0, &Cue);
 		if (Cue)
 		{
 			Cue->trigger();
 		}
+#endif
 	}
 }
 

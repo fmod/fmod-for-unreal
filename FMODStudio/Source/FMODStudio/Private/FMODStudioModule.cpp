@@ -469,7 +469,23 @@ void FFMODStudioModule::CreateStudioSystem(EFMODSystemContext::Type Type)
 	verifyfmod(FMOD::Studio::System::create(&StudioSystem[Type]));
 	FMOD::System* lowLevelSystem = nullptr;
 	verifyfmod(StudioSystem[Type]->getLowLevelSystem(&lowLevelSystem));
-	verifyfmod(lowLevelSystem->setSoftwareFormat(Settings.SampleRate, OutputMode, 0));
+	int SampleRate = Settings.SampleRate;
+	if (Settings.bMatchHardwareSampleRate)
+	{
+		int SystemSampleRate = 0;
+		verifyfmod(lowLevelSystem->getDriverInfo(0, nullptr, 0, nullptr, &SystemSampleRate, nullptr, nullptr));
+		if (SystemSampleRate >= 44100 && SystemSampleRate <= 48000)
+		{
+			UE_LOG(LogFMOD, Log, TEXT("Setting system sample rate %d"), SystemSampleRate);
+			SampleRate = SystemSampleRate;
+		}
+		else
+		{
+			UE_LOG(LogFMOD, Warning, TEXT("Ignoring system sample rate %d"), SystemSampleRate);
+		}
+	}
+
+	verifyfmod(lowLevelSystem->setSoftwareFormat(SampleRate, OutputMode, 0));
 	verifyfmod(lowLevelSystem->setSoftwareChannels(Settings.RealChannelCount));
 	verifyfmod(lowLevelSystem->setFileSystem(FMODOpen, FMODClose, FMODRead, FMODSeek, 0, 0, 2048));
 

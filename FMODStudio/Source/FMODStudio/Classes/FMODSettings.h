@@ -72,6 +72,13 @@ public:
 	UPROPERTY(config, EditAnywhere, Category = InitSettings)
 	int32 SampleRate;
 
+
+	/**
+	* Whether to match hardware sample rate where reasonable (44.1kHz to 48kHz).
+	*/
+	UPROPERTY(config, EditAnywhere, Category = InitSettings)
+	bool bMatchHardwareSampleRate;
+
 	/**
 	 * Number of actual software voices that can be used at once.
 	 */

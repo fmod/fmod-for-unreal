@@ -427,11 +427,22 @@ void FFMODStudioEditorModule::ValidateFMOD()
 		FString StudioVersionString;
 		if (StudioLink.Execute(TEXT("studio.version"), StudioVersionString))
 		{
-			int Super = 0;
-			int Major = 0;
-			int Minor = 0;
-			sscanf(TCHAR_TO_UTF8(*StudioVersionString), "Version %x.%x.%x", &Super, &Major, &Minor);
-			StudioVersion = (Super<<16) | (Major<<8) | Minor;
+			// We expect something like "Version xx.yy.zz, 32/64, Some build number"
+			UE_LOG(LogFMOD, Log, TEXT("Received studio version: %s"), *StudioVersionString);
+			TArray<FString> VersionParts;
+			if (StudioVersionString.StartsWith(TEXT("Version ")) &&
+				StudioVersionString.ParseIntoArray(VersionParts, TEXT(",")) >= 1)
+			{
+				TArray<FString> VersionFields;
+				VersionParts[0].RightChop(8).ParseIntoArray(VersionFields, TEXT("."));
+				if (VersionFields.Num() == 3)
+				{
+					int Super = FCString::Atoi(*VersionFields[0]);
+					int Major = FCString::Atoi(*VersionFields[1]);
+					int Minor = FCString::Atoi(*VersionFields[2]);
+					StudioVersion = (Super << 16) | (Major << 8) | Minor;
+				}
+			}
 		}
 	}
 	if (StripPatch(HeaderVersion) != StripPatch(DLLVersion))
