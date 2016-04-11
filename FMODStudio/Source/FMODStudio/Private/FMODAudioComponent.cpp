@@ -16,6 +16,9 @@ UFMODAudioComponent::UFMODAudioComponent(const FObjectInitializer& ObjectInitial
 	bEnableTimelineCallbacks = false; // Default OFF for efficiency
 	bStopWhenOwnerDestroyed = true;
 	bNeverNeedsRenderUpdate = true;
+#if ENGINE_MINOR_VERSION >= 11
+	bWantsOnUpdateTransform = true;
+#endif
 #if WITH_EDITORONLY_DATA
 	bVisualizeComponent = true;
 #endif
