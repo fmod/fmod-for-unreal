@@ -36,14 +36,20 @@ namespace UnrealBuildTool.Rules
 			switch (Target.Platform)
 			{
 				case UnrealTargetPlatform.Win32:
-					PublicAdditionalLibraries.Add(System.IO.Path.Combine(BasePath, "ovrfmod.lib"));
-					PublicDelayLoadDLLs.Add("ovrfmod.dll");
-					Definitions.Add("FMOD_OSP_SUPPORTED=1");
+					if (System.IO.File.Exists(System.IO.Path.Combine(BasePath, "ovrfmod.lib")))
+					{
+						PublicAdditionalLibraries.Add(System.IO.Path.Combine(BasePath, "ovrfmod.lib"));
+						PublicDelayLoadDLLs.Add("ovrfmod.dll");
+						Definitions.Add("FMOD_OSP_SUPPORTED=1");
+					}
 					break;
 				case UnrealTargetPlatform.Win64:
-					PublicAdditionalLibraries.Add(System.IO.Path.Combine(BasePath, "ovrfmod.lib"));
-					PublicDelayLoadDLLs.Add("ovrfmod.dll");
-					Definitions.Add("FMOD_OSP_SUPPORTED=1");
+					if (System.IO.File.Exists(System.IO.Path.Combine(BasePath, "ovrfmod.lib")))
+					{
+						PublicAdditionalLibraries.Add(System.IO.Path.Combine(BasePath, "ovrfmod.lib"));
+						PublicDelayLoadDLLs.Add("ovrfmod.dll");
+						Definitions.Add("FMOD_OSP_SUPPORTED=1");
+					}
 					break;
 				default:
 					break;

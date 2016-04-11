@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2016.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2015.
 
 #include "FMODStudioPrivatePCH.h"
 #include "FMODFileCallbacks.h"
@@ -21,7 +21,7 @@ FMOD_RESULT F_CALLBACK FMODLogCallback(FMOD_DEBUG_FLAGS flags, const char *file,
 			{
 				int32 Len = FString(TEXT("Missing DSP plugin '")).Len();
 				int32 EndIndex;
-				if (Message.FindLastChar('\'', EndIndex) && EndIndex != INDEX_NONE && StartIndex+Len < EndIndex)
+				if (Message.FindLastChar('\'', EndIndex) && EndIndex != INDEX_NONE && StartIndex + Len < EndIndex)
 				{
 					FString PluginName = Message.Mid(StartIndex + Len, EndIndex - StartIndex - Len);
 					IFMODStudioModule::Get().AddRequiredPlugin(PluginName);
@@ -36,10 +36,19 @@ FMOD_RESULT F_CALLBACK FMODLogCallback(FMOD_DEBUG_FLAGS flags, const char *file,
 	return FMOD_OK;
 }
 
+FCriticalSection* FMODFileCriticalSection;
+
 FMOD_RESULT F_CALLBACK FMODOpen(const char *name, unsigned int *filesize, void **handle, void * /*userdata*/)
 {
 	if (name)
 	{
+		// We always open the master bank from the main thread, so we will initialize the crit properly
+		if (!FMODFileCriticalSection)
+		{
+			FMODFileCriticalSection = new FCriticalSection;
+		}
+		FScopeLock ScopedLock(FMODFileCriticalSection);
+
 		FArchive* Archive = IFileManager::Get().CreateFileReader(UTF8_TO_TCHAR(name));
 		UE_LOG(LogFMOD, Verbose, TEXT("FMODOpen Opening '%s' returned archive %p"), UTF8_TO_TCHAR(name), Archive);
 		if (!Archive)
@@ -61,6 +70,7 @@ FMOD_RESULT F_CALLBACK FMODClose(void *handle, void * /*userdata*/)
 		return FMOD_ERR_INVALID_PARAM;
 	}
 
+	FScopeLock ScopedLock(FMODFileCriticalSection);
 
 	FArchive* Archive = (FArchive*)handle;
 	UE_LOG(LogFMOD, Verbose, TEXT("FMODClose Closing archive %p"), Archive);
@@ -78,6 +88,8 @@ FMOD_RESULT F_CALLBACK FMODRead(void *handle, void *buffer, unsigned int sizebyt
 
 	if (bytesread)
 	{
+		FScopeLock ScopedLock(FMODFileCriticalSection);
+
 		FArchive* Archive = (FArchive*)handle;
 
 		int64 BytesLeft = Archive->TotalSize() - Archive->Tell();
@@ -101,7 +113,9 @@ FMOD_RESULT F_CALLBACK FMODSeek(void *handle, unsigned int pos, void * /*userdat
 	{
 		return FMOD_ERR_INVALID_PARAM;
 	}
-   
+
+	FScopeLock ScopedLock(FMODFileCriticalSection);
+
 	FArchive* Archive = (FArchive*)handle;
 	Archive->Seek(pos);
 

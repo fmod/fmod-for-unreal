@@ -31,6 +31,10 @@
 
 DEFINE_LOG_CATEGORY(LogFMOD);
 
+DECLARE_STATS_GROUP(TEXT("FMOD"), STATGROUP_FMOD, STATCAT_Advanced);
+DECLARE_FLOAT_COUNTER_STAT(TEXT("CPU Mixer"), STAT_FMOD_CPUMixer, STATGROUP_FMOD);
+DECLARE_FLOAT_COUNTER_STAT(TEXT("CPU Studio"), STAT_FMOD_CPUStudio, STATGROUP_FMOD);
+
 const TCHAR* FMODSystemContextNames[EFMODSystemContext::Max] =
 {
 	TEXT("Auditioning"),
@@ -396,7 +400,9 @@ void FFMODStudioModule::StartupModule()
 
 	if (LoadLibraries())
 	{
+		verifyfmod(FMOD::Debug_Initialize(FMOD_DEBUG_LEVEL_WARNING, FMOD_DEBUG_MODE_CALLBACK, FMODLogCallback));
 		verifyfmod(FMOD::Memory_Initialize(0, 0, FMODMemoryAlloc, FMODMemoryRealloc, FMODMemoryFree));
+		verifyfmod(FMODPlatformSystemSetup());
 
 		// Create sandbox system just for asset loading
 		AssetTable.Create();
@@ -408,6 +414,8 @@ void FFMODStudioModule::StartupModule()
 		}
 		else
 		{
+			AssetTable.Destroy(); // Don't need this copy around since we don't hot reload
+
 			SetInPIE(true, false);
 		}
 	}
@@ -464,8 +472,6 @@ void FFMODStudioModule::CreateStudioSystem(EFMODSystemContext::Type Type)
 #endif
 	}
 	
-	FMOD::Debug_Initialize(FMOD_DEBUG_LEVEL_WARNING, FMOD_DEBUG_MODE_CALLBACK, FMODLogCallback);
-
 	verifyfmod(FMOD::Studio::System::create(&StudioSystem[Type]));
 	FMOD::System* lowLevelSystem = nullptr;
 	verifyfmod(StudioSystem[Type]->getLowLevelSystem(&lowLevelSystem));
@@ -493,8 +499,6 @@ void FFMODStudioModule::CreateStudioSystem(EFMODSystemContext::Type Type)
 	{
 		verifyfmod(lowLevelSystem->setDSPBufferSize(Settings.DSPBufferLength, Settings.DSPBufferCount));
 	}
-
-	verifyfmod(FMODPlatformSystemSetup());
 
 	FMOD_ADVANCEDSETTINGS advSettings = {0};
 	advSettings.cbSize = sizeof(advSettings);
@@ -559,6 +563,11 @@ bool FFMODStudioModule::Tick( float DeltaTime )
 	}
 	if (StudioSystem[EFMODSystemContext::Runtime])
 	{
+		FMOD_STUDIO_CPU_USAGE Usage = {};
+		StudioSystem[EFMODSystemContext::Runtime]->getCPUUsage(&Usage);
+		SET_FLOAT_STAT(STAT_FMOD_CPUMixer, Usage.dspUsage);
+		SET_FLOAT_STAT(STAT_FMOD_CPUStudio, Usage.studioUsage);
+
 		UpdateViewportPosition();
 
 		verifyfmod(StudioSystem[EFMODSystemContext::Runtime]->update());
