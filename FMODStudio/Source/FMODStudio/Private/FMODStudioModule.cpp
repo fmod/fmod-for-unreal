@@ -326,12 +326,7 @@ FString FFMODStudioModule::GetDllPath(const TCHAR* ShortName)
 #if PLATFORM_MAC
 	return FString::Printf(TEXT("%s/Mac/lib%s.dylib"), *BaseLibPath, ShortName);
 #elif PLATFORM_PS4
-	FString ShortLibPath = BaseLibPath.ToLower();
-	while (ShortLibPath.StartsWith(TEXT("../")))
-	{
-		ShortLibPath = ShortLibPath.RightChop(3);
-	}
-	return FString::Printf(TEXT("/app0/%s/ps4/lib%s.prx"), *ShortLibPath, ShortName);
+	return FString::Printf(TEXT("lib%s.prx"), ShortName);
 #elif PLATFORM_XBOXONE
 	return FString::Printf(TEXT("%s.dll"), ShortName);
 #elif PLATFORM_ANDROID
