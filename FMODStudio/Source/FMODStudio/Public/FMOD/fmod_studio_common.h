@@ -362,6 +362,8 @@ typedef unsigned int FMOD_STUDIO_SYSTEM_CALLBACK_TYPE;
 #define FMOD_STUDIO_EVENT_CALLBACK_PLUGIN_DESTROYED         0x00000400  /* Called when a DSP plugin instance is about to be destroyed. Parameters = FMOD_STUDIO_PLUGIN_INSTANCE_PROPERTIES. */
 #define FMOD_STUDIO_EVENT_CALLBACK_TIMELINE_MARKER          0x00000800  /* Called when the timeline passes a named marker.  Parameters = FMOD_STUDIO_TIMELINE_MARKER_PROPERTIES. */
 #define FMOD_STUDIO_EVENT_CALLBACK_TIMELINE_BEAT            0x00001000  /* Called when the timeline hits a beat in a tempo section.  Parameters = FMOD_STUDIO_TIMELINE_BEAT_PROPERTIES. */
+#define FMOD_STUDIO_EVENT_CALLBACK_SOUND_PLAYED             0x00002000  /* Called when the event plays a sound.  Parameters = FMOD::Sound. */
+#define FMOD_STUDIO_EVENT_CALLBACK_SOUND_STOPPED            0x00004000  /* Called when the event finishes playing a sound.  Parameters = FMOD::Sound. */
 #define FMOD_STUDIO_EVENT_CALLBACK_ALL                      0xFFFFFFFF  /* Pass this mask to Studio::EventDescription::setCallback or Studio::EventInstance::setCallback to receive all callback types. */
 /* [DEFINE_END] */
 
@@ -383,8 +385,10 @@ typedef unsigned int FMOD_STUDIO_EVENT_CALLBACK_TYPE;
 
     [SEE_ALSO]
     FMOD_STUDIO_EVENT_CALLBACK
+    FMOD_STUDIO_SOUND_INFO
     Studio::EventDescription::setCallback
     Studio::EventInstance::setCallback
+    Studio::System::getSoundInfo
 ]
 */
 typedef struct FMOD_STUDIO_PROGRAMMER_SOUND_PROPERTIES
@@ -639,8 +643,8 @@ typedef struct FMOD_STUDIO_BUFFER_USAGE
     The name_or_data member points into FMOD internal memory, which will become
     invalid if the sound table bank is unloaded.
 
-    If mode flags such as FMOD_CREATESTREAM or FMOD_NONBLOCKING are required,
-    they should be ORed together with the mode member when calling System::createSound.
+    If mode flags such as FMOD_CREATESTREAM, FMOD_CREATECOMPRESSEDSAMPLE or FMOD_NONBLOCKING are required,
+    it is up to the user to OR them together when calling System::createSound.
 
     [SEE_ALSO]
     Studio::System::getSoundInfo

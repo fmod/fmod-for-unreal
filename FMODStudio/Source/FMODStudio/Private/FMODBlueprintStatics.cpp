@@ -9,6 +9,7 @@
 #include "FMODBank.h"
 #include "FMODEvent.h"
 #include "FMODBus.h"
+#include "FMODVCA.h"
 #include "fmod_studio.hpp"
 
 /////////////////////////////////////////////////////
@@ -276,6 +277,21 @@ void UFMODBlueprintStatics::BusSetMute(class UFMODBus* Bus, bool bMute)
 	}
 }
 
+void UFMODBlueprintStatics::VCASetFaderLevel(class UFMODVCA* Vca, float Level)
+{
+	FMOD::Studio::System* StudioSystem = IFMODStudioModule::Get().GetStudioSystem(EFMODSystemContext::Runtime);
+	if (StudioSystem != nullptr && Vca != nullptr)
+	{
+		FMOD::Studio::ID guid = FMODUtils::ConvertGuid(Vca->AssetGuid);
+		FMOD::Studio::VCA* vca = nullptr;
+		FMOD_RESULT result = StudioSystem->getVCAByID(&guid, &vca);
+		if (result == FMOD_OK && vca != nullptr)
+		{
+			vca->setFaderLevel(Level);
+		}
+	}
+}
+
 bool UFMODBlueprintStatics::EventInstanceIsValid(FFMODEventInstance EventInstance)
 {
 	if (EventInstance.Instance)
@@ -408,6 +424,89 @@ void UFMODBlueprintStatics::EventInstanceSetTransform(FFMODEventInstance EventIn
 			UE_LOG(LogFMOD, Warning, TEXT("Failed to set transform on event instance"));
 		}
 	}
-
-
 }
+
+TArray<FString> UFMODBlueprintStatics::GetOutputDrivers()
+{
+	TArray<FString> AllNames;
+
+	FMOD::Studio::System* StudioSystem = IFMODStudioModule::Get().GetStudioSystem(EFMODSystemContext::Runtime);
+	if (StudioSystem != nullptr)
+	{
+		FMOD::System* LowLevelSystem = nullptr;
+		verifyfmod(StudioSystem->getLowLevelSystem(&LowLevelSystem));
+
+		int DriverCount = 0;
+		verifyfmod(LowLevelSystem->getNumDrivers(&DriverCount));
+
+		for (int id=0; id<DriverCount; ++id)
+		{
+			char DriverNameUTF8[256] = {};
+			verifyfmod(LowLevelSystem->getDriverInfo(id, DriverNameUTF8, sizeof(DriverNameUTF8), 0, 0, 0, 0));
+			FString DriverName(UTF8_TO_TCHAR(DriverNameUTF8));
+			AllNames.Add(DriverName);
+		}
+	}
+
+	return AllNames;
+}
+
+void UFMODBlueprintStatics::SetOutputDriverByName(FString NewDriverName)
+{
+	FMOD::Studio::System* StudioSystem = IFMODStudioModule::Get().GetStudioSystem(EFMODSystemContext::Runtime);
+	if (StudioSystem != nullptr)
+	{
+		FMOD::System* LowLevelSystem = nullptr;
+		verifyfmod(StudioSystem->getLowLevelSystem(&LowLevelSystem));
+
+		int DriverIndex = -1;
+		int DriverCount = 0;
+		verifyfmod(LowLevelSystem->getNumDrivers(&DriverCount));
+
+		for (int id=0; id<DriverCount; ++id)
+		{
+			char DriverNameUTF8[256] = {};
+			verifyfmod(LowLevelSystem->getDriverInfo(id, DriverNameUTF8, sizeof(DriverNameUTF8), 0, 0, 0, 0));
+			FString DriverName(UTF8_TO_TCHAR(DriverNameUTF8));
+			UE_LOG(LogFMOD, Log, TEXT("Driver %d: %s"), id, *DriverName);
+			if (DriverName.Contains(NewDriverName))
+			{
+				DriverIndex = id;
+			}
+		}
+
+		if (DriverIndex >= 0)
+		{
+			UE_LOG(LogFMOD, Log, TEXT("Selected driver %d"), DriverIndex);
+			verifyfmod(LowLevelSystem->setDriver(DriverIndex));
+		}
+		else
+		{
+			UE_LOG(LogFMOD, Warning, TEXT("Did not find driver of name '%s'"), *NewDriverName);
+		}
+	}
+}
+
+void UFMODBlueprintStatics::SetOutputDriverByIndex(int NewDriverIndex)
+{
+	FMOD::Studio::System* StudioSystem = IFMODStudioModule::Get().GetStudioSystem(EFMODSystemContext::Runtime);
+	if (StudioSystem != nullptr)
+	{
+		FMOD::System* LowLevelSystem = nullptr;
+		verifyfmod(StudioSystem->getLowLevelSystem(&LowLevelSystem));
+
+		int DriverCount = 0;
+		verifyfmod(LowLevelSystem->getNumDrivers(&DriverCount));
+		
+		if (NewDriverIndex >= 0 && NewDriverIndex < DriverCount)
+		{
+			UE_LOG(LogFMOD, Log, TEXT("Selected driver %d"), NewDriverIndex);
+			verifyfmod(LowLevelSystem->setDriver(NewDriverIndex));
+		}
+		else
+		{
+			UE_LOG(LogFMOD, Warning, TEXT("Driver %d out of range"), NewDriverIndex);
+		}
+	}
+}
+

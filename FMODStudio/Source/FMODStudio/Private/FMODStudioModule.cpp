@@ -470,11 +470,32 @@ void FFMODStudioModule::CreateStudioSystem(EFMODSystemContext::Type Type)
 	verifyfmod(FMOD::Studio::System::create(&StudioSystem[Type]));
 	FMOD::System* lowLevelSystem = nullptr;
 	verifyfmod(StudioSystem[Type]->getLowLevelSystem(&lowLevelSystem));
+
+	int DriverIndex = 0;
+	if (!Settings.InitialOutputDriverName.IsEmpty())
+	{
+		int DriverCount = 0;
+		verifyfmod(lowLevelSystem->getNumDrivers(&DriverCount));
+		for (int id=0; id<DriverCount; ++id)
+		{
+			char DriverNameUTF8[256] = {};
+			verifyfmod(lowLevelSystem->getDriverInfo(id, DriverNameUTF8, sizeof(DriverNameUTF8), 0, 0, 0, 0));
+			FString DriverName(UTF8_TO_TCHAR(DriverNameUTF8));
+			UE_LOG(LogFMOD, Log, TEXT("Driver %d: %s"), id, *DriverName);
+			if (DriverName.Contains(Settings.InitialOutputDriverName))
+			{
+				UE_LOG(LogFMOD, Log, TEXT("Selected driver %d"), id);
+				DriverIndex = id;
+			}
+		}
+		verifyfmod(lowLevelSystem->setDriver(DriverIndex));
+	}
+
 	int SampleRate = Settings.SampleRate;
 	if (Settings.bMatchHardwareSampleRate)
 	{
 		int SystemSampleRate = 0;
-		verifyfmod(lowLevelSystem->getDriverInfo(0, nullptr, 0, nullptr, &SystemSampleRate, nullptr, nullptr));
+		verifyfmod(lowLevelSystem->getDriverInfo(DriverIndex, nullptr, 0, nullptr, &SystemSampleRate, nullptr, nullptr));
 		if (SystemSampleRate >= 44100 && SystemSampleRate <= 48000)
 		{
 			UE_LOG(LogFMOD, Log, TEXT("Setting system sample rate %d"), SystemSampleRate);

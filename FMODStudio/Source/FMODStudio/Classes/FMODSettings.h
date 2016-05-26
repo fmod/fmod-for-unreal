@@ -110,6 +110,12 @@ public:
 	int32 StudioUpdatePeriod;
 
 	/**
+	 * Output device to choose at system start up, or empty for default.
+	 */
+	UPROPERTY(config, EditAnywhere, Category = InitSettings)
+	FString InitialOutputDriverName;
+
+	/**
 	 * Live update port to use, or 0 for default.
 	 */
 	UPROPERTY(config, EditAnywhere, Category = Advanced)

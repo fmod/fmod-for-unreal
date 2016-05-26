@@ -561,8 +561,8 @@ void FFMODStudioEditorModule::ValidateFMOD()
 			}
 		}
 	}
-	bool AnyBankFiles = false;
-
+	bool bAnyBankFiles = false;
+	// Check bank path
 	if (!FPaths::DirectoryExists(FullBankPath) || !FPaths::DirectoryExists(PlatformBankPath))
 	{
 		FText DirMessage = FText::Format(
@@ -578,7 +578,7 @@ void FFMODStudioEditorModule::ValidateFMOD()
 		Settings.GetAllBankPaths(BankFiles, true);
 		if (BankFiles.Num() != 0)
 		{
-			AnyBankFiles = true;
+			bAnyBankFiles = true;
 		}
 		else
 		{
@@ -590,7 +590,8 @@ void FFMODStudioEditorModule::ValidateFMOD()
 			ProblemsFound++;
 		}
 	}
-	if (AnyBankFiles)
+	// Look for banks that may have failed to load
+	if (bAnyBankFiles)
 	{
 		FMOD::Studio::System* StudioSystem = IFMODStudioModule::Get().GetStudioSystem(EFMODSystemContext::Auditioning);
 		int BankCount = 0;
@@ -643,6 +644,7 @@ void FFMODStudioEditorModule::ValidateFMOD()
 			}
 		}
 	}
+	// Look for required plugins that have not been registered
 	TArray<FString> RequiredPlugins = IFMODStudioModule::Get().GetRequiredPlugins();
 	if (RequiredPlugins.Num() != 0 && Settings.PluginFiles.Num() == 0)
 	{
@@ -658,10 +660,31 @@ void FFMODStudioEditorModule::ValidateFMOD()
 		FMessageDialog::Open(EAppMsgType::Ok, PluginMessage);
 		ProblemsFound++;
 	}
-
+	// Look for FMOD in packaging settings
+	UProjectPackagingSettings* PackagingSettings = Cast<UProjectPackagingSettings>(UProjectPackagingSettings::StaticClass()->GetDefaultObject());
+	bool bPackagingFound = false;
+	for (int i=0; i<PackagingSettings->DirectoriesToAlwaysStageAsUFS.Num(); ++i)
+	{
+		// We allow subdirectory references, such as "FMOD/Mobile"
+		if (PackagingSettings->DirectoriesToAlwaysStageAsUFS[i].Path.StartsWith(Settings.BankOutputDirectory.Path))
+		{
+			bPackagingFound = true;
+			break;
+		}
+	}
+	if (!bPackagingFound)
+	{
+		ProblemsFound++;
+		if (EAppReturnType::Yes == FMessageDialog::Open(EAppMsgType::YesNo, LOCTEXT("PackagingFMOD_Ask", "FMOD has not been added to the \"Additional Non-Asset Directories to Package\" list.\n\nDo you want add it now?")))
+		{
+			PackagingSettings->DirectoriesToAlwaysStageAsUFS.Add(Settings.BankOutputDirectory);
+			PackagingSettings->UpdateDefaultConfigFile();
+		}
+	}
+	// Summary
 	if (ProblemsFound)
 	{
-		FMessageDialog::Open(EAppMsgType::Ok, LOCTEXT("SetStudioBuildStudio_FinishedBad", "Finished validation.  Problems were detected.\n"));
+		FMessageDialog::Open(EAppMsgType::Ok, LOCTEXT("SetStudioBuildStudio_FinishedBad", "Finished validation.\n"));
 	}
 	else
 	{

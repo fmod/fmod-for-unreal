@@ -20,7 +20,7 @@ class UFMODAsset;
 class UFMODEvent;
 class USceneComponent;
 
-USTRUCT()
+USTRUCT(BlueprintType)
 struct FFMODEventInstance
 {
 	GENERATED_USTRUCT_BODY()
@@ -139,6 +139,13 @@ class FMODSTUDIO_API UFMODBlueprintStatics : public UBlueprintFunctionLibrary
 	UFUNCTION(BlueprintCallable, Category = "Audio|FMOD|Bus", meta = (UnsafeDuringActorConstruction = "true"))
 	static void BusSetMute(class UFMODBus* Bus, bool bMute);
 
+	/** Set fader level on a VCA
+	 * @param Vca - VCA to use
+	 * @param Level - fader level
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Audio|FMOD|VCA", meta = (UnsafeDuringActorConstruction = "true"))
+	static void VCASetFaderLevel(class UFMODVCA* Vca, float Level);
+
 	/** Returns whether this FMOD Event Instance is valid.  The instance will be invalidated when the sound stops.
 	 * @param EventInstance - Event instance
 	 */
@@ -205,4 +212,20 @@ class FMODSTUDIO_API UFMODBlueprintStatics : public UBlueprintFunctionLibrary
 	 */
 	UFUNCTION(BlueprintCallable, Category="Audio|FMOD|EventInstance", meta = (UnsafeDuringActorConstruction = "true"))
 	static void EventInstanceSetTransform(FFMODEventInstance EventInstance, const FTransform& Location);
+
+	/** List all output device names.
+	 */
+	UFUNCTION(BlueprintCallable, Category="Audio|FMOD")
+	static TArray<FString> GetOutputDrivers();
+
+	/** Set current output device by name or part of the name.
+	 */
+	UFUNCTION(BlueprintCallable, Category="Audio|FMOD")
+	static void SetOutputDriverByName(FString NewDriverName);
+
+	/** Set current output device by its index from GetOutputDrivers.
+	 */
+	UFUNCTION(BlueprintCallable, Category="Audio|FMOD")
+	static void SetOutputDriverByIndex(int NewDriverIndex);
+
 };

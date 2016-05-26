@@ -51,6 +51,14 @@ namespace UnrealBuildTool.Rules
 						Definitions.Add("FMOD_OSP_SUPPORTED=1");
 					}
 					break;
+				case UnrealTargetPlatform.Android:
+					if (System.IO.File.Exists(System.IO.Path.Combine(BasePath, "armeabi-v7a/libovrfmod.so")))
+					{
+						PublicAdditionalLibraries.Add(System.IO.Path.Combine(BasePath, "armeabi-v7a/libovrfmod.so"));
+						PublicDelayLoadDLLs.Add("libovrfmod.so");
+						Definitions.Add("FMOD_OSP_SUPPORTED=1");
+					}
+					break;
 				default:
 					break;
 			}

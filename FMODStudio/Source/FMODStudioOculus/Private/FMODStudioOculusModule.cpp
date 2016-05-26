@@ -72,12 +72,12 @@ void FFMODStudioOculusModule::StartupModule()
 
 void FFMODStudioOculusModule::PostLoadCallback()
 {
-	UE_LOG(LogFMODOculus, Log, TEXT("PostLoadCallback"));
+	UE_LOG(LogFMODOculus, Verbose, TEXT("PostLoadCallback"));
 }
 
 void FFMODStudioOculusModule::ShutdownModule()
 {
-	UE_LOG(LogFMODOculus, Log, TEXT("ShutdownModule"));
+	UE_LOG(LogFMODOculus, Verbose, TEXT("ShutdownModule"));
 }
 
 void FFMODStudioOculusModule::OnInitialize()
@@ -95,18 +95,18 @@ void FFMODStudioOculusModule::OnInitialize()
 	FMOD::Studio::System* StudioSystem = IFMODStudioModule::Get().GetStudioSystem(EFMODSystemContext::Runtime);
 	if (!StudioSystem)
 	{
-		UE_LOG(LogFMODOculus, Verbose, TEXT("StudioSystem is null - skipping init"));
+		UE_LOG(LogFMODOculus, Log, TEXT("StudioSystem is null - skipping init"));
 		return;
 	}
 
 	if (!IFMODStudioModule::Get().LoadPlugin(TEXT("ovrfmod")))
 	{
-		UE_LOG(LogFMODOculus, Verbose, TEXT("ovrfmod failed to load - skipping init"));
+		UE_LOG(LogFMODOculus, Log, TEXT("ovrfmod failed to load - skipping init"));
 
 		return;
 	}
 
-	UE_LOG(LogFMODOculus, Verbose, TEXT("Initialising OSP"));
+	UE_LOG(LogFMODOculus, Log, TEXT("Initialising OSP"));
 
 	FMOD::System* LowLevelSystem = nullptr;
 	verifyfmod(StudioSystem->getLowLevelSystem(&LowLevelSystem));
@@ -116,7 +116,8 @@ void FFMODStudioOculusModule::OnInitialize()
 		unsigned int BufferSize = 0;
 		verifyfmod(LowLevelSystem->getSoftwareFormat(&SampleRate, nullptr, nullptr));
 		verifyfmod(LowLevelSystem->getDSPBufferSize(&BufferSize, nullptr));
-		if (OSP_FMOD_Initialize(SampleRate, BufferSize))
+		int returncode = OSP_FMOD_Initialize(SampleRate, BufferSize);
+		if (returncode == 0)
 		{
 			bRunning = true;
 			// Unreal units are per cm, but our plugin converts everything to metres when calling into Studio
@@ -124,11 +125,11 @@ void FFMODStudioOculusModule::OnInitialize()
 			UFMODOculusBlueprintStatics::SetEarlyReflectionsEnabled(Settings.bEarlyReflectionsEnabled);
 			UFMODOculusBlueprintStatics::SetLateReverberationEnabled(Settings.bLateReverberationEnabled);
 			UFMODOculusBlueprintStatics::SetRoomParameters(Settings.RoomParameters);
-			UE_LOG(LogFMODOculus, Verbose, TEXT("OSP_FMOD_Initialize returned true - running with Oculus plugin enabled"));
+			UE_LOG(LogFMODOculus, Log, TEXT("OSP_FMOD_Initialize returned success - running with Oculus plugin enabled"));
 		}
 		else
 		{
-			UE_LOG(LogFMODOculus, Error, TEXT("OSP_FMOD_Initialize returned false"));
+			UE_LOG(LogFMODOculus, Error, TEXT("OSP_FMOD_Initialize returned error %s"), returncode);
 		}
 	}
 #else
