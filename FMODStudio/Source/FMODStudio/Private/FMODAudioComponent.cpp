@@ -645,14 +645,15 @@ void UFMODAudioComponent::OnPlaybackCompleted()
 	bIsActive = false;
 	SetComponentTickEnabled(false);
 
-	OnEventStopped.Broadcast();
-
 	if (StudioInstance)
 	{
 		StudioInstance->setCallback(nullptr);
 		StudioInstance->release();
 		StudioInstance = nullptr;
 	}
+
+	// Fire callback after we have cleaned up our instance
+	OnEventStopped.Broadcast();
 
 	// Auto destruction is handled via marking object for deletion.
 	if (bAutoDestroy)

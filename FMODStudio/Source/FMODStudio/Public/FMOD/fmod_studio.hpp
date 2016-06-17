@@ -131,6 +131,7 @@ namespace Studio
         FMOD_RESULT F_API getMaximumDistance(float *distance) const;
         FMOD_RESULT F_API getSoundSize(float *size) const;
 
+        FMOD_RESULT F_API isSnapshot(bool *snapshot) const;
         FMOD_RESULT F_API isOneshot(bool *oneshot) const;
         FMOD_RESULT F_API isStream(bool *isStream) const;
         FMOD_RESULT F_API is3D(bool *is3D) const;
@@ -179,7 +180,7 @@ namespace Studio
         FMOD_RESULT F_API get3DAttributes(FMOD_3D_ATTRIBUTES *attributes) const;
         FMOD_RESULT F_API set3DAttributes(const FMOD_3D_ATTRIBUTES *attributes);
 
-        FMOD_RESULT F_API getProperty(FMOD_STUDIO_EVENT_PROPERTY index, float* value) const;
+        FMOD_RESULT F_API getProperty(FMOD_STUDIO_EVENT_PROPERTY index, float *value) const;
         FMOD_RESULT F_API setProperty(FMOD_STUDIO_EVENT_PROPERTY index, float value);
 
         FMOD_RESULT F_API getPaused(bool *paused) const;
@@ -260,8 +261,8 @@ namespace Studio
         FMOD_RESULT F_API getPaused(bool *paused) const;
         FMOD_RESULT F_API setPaused(bool paused);
 
-        FMOD_RESULT F_API getMute(bool *paused) const;
-        FMOD_RESULT F_API setMute(bool paused);
+        FMOD_RESULT F_API getMute(bool *mute) const;
+        FMOD_RESULT F_API setMute(bool mute);
 
         FMOD_RESULT F_API stopAllEvents(FMOD_STUDIO_STOP_MODE mode);
 
