@@ -510,3 +510,29 @@ void UFMODBlueprintStatics::SetOutputDriverByIndex(int NewDriverIndex)
 	}
 }
 
+void UFMODBlueprintStatics::MixerSuspend()
+{
+	UE_LOG(LogFMOD, Log, TEXT("MixerSuspend called"));
+	FMOD::Studio::System* StudioSystem = IFMODStudioModule::Get().GetStudioSystem(EFMODSystemContext::Runtime);
+	if (StudioSystem != nullptr)
+	{
+		FMOD::System* LowLevelSystem = nullptr;
+		verifyfmod(StudioSystem->getLowLevelSystem(&LowLevelSystem));
+
+		verifyfmod(LowLevelSystem->mixerSuspend());
+	}
+}
+
+void UFMODBlueprintStatics::MixerResume()
+{
+	UE_LOG(LogFMOD, Log, TEXT("MixerResume called"));
+	FMOD::Studio::System* StudioSystem = IFMODStudioModule::Get().GetStudioSystem(EFMODSystemContext::Runtime);
+	if (StudioSystem != nullptr)
+	{
+		FMOD::System* LowLevelSystem = nullptr;
+		verifyfmod(StudioSystem->getLowLevelSystem(&LowLevelSystem));
+
+		verifyfmod(LowLevelSystem->mixerResume());
+	}
+}
+

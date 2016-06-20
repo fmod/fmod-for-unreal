@@ -228,4 +228,14 @@ class FMODSTUDIO_API UFMODBlueprintStatics : public UBlueprintFunctionLibrary
 	UFUNCTION(BlueprintCallable, Category="Audio|FMOD")
 	static void SetOutputDriverByIndex(int NewDriverIndex);
 
+	/** Suspend the FMOD mixer.  Used when suspending the application.
+	*/
+	UFUNCTION(BlueprintCallable, Category = "Audio|FMOD")
+	static void MixerSuspend();
+
+	/** Resume the FMOD mixer.  Used when resuming the application.
+	*/
+	UFUNCTION(BlueprintCallable, Category = "Audio|FMOD")
+	static void MixerResume();
+
 };
