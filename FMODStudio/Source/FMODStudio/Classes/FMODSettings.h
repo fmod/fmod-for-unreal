@@ -116,6 +116,12 @@ public:
 	FString InitialOutputDriverName;
 
 	/**
+	 * Lock all mixer buses at startup, making sure they are created up front.
+	 */
+	UPROPERTY(config, EditAnywhere, Category = InitSettings)
+	bool bLockAllBuses;
+
+	/**
 	 * Live update port to use, or 0 for default.
 	 */
 	UPROPERTY(config, EditAnywhere, Category = Advanced)

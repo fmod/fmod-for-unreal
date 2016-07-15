@@ -5,12 +5,6 @@
 #include "FMODAsset.h"
 #include "FMODVCA.generated.h"
 
-/* Purely for doxygen generation */
-#ifdef GENERATE_DOX
-	#define UCLASS(...)
-	#define UPROPERTY(...) public:
-#endif
-
 /**
  * FMOD VCA Asset.
  */

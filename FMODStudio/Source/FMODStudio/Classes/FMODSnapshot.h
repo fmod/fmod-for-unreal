@@ -5,12 +5,6 @@
 #include "FMODEvent.h"
 #include "FMODSnapshot.generated.h"
 
-/* Purely for doxygen generation */
-#ifdef GENERATE_DOX
-	#define UCLASS(...)
-	#define UPROPERTY(...) public:
-#endif
-
 /**
  * FMOD Snapshot Asset.
  */

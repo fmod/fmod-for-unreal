@@ -87,6 +87,12 @@ class FMODSTUDIO_API UFMODBlueprintStatics : public UBlueprintFunctionLibrary
 	UFUNCTION(BlueprintCallable, Category = "Audio|FMOD", meta = (UnsafeDuringActorConstruction = "true"))
 	static void UnloadBank(class UFMODBank* Bank);
 
+	/** Returns true if a bank is loaded.
+	* @param Bank - bank to query
+	*/
+	UFUNCTION(BlueprintCallable, Category = "Audio|FMOD", meta = (UnsafeDuringActorConstruction = "true"))
+	static bool IsBankLoaded(class UFMODBank* Bank);
+
 	/** Load bank sample data.
 	 * @param Bank - bank to load sample data from
 	 */

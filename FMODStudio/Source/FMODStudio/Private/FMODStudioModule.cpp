@@ -347,7 +347,7 @@ FString FFMODStudioModule::GetDllPath(const TCHAR* ShortName)
 
 bool FFMODStudioModule::LoadLibraries()
 {
-#if PLATFORM_IOS || PLATFORM_ANDROID || PLATFORM_LINUX
+#if PLATFORM_IOS || PLATFORM_ANDROID || PLATFORM_LINUX || PLATFORM_MAC
 	return true; // Nothing to do on those platforms
 #elif PLATFORM_HTML5
 	UE_LOG(LogFMOD, Error, TEXT("FMOD Studio not supported on HTML5"));
@@ -494,16 +494,17 @@ void FFMODStudioModule::CreateStudioSystem(EFMODSystemContext::Type Type)
 	int SampleRate = Settings.SampleRate;
 	if (Settings.bMatchHardwareSampleRate)
 	{
+		int DefaultSampleRate = 0;
+		verifyfmod(lowLevelSystem->getSoftwareFormat(&DefaultSampleRate, 0, 0));
 		int SystemSampleRate = 0;
 		verifyfmod(lowLevelSystem->getDriverInfo(DriverIndex, nullptr, 0, nullptr, &SystemSampleRate, nullptr, nullptr));
-		if (SystemSampleRate >= 44100 && SystemSampleRate <= 48000)
+		UE_LOG(LogFMOD, Log, TEXT("Default sample rate = %d"), DefaultSampleRate);
+		UE_LOG(LogFMOD, Log, TEXT("System sample rate = %d"), SystemSampleRate);
+		if (DefaultSampleRate >= 44100 && DefaultSampleRate <= 48000 &&
+			SystemSampleRate >= 44100 && SystemSampleRate <= 48000)
 		{
-			UE_LOG(LogFMOD, Log, TEXT("Setting system sample rate %d"), SystemSampleRate);
+			UE_LOG(LogFMOD, Log, TEXT("Matching system sample rate %d"), SystemSampleRate);
 			SampleRate = SystemSampleRate;
-		}
-		else
-		{
-			UE_LOG(LogFMOD, Warning, TEXT("Ignoring system sample rate %d"), SystemSampleRate);
 		}
 	}
 
@@ -970,7 +971,8 @@ void FFMODStudioModule::LoadBanks(EFMODSystemContext::Type Type)
 		*/
 		bool bLoadAllBanks = ((Type == EFMODSystemContext::Auditioning) || Settings.bLoadAllBanks);
 		bool bLoadSampleData = ((Type == EFMODSystemContext::Runtime) && Settings.bLoadAllSampleData);
-		FMOD_STUDIO_LOAD_BANK_FLAGS BankFlags = (bLoadSampleData ? FMOD_STUDIO_LOAD_BANK_NORMAL : FMOD_STUDIO_LOAD_BANK_NONBLOCKING);
+		bool bLockAllBuses = ((Type == EFMODSystemContext::Runtime) && Settings.bLockAllBuses);
+		FMOD_STUDIO_LOAD_BANK_FLAGS BankFlags = ((bLoadSampleData || bLockAllBuses) ? FMOD_STUDIO_LOAD_BANK_NORMAL : FMOD_STUDIO_LOAD_BANK_NONBLOCKING);
 
 		// Always load the master bank at startup
 		FString MasterBankPath = Settings.GetMasterBankPath();
@@ -1026,7 +1028,27 @@ void FFMODStudioModule::LoadBanks(EFMODSystemContext::Type Type)
 					}
 				}
 			}
+
+			// Optionally lock all buses to make sure they are created
+			if (Settings.bLockAllBuses)
+			{
+				UE_LOG(LogFMOD, Verbose, TEXT("Locking all buses"));
+				int BusCount = 0;
+				verifyfmod(MasterBank->getBusCount(&BusCount));
+				if (BusCount != 0)
+				{
+					TArray<FMOD::Studio::Bus*> BusList;
+					BusList.AddZeroed(BusCount);
+					verifyfmod(MasterBank->getBusList(BusList.GetData(), BusCount, &BusCount));
+					BusList.SetNum(BusCount);
+					for (int BusIdx=0; BusIdx<BusCount; ++BusIdx)
+					{
+						verifyfmod(BusList[BusIdx]->lockChannelGroup());
+					}
+				}
+			}
 		}
+
 		// Wait for all banks to load.
 		StudioSystem[Type]->flushCommands();
 

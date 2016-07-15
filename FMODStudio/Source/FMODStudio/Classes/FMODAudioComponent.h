@@ -52,13 +52,6 @@ namespace FMOD
 struct FMOD_STUDIO_TIMELINE_MARKER_PROPERTIES;
 struct FMOD_STUDIO_TIMELINE_BEAT_PROPERTIES;
 
-
-/* Purely for doxygen generation */
-#ifdef GENERATE_DOX
-	#define UCLASS(...)
-	#define UPROPERTY(...) public:
-#endif
-
 /**
  * Plays FMOD Studio events.
  */

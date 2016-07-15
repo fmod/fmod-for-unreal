@@ -25,6 +25,7 @@ UFMODSettings::UFMODSettings(const FObjectInitializer& ObjectInitializer)
 	StudioUpdatePeriod = 0;
 	LiveUpdatePort = 0;
 	bMatchHardwareSampleRate = true;
+	bLockAllBuses = false;
 }
 
 FString UFMODSettings::GetFullBankPath() const

@@ -5,12 +5,6 @@
 #include "Sound/ReverbEffect.h"
 #include "FMODSnapshotReverb.generated.h"
 
-/* Purely for doxygen generation */
-#ifdef GENERATE_DOX
-	#define UCLASS(...)
-	#define UPROPERTY(...) public:
-#endif
-
 /**
  * FMOD Event Asset.
  */

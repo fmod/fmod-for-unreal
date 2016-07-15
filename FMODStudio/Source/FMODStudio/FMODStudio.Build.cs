@@ -76,6 +76,7 @@ namespace UnrealBuildTool.Rules
 			bool bAddRuntimeDependencies = true;
 			bool bAddDelayLoad = false;
 			bool bShortLinkNames = false;
+			bool bLinkFromBinaries = true;
 			switch (Target.Platform)
 			{
 				case UnrealTargetPlatform.Win32:
@@ -92,6 +93,8 @@ namespace UnrealBuildTool.Rules
 				case UnrealTargetPlatform.Mac:
 					linkExtension = dllExtension = ".dylib";
 					libPrefix = "lib";
+					bLinkFromBinaries = false;
+
 					break;
 				case UnrealTargetPlatform.XboxOne:
 					linkExtension = "_vc.lib";
@@ -160,10 +163,16 @@ namespace UnrealBuildTool.Rules
 				PublicAdditionalLibraries.Add(System.String.Format("fmod{0}{1}", configName, platformMidName));
 				PublicAdditionalLibraries.Add(System.String.Format("fmodstudio{0}{1}", configName, platformMidName));
 			}
-			else
+			else if (bLinkFromBinaries)
 			{
 				PublicAdditionalLibraries.Add(fmodLibPath);
 				PublicAdditionalLibraries.Add(fmodStudioLibPath);
+			}
+			else
+			{
+				string LibPath = System.IO.Path.Combine(ModuleDirectory, "../../Libs/Mac/");
+				PublicAdditionalLibraries.Add(System.String.Format("{0}libfmod{1}.dylib", LibPath, configName));			
+				PublicAdditionalLibraries.Add(System.String.Format("{0}libfmodStudio{1}.dylib", LibPath, configName));		
 			}
 
 			if (bAddRuntimeDependencies)
