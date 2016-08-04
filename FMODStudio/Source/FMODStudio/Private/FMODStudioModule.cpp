@@ -124,7 +124,7 @@ public:
 	virtual void PostLoadCallback() override;
 	virtual void ShutdownModule() override;
 
-	FString GetDllPath(const TCHAR* ShortName);
+	FString GetDllPath(const TCHAR* ShortName, bool bExplicitPath, bool bUseLibPrefix);
 	void* LoadDll(const TCHAR* ShortName);
 
 	bool LoadLibraries();
@@ -280,19 +280,24 @@ bool FFMODStudioModule::LoadPlugin(const TCHAR* ShortName)
 	verifyfmod(StudioSystem[EFMODSystemContext::Runtime]->getLowLevelSystem(&LowLevelSystem));
 
 	FMOD_RESULT PluginLoadResult;
-	for (int attempt=0; attempt<2; ++attempt)
+
+	for (int useLib = 0; useLib<2; ++useLib)
 	{
-		FString AttemptName = FString(ShortName) + AttemptPrefixes[attempt];
-		FString PluginPath = GetDllPath(*AttemptName);
-
-		UE_LOG(LogFMOD, Log, TEXT("Trying to load plugin file at location: %s"), *PluginPath);
-
-		unsigned int Handle = 0;
-		PluginLoadResult = LowLevelSystem->loadPlugin(TCHAR_TO_UTF8(*PluginPath), &Handle, 0);
-		if (PluginLoadResult == FMOD_OK)
+		for (int attempt = 0; attempt<2; ++attempt)
 		{
-			UE_LOG(LogFMOD, Log, TEXT("Loaded plugin %s"), ShortName);
-			return true;
+			// Try to load combinations of 64/32 suffix and lib prefix for relevant platforms
+			FString AttemptName = FString(ShortName) + AttemptPrefixes[attempt];
+			FString PluginPath = GetDllPath(*AttemptName, true, useLib != 0);
+
+			UE_LOG(LogFMOD, Log, TEXT("Trying to load plugin file at location: %s"), *PluginPath);
+
+			unsigned int Handle = 0;
+			PluginLoadResult = LowLevelSystem->loadPlugin(TCHAR_TO_UTF8(*PluginPath), &Handle, 0);
+			if (PluginLoadResult == FMOD_OK)
+			{
+				UE_LOG(LogFMOD, Log, TEXT("Loaded plugin %s"), ShortName);
+				return true;
+			}
 		}
 	}
 	UE_LOG(LogFMOD, Error, TEXT("Failed to load plugin '%s', sounds may not play"), ShortName);
@@ -301,14 +306,14 @@ bool FFMODStudioModule::LoadPlugin(const TCHAR* ShortName)
 
 void* FFMODStudioModule::LoadDll(const TCHAR* ShortName)
 {
-	FString LibPath = GetDllPath(ShortName);
+	FString LibPath = GetDllPath(ShortName, false, true);
 
 	void* Handle = nullptr;
 	UE_LOG(LogFMOD, Log, TEXT("FFMODStudioModule::LoadDll: Loading %s"), *LibPath);
 	// Unfortunately Unreal's platform loading code hasn't been implemented on all platforms so we wrap it
 	Handle = FMODPlatformLoadDll(*LibPath);
 #if WITH_EDITOR
-	if (!Handle)
+	if (!Handle && !FApp::IsUnattended())
 	{
 		FString Message = TEXT("Couldn't load FMOD DLL ") + LibPath;
 		FPlatformMisc::MessageBoxExt(EAppMsgType::Ok, *Message, TEXT("Error"));
@@ -321,18 +326,20 @@ void* FFMODStudioModule::LoadDll(const TCHAR* ShortName)
 	return Handle;
 }
 
-FString FFMODStudioModule::GetDllPath(const TCHAR* ShortName)
+FString FFMODStudioModule::GetDllPath(const TCHAR* ShortName, bool bExplicitPath, bool bUseLibPrefix)
 {
+	const TCHAR* LibPrefixName = (bUseLibPrefix ? TEXT("lib") : TEXT(""));
 #if PLATFORM_MAC
-	return FString::Printf(TEXT("%s/Mac/lib%s.dylib"), *BaseLibPath, ShortName);
+	return FString::Printf(TEXT("%s/Mac/%s%s.dylib"), *BaseLibPath, LibPrefixName, ShortName);
 #elif PLATFORM_PS4
-	return FString::Printf(TEXT("lib%s.prx"), ShortName);
+	const TCHAR* DirPrefix = (bExplicitPath ? TEXT("/app0/prx/") : TEXT(""));
+	return FString::Printf(TEXT("%s%s%s.prx"), DirPrefix, LibPrefixName, ShortName);
 #elif PLATFORM_XBOXONE
 	return FString::Printf(TEXT("%s.dll"), ShortName);
 #elif PLATFORM_ANDROID
-	return FString::Printf(TEXT("lib%s.so"), ShortName);
+	return FString::Printf(TEXT("%s%s.so"), LibPrefixName, ShortName);
 #elif PLATFORM_LINUX
-	return FString::Printf(TEXT("lib%s.so"), ShortName);
+	return FString::Printf(TEXT("%s%s.so"), LibPrefixName, ShortName);
 #elif PLATFORM_WINDOWS
 	#if PLATFORM_64BITS
 		return FString::Printf(TEXT("%s/Win64/%s.dll"), *BaseLibPath, ShortName);
@@ -491,6 +498,15 @@ void FFMODStudioModule::CreateStudioSystem(EFMODSystemContext::Type Type)
 		verifyfmod(lowLevelSystem->setDriver(DriverIndex));
 	}
 
+	FTCHARToUTF8 WavWriterDestUTF8(*Settings.WavWriterPath);
+	void* InitData = nullptr;
+	if (Type == EFMODSystemContext::Runtime && Settings.WavWriterPath.Len() > 0)
+	{
+		UE_LOG(LogFMOD, Log, TEXT("Running with Wav Writer: %s"), *Settings.WavWriterPath);
+		verifyfmod(lowLevelSystem->setOutput(FMOD_OUTPUTTYPE_WAVWRITER));
+		InitData = (void*)WavWriterDestUTF8.Get();
+	}
+
 	int SampleRate = Settings.SampleRate;
 	if (Settings.bMatchHardwareSampleRate)
 	{
@@ -542,7 +558,7 @@ void FFMODStudioModule::CreateStudioSystem(EFMODSystemContext::Type Type)
 	advStudioSettings.studioUpdatePeriod = Settings.StudioUpdatePeriod;
 	verifyfmod(StudioSystem[Type]->setAdvancedSettings(&advStudioSettings));
 
-	verifyfmod(StudioSystem[Type]->initialize(Settings.TotalChannelCount, StudioInitFlags, InitFlags, 0));
+	verifyfmod(StudioSystem[Type]->initialize(Settings.TotalChannelCount, StudioInitFlags, InitFlags, InitData));
 
 	// Don't bother loading plugins during editor, only during PIE or in game
 	if (Type == EFMODSystemContext::Runtime)

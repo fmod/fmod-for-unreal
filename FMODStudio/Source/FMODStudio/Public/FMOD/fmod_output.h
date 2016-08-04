@@ -10,7 +10,7 @@
 #ifndef _FMOD_OUTPUT_H
 #define _FMOD_OUTPUT_H
 
-#define FMOD_OUTPUT_PLUGIN_VERSION 1
+#define FMOD_OUTPUT_PLUGIN_VERSION 2
 
 typedef struct FMOD_OUTPUT_STATE        FMOD_OUTPUT_STATE;
 typedef struct FMOD_OUTPUT_OBJECT3DINFO FMOD_OUTPUT_OBJECT3DINFO;
@@ -36,10 +36,15 @@ typedef FMOD_RESULT (F_CALLBACK *FMOD_OUTPUT_OBJECT3DALLOC_CALLBACK)    (FMOD_OU
 typedef FMOD_RESULT (F_CALLBACK *FMOD_OUTPUT_OBJECT3DFREE_CALLBACK)     (FMOD_OUTPUT_STATE *output_state, void *object3d);
 typedef FMOD_RESULT (F_CALLBACK *FMOD_OUTPUT_OBJECT3DUPDATE_CALLBACK)   (FMOD_OUTPUT_STATE *output_state, void *object3d, const FMOD_OUTPUT_OBJECT3DINFO *info);
 
+typedef FMOD_RESULT (F_CALLBACK *FMOD_OUTPUT_OPENPORT_CALLBACK)         (FMOD_OUTPUT_STATE *output, FMOD_PORT_TYPE portType, FMOD_PORT_INDEX portIndex, int *portId, int *portRate, int *portChannels, FMOD_SOUND_FORMAT *portFormat);
+typedef FMOD_RESULT (F_CALLBACK *FMOD_OUTPUT_CLOSEPORT_CALLBACK)        (FMOD_OUTPUT_STATE *output, int portId);
+    
+
 /*
     FMOD_OUTPUT_STATE functions
 */
 typedef FMOD_RESULT (F_CALLBACK *FMOD_OUTPUT_READFROMMIXER)             (FMOD_OUTPUT_STATE *output_state, void *buffer, unsigned int length);
+typedef FMOD_RESULT (F_CALLBACK *FMOD_OUTPUT_COPYPORT)                  (FMOD_OUTPUT_STATE *output, int portId, void *buffer, unsigned int length);
 typedef void *      (F_CALLBACK *FMOD_OUTPUT_ALLOC)                     (unsigned int size, unsigned int align, const char *file, int line);
 typedef void        (F_CALLBACK *FMOD_OUTPUT_FREE)                      (void *ptr, const char *file, int line);
 typedef void        (F_CALLBACK *FMOD_OUTPUT_LOG)                       (FMOD_DEBUG_FLAGS level, const char *file, int line, const char *function, const char *string, ...);
@@ -52,35 +57,63 @@ typedef void        (F_CALLBACK *FMOD_OUTPUT_LOG)                       (FMOD_DE
     When creating an output, declare one of these and provide the relevant callbacks and name for FMOD to use when it creates and uses an output of this type.
 
     [REMARKS]
+    There are several methods for driving the FMOD mixer to service the audio hardware.
+
+    * Polled: if the audio hardware must be polled regularly set 'polling' to TRUE, FMOD will create a mixer thread that calls back via FMOD_OUTPUT_GETPOSITION_CALLBACK. Once an entire block of samples have played FMOD will call FMOD_OUTPUT_LOCK_CALLBACK to allow you to provide a destination pointer to write the next mix.
+    * Callback: if the audio hardware provides a callback where you must provide a buffer of samples then set 'polling' to FALSE and directly call FMOD_OUTPUT_READFROMMIXER.
+    * Synchronization: if the audio hardware provides a synchronization primitive to wait on then set 'polling' to FALSE and give a FMOD_OUTPUT_MIXER_CALLBACK pointer. FMOD will create a mixer thread and call you repeatedly once FMOD_OUTPUT_START_CALLBACK has finished, you must wait on your primitive in this callback and upon wake call FMOD_OUTPUT_READFROMMIXER.
+    * Non-realtime: if you are writing a file or driving a non-realtime output call FMOD_OUTPUT_READFROMMIXER from FMOD_OUTPUT_UPDATE_CALLBACK.
+
+    Callbacks marked with 'user thread' will be called in response to the user of the FMOD low level API, in the case of the Studio runtime API, the user is the Studio Update thread.
+
     Members marked with [r] mean read only for the developer, read/write for the FMOD system.
+
     Members marked with [w] mean read/write for the developer, read only for the FMOD system.
 
     [SEE_ALSO]
     FMOD_OUTPUT_STATE
+    FMOD_OUTPUT_GETNUMDRIVERS_CALLBACK
+    FMOD_OUTPUT_GETDRIVERINFO_CALLBACK
+    FMOD_OUTPUT_INIT_CALLBACK
+    FMOD_OUTPUT_START_CALLBACK
+    FMOD_OUTPUT_STOP_CALLBACK
+    FMOD_OUTPUT_CLOSE_CALLBACK
+    FMOD_OUTPUT_UPDATE_CALLBACK
+    FMOD_OUTPUT_GETHANDLE_CALLBACK
+    FMOD_OUTPUT_GETPOSITION_CALLBACK
+    FMOD_OUTPUT_LOCK_CALLBACK
+    FMOD_OUTPUT_UNLOCK_CALLBACK
+    FMOD_OUTPUT_MIXER_CALLBACK
+    FMOD_OUTPUT_OBJECT3DGETINFO_CALLBACK
+    FMOD_OUTPUT_OBJECT3DALLOC_CALLBACK
+    FMOD_OUTPUT_OBJECT3DFREE_CALLBACK
+    FMOD_OUTPUT_OBJECT3DUPDATE_CALLBACK
 ]
 */
 typedef struct FMOD_OUTPUT_DESCRIPTION
 {
-    unsigned int                            apiversion;         /* [w] The output plugin API version this plugin is built for. Set to this to FMOD_OUTPUT_PLUGIN_VERSION defined above. */
+    unsigned int                            apiversion;         /* [w] The output plugin API version this plugin is built for. Set to this to FMOD_OUTPUT_PLUGIN_VERSION. */
     const char                             *name;               /* [w] Name of the output plugin. */
     unsigned int                            version;            /* [w] Version of the output plugin. */
-    int                                     polling;            /* [w] If FMOD should regularly call 'getposition' to determine when to automatically buffer and mix ('lock' and 'unlock') set to TRUE (non zero), for manual control call FMOD_OUTPUT_READFROMMIXER yourself. */
-    FMOD_OUTPUT_GETNUMDRIVERS_CALLBACK      getnumdrivers;      /* [w] Number of attached sound devices. Called from System::getNumDrivers. */
-    FMOD_OUTPUT_GETDRIVERINFO_CALLBACK      getdriverinfo;      /* [w] Information about a particular sound device. Called from System::getDriverInfo. */
-    FMOD_OUTPUT_INIT_CALLBACK               init;               /* [w] Allocate resources and provide information about hardware capabilities. Called from System::init. */
-    FMOD_OUTPUT_START_CALLBACK              start;              /* [w] Initialization is complete, mixing is about to begin. Called from System::init. */
-    FMOD_OUTPUT_STOP_CALLBACK               stop;               /* [w] Mixing has finished, stop accepting audio data. Called from System::close. */
-    FMOD_OUTPUT_CLOSE_CALLBACK              close;              /* [w] Clean up resources allocated during 'init'. Called from System::init and System::close. */
-    FMOD_OUTPUT_UPDATE_CALLBACK             update;             /* [w] Update function that is called once a frame by the user. Called from System::update. */
-    FMOD_OUTPUT_GETHANDLE_CALLBACK          gethandle;          /* [w] Return a pointer to the internal device object used to share with other audio systems. Called from System::getOutputHandle. */
-    FMOD_OUTPUT_GETPOSITION_CALLBACK        getposition;        /* [w] ('polling' == TRUE) Provide the hardware playback position in the output ring buffer. Called before a mix. */
-    FMOD_OUTPUT_LOCK_CALLBACK               lock;               /* [w] ('polling' == TRUE) Provide a pointer that FMOD can write to for the next block of audio data. Called before a mix. */
-    FMOD_OUTPUT_UNLOCK_CALLBACK             unlock;             /* [w] ('polling' == TRUE) Optional callback to signify 'lock' has finished writing to the provided pointer. Called after a mix. */
-    FMOD_OUTPUT_MIXER_CALLBACK              mixer;              /* [w] ('polling' == FALSE) Mixer thread that will continually retrigger. Wait on a synchronization primitive until ready, then call FMOD_OUTPUT_READFROMMIXER, then leave the callback (will retrigger immediately if mixer is still running). Called continually after FMOD_OUTPUT_START_CALLBACK and before FMOD_OUTPUT_STOP_CALLBACK. */
-    FMOD_OUTPUT_OBJECT3DGETINFO_CALLBACK    object3dgetinfo;    /* [w] Provide information about the capabilities of the 3D object hardware. Called during a mix. */
-    FMOD_OUTPUT_OBJECT3DALLOC_CALLBACK      object3dalloc;      /* [w] Reserve a hardware resources for a single 3D object. Called during a mix. */
-    FMOD_OUTPUT_OBJECT3DFREE_CALLBACK       object3dfree;       /* [w] Release a hardware resource previously acquired with FMOD_OUTPUT_OBJECT3DALLOC_CALLBACK. Called during a mix. */
-    FMOD_OUTPUT_OBJECT3DUPDATE_CALLBACK     object3dupdate;     /* [w] Called once for every acquired 3D object every mix to provide 3D information and buffered audio. Called during a mix. */
+    int                                     polling;            /* [w] If TRUE (non-zero) a mixer thread is created that calls FMOD_OUTPUT_GETPOSITION_CALLBACK / FMOD_OUTPUT_LOCK_CALLBACK / FMOD_OUTPUT_UNLOCK_CALLBACK to drive the mixer. If FALSE (zero) you must call FMOD_OUTPUT_READFROMMIXER to drive the mixer yourself. */
+    FMOD_OUTPUT_GETNUMDRIVERS_CALLBACK      getnumdrivers;      /* [w] Required user thread callback to provide the number of attached sound devices. Called from System::getNumDrivers. */
+    FMOD_OUTPUT_GETDRIVERINFO_CALLBACK      getdriverinfo;      /* [w] Required user thread callback to provide information about a particular sound device. Called from System::getDriverInfo. */
+    FMOD_OUTPUT_INIT_CALLBACK               init;               /* [w] Required user thread callback to allocate resources and provide information about hardware capabilities. Called from System::init. */
+    FMOD_OUTPUT_START_CALLBACK              start;              /* [w] Optional user thread callback just before mixing should begin, calls to FMOD_OUTPUT_GETPOSITION_CALLBACK / FMOD_OUTPUT_LOCK_CALLBACK / FMOD_OUTPUT_UNLOCK_CALLBACK / FMOD_OUTPUT_MIXER_CALLBACK will start, you may call FMOD_OUTPUT_READFROMMIXER after this point. Called from System::init. */
+    FMOD_OUTPUT_STOP_CALLBACK               stop;               /* [w] Optional user thread callback just after mixing has finished, calls to FMOD_OUTPUT_GETPOSITION_CALLBACK / FMOD_OUTPUT_LOCK_CALLBACK / FMOD_OUTPUT_UNLOCK_CALLBACK / FMOD_OUTPUT_MIXER_CALLBACK have stopped, you may not call FMOD_OUTPUT_READFROMMIXER after this point. Called from System::close. */
+    FMOD_OUTPUT_CLOSE_CALLBACK              close;              /* [w] Required user thread callback to clean up resources allocated during FMOD_OUTPUT_INIT_CALLBACK. Called from System::init and System::close. */
+    FMOD_OUTPUT_UPDATE_CALLBACK             update;             /* [w] Optional user thread callback once per frame to update internal state. Called from System::update. */
+    FMOD_OUTPUT_GETHANDLE_CALLBACK          gethandle;          /* [w] Optional user thread callback to provide a pointer to the internal device object used to share with other audio systems. Called from System::getOutputHandle. */
+    FMOD_OUTPUT_GETPOSITION_CALLBACK        getposition;        /* [w] Required mixer thread callback (if 'polling' is TRUE) to provide the hardware playback position in the output ring buffer. Called before a mix. */
+    FMOD_OUTPUT_LOCK_CALLBACK               lock;               /* [w] Required mixer thread callback (if 'polling' is TRUE) to provide a pointer the mixer can write to for the next block of audio data. Called before a mix. */
+    FMOD_OUTPUT_UNLOCK_CALLBACK             unlock;             /* [w] Optional mixer thread callback (if 'polling' is TRUE) to signify the mixer has finished writing to the pointer from FMOD_OUTPUT_LOCK_CALLBACK. Called after a mix. */
+    FMOD_OUTPUT_MIXER_CALLBACK              mixer;              /* [w] Optional mixer thread callback (if 'polling' is FALSE) called repeatedly to give a thread for waiting on an audio hardware synchronization primitive (see remarks for details). Ensure you have a reasonable timeout (~200ms) on your synchronization primitive and allow this callback to return once per wakeup to avoid deadlocks. */
+    FMOD_OUTPUT_OBJECT3DGETINFO_CALLBACK    object3dgetinfo;    /* [w] Optional mixer thread callback to provide information about the capabilities of 3D object hardware. Called during a mix. */
+    FMOD_OUTPUT_OBJECT3DALLOC_CALLBACK      object3dalloc;      /* [w] Optional mixer thread callback to reserve a hardware resources for a single 3D object. Called during a mix. */
+    FMOD_OUTPUT_OBJECT3DFREE_CALLBACK       object3dfree;       /* [w] Optional mixer thread callback to release a hardware resource previously acquired with FMOD_OUTPUT_OBJECT3DALLOC_CALLBACK. Called during a mix. */
+    FMOD_OUTPUT_OBJECT3DUPDATE_CALLBACK     object3dupdate;     /* [w] Optional mixer thread callback once for every acquired 3D object every mix to provide 3D information and buffered audio. Called during a mix. */
+    FMOD_OUTPUT_OPENPORT_CALLBACK           openport;           /* [w] Optional main thread callback to open an auxiliary output port on the device. */
+    FMOD_OUTPUT_CLOSEPORT_CALLBACK          closeport;          /* [w] Optional main thread callback to close an auxiliary output port on the device. */
 } FMOD_OUTPUT_DESCRIPTION;
 
 
@@ -105,6 +138,7 @@ struct FMOD_OUTPUT_STATE
     FMOD_OUTPUT_ALLOC           alloc;          /* [r] Function to allocate memory using the FMOD memory system. */
     FMOD_OUTPUT_FREE            free;           /* [r] Function to free memory allocated with FMOD_OUTPUT_ALLOC. */
     FMOD_OUTPUT_LOG             log;            /* [r] Function to write to the FMOD logging system. */
+    FMOD_OUTPUT_COPYPORT        copyport;       /* [r] Function to copy the output from the mixer for the given auxiliary port */
 };
 
 

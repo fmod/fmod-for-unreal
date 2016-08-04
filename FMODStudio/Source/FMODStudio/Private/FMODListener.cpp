@@ -2,7 +2,6 @@
 
 #include "FMODStudioPrivatePCH.h"
 #include "FMODListener.h"
-#include <string.h>
 
 float FFMODListener::Interpolate( const double EndTime )
 {

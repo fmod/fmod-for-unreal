@@ -98,7 +98,11 @@ class UFMODAudioComponent* UFMODBlueprintStatics::PlayEventAttached(class UFMODE
 #endif
 	AudioComponent->RegisterComponentWithWorld(AttachToComponent->GetWorld());
 
+#if ENGINE_MINOR_VERSION >= 12
+	AudioComponent->AttachToComponent(AttachToComponent, FAttachmentTransformRules::KeepRelativeTransform, AttachPointName);
+#else
 	AudioComponent->AttachTo(AttachToComponent, AttachPointName);
+#endif
 	if (LocationType == EAttachLocation::KeepWorldPosition)
 	{
 		AudioComponent->SetWorldLocation(Location);

@@ -15,6 +15,7 @@
 #include "FMODAmbientSoundDetails.h"
 
 #include "SlateBasics.h"
+#include "AssetSelection.h"
 #include "AssetTypeActions_FMODEvent.h"
 #include "NotificationManager.h"
 #include "SNotificationList.h"
@@ -153,7 +154,10 @@ public:
 	FFMODStudioEditorModule() :
 		bSimulating(false),
 		bIsInPIE(false),
-		bRegisteredComponentVisualizers(false)
+		bRegisteredComponentVisualizers(false),
+		bRunningTest(false),
+		TestDelay(0.0f),
+		TestStep(0)
 	{
 	}
 
@@ -196,6 +200,8 @@ public:
 	/** Reload banks */
 	void ReloadBanks();
 
+	void TickTest(float DeltaTime);
+
 	TArray<FName> RegisteredComponentClassNames;
 	void RegisterComponentVisualizer(FName ComponentClassName, TSharedPtr<FComponentVisualizer> Visualizer);
 
@@ -222,9 +228,14 @@ public:
 	/** Asset type actions for events (edit, play, stop) */
 	TSharedPtr<FAssetTypeActions_FMODEvent> FMODEventAssetTypeActions;
 
+	ISettingsSectionPtr SettingsSection;
+
 	bool bSimulating;
 	bool bIsInPIE;
 	bool bRegisteredComponentVisualizers;
+	bool bRunningTest;
+	float TestDelay;
+	int TestStep;
 };
 
 IMPLEMENT_MODULE( FFMODStudioEditorModule, FMODStudioEditor )
@@ -238,7 +249,7 @@ void FFMODStudioEditorModule::StartupModule()
 
 	if (ISettingsModule* SettingsModule = FModuleManager::GetModulePtr<ISettingsModule>("Settings"))
 	{
-		ISettingsSectionPtr SettingsSection = SettingsModule->RegisterSettings("Project", "Plugins", "FMODStudio",
+		SettingsSection = SettingsModule->RegisterSettings("Project", "Plugins", "FMODStudio",
 			LOCTEXT("FMODStudioSettingsName", "FMOD Studio"),
 			LOCTEXT("FMODStudioDescription", "Configure the FMOD Studio plugin"),
 			GetMutableDefault<UFMODSettings>()
@@ -295,6 +306,10 @@ void FFMODStudioEditorModule::StartupModule()
 	// This module is loaded after FMODStudioModule
 	HandleBanksReloadedDelegateHandle = IFMODStudioModule::Get().BanksReloadedEvent().AddRaw(this, &FFMODStudioEditorModule::HandleBanksReloaded);
 
+	if (FParse::Param(FCommandLine::Get(), TEXT("fmodtest")))
+	{
+		bRunningTest = true;
+	}
 }
 
 void FFMODStudioEditorModule::AddHelpMenuExtension(FMenuBuilder& MenuBuilder)
@@ -708,7 +723,77 @@ bool FFMODStudioEditorModule::Tick( float DeltaTime )
 		bRegisteredComponentVisualizers = true;
 	}
 
+	if (bRunningTest)
+	{
+		TickTest(DeltaTime);
+	}
+
 	return true;
+}
+
+void FFMODStudioEditorModule::TickTest( float DeltaTime )
+{
+	TestDelay -= DeltaTime;
+	if (TestDelay > 0.0f)
+	{
+		return; // Still waiting
+	}
+
+	// Default time to next step
+	TestDelay = 1.0f;
+	TestStep++;
+
+	UE_LOG(LogFMOD, Log, TEXT("Test step %d"), TestStep);
+
+	switch (TestStep)
+	{
+		case 1:
+		{
+			// Spawn event in level
+			FString EventPath;
+			if (FParse::Value(FCommandLine::Get(), TEXT("spawnevent="), EventPath))
+			{
+				UFMODEvent* FoundEvent = IFMODStudioModule::Get().FindEventByName(EventPath);
+				if (FoundEvent)
+				{
+					UActorFactory* ActorFactory = FActorFactoryAssetProxy::GetFactoryForAssetObject(FoundEvent);
+					if (ActorFactory)
+					{
+						AActor* NewActor = ActorFactory->CreateActor(FoundEvent, GWorld->GetCurrentLevel(), FTransform());
+						UE_LOG(LogFMOD, Log, TEXT("Placing '%s' in world: New actor %p"), *EventPath, NewActor);
+					}
+					else
+					{
+						UE_LOG(LogFMOD, Error, TEXT("Failed to find factory for event: '%s'"), *EventPath);
+					}
+				}
+				else
+				{
+					UE_LOG(LogFMOD, Error, TEXT("Failed to find event: '%s'"), *EventPath);
+				}
+			}
+			break;
+		}
+		case 2:
+		{
+			// Begin PIE
+			UWorld* EditorWorld = GEditor->GetEditorWorldContext().World();
+			GEditor->PlayInEditor(EditorWorld, false);
+			break;
+		}
+		case 3:
+		{
+			// Extra delay
+			TestDelay = 10.0f;
+			break;
+		}
+		case 4:
+		{
+			// Finish test
+			GIsRequestingExit = true;
+			break;
+		}
+	}
 }
 
 void FFMODStudioEditorModule::BeginPIE(bool simulating)

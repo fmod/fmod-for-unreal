@@ -159,6 +159,12 @@ public:
 	UPROPERTY(config, EditAnywhere, Category = Advanced)
 	FString SkipLoadBankName;
 
+	/**
+	* Force wav writer output, for debugging only.  Setting this will prevent normal sound output!
+	*/
+	UPROPERTY(config, EditAnywhere, Category = Advanced)
+	FString WavWriterPath;
+
 	/** Is the bank path set up . */
 	bool IsBankPathSet() const { return !BankOutputDirectory.Path.IsEmpty(); }
 
