@@ -44,6 +44,11 @@ UFMODAudioComponent::UFMODAudioComponent(const FObjectInitializer& ObjectInitial
 	AmbientLPF = MAX_FILTER_FREQUENCY;
 	LastLPF = MAX_FILTER_FREQUENCY;
 	LastVolume = 1.0f;
+
+	for (int i=0; i<EFMODEventProperty::Count; ++i)
+	{
+		StoredProperties[i] = -1.0f;
+	}
 }
 
 FString UFMODAudioComponent::GetDetailedInfoInternal(void) const
@@ -136,6 +141,8 @@ void UFMODAudioComponent::OnUpdateTransform(bool bSkipPhysicsMove)
 // Taken mostly from ActiveSound.cpp
 void UFMODAudioComponent::UpdateInteriorVolumes()
 {
+	if (!GetOwner()) return; // May not have owner when previewing animations
+
 	if (!bApplyAmbientVolumes) return;
 
 	// Result of the ambient calculations to apply to the instance
@@ -204,6 +211,8 @@ void UFMODAudioComponent::UpdateInteriorVolumes()
 
 void UFMODAudioComponent::UpdateAttenuation()
 {
+	if (!GetOwner()) return; // May not have owner when previewing animations
+
 	const FAttenuationSettings* AttenuationSettingsPtr = nullptr;
 	if (bOverrideAttenuation)
 	{
@@ -595,6 +604,17 @@ void UFMODAudioComponent::Play()
 					UE_LOG(LogFMOD, Warning, TEXT("Failed to set initial parameter %s"), *Kvp.Key.ToString());
 				}
 			}
+			for (int i = 0; i<EFMODEventProperty::Count; ++i)
+			{
+				if (StoredProperties[i] != -1.0f)
+				{
+					FMOD_RESULT Result = StudioInstance->setProperty((FMOD_STUDIO_EVENT_PROPERTY)i, StoredProperties[i]);
+					if (Result != FMOD_OK)
+					{
+						UE_LOG(LogFMOD, Warning, TEXT("Failed to set initial property %d"), i);
+					}
+				}
+			}
 
 			verifyfmod(StudioInstance->setUserData(this));
 			verifyfmod(StudioInstance->setCallback(UFMODAudioComponent_EventCallback));
@@ -715,6 +735,20 @@ void UFMODAudioComponent::SetParameter(FName Name, float Value)
 		}
 	}
 	StoredParameters.FindOrAdd(Name) = Value;
+}
+
+void UFMODAudioComponent::SetProperty(EFMODEventProperty::Type Property, float Value)
+{
+	verify(Property < EFMODEventProperty::Count);
+	if (StudioInstance)
+	{
+		FMOD_RESULT Result = StudioInstance->setProperty((FMOD_STUDIO_EVENT_PROPERTY)Property, Value);
+		if (Result != FMOD_OK)
+		{
+			UE_LOG(LogFMOD, Warning, TEXT("Failed to set property %d"), (int)Property);
+		}
+	}
+	StoredProperties[Property] = Value;
 }
 
 void UFMODAudioComponent::SetTimelinePosition(int32 Time)

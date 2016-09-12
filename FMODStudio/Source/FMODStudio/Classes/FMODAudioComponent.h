@@ -7,6 +7,27 @@
 #include "Sound/SoundAttenuation.h"
 #include "FMODAudioComponent.generated.h"
 
+// Event property
+UENUM()
+namespace EFMODEventProperty
+{
+	enum Type
+	{
+		/* Priority to set on low-level channels created by this event instance (-1 to 256). */
+		ChannelPriority,
+		/** Schedule delay to synchronized playback for multiple tracks in DSP clocks, or -1 for default. */
+		ScheduleDelay,
+		/** Schedule look-ahead on the timeline in DSP clocks, or -1 for default. */
+		ScheduleLookahead,
+		/** Override the event's 3D minimum distance, or -1 for default. */
+		MinimumDistance,
+		/** Override the event's 3D maximum distance, or -1 for default. */
+		MaximumDistance,
+		/** Number of options */
+		Count
+	};
+}
+
 class FFMODDynamicParameter : public FDynamicParameter
 {
 	public:
@@ -66,6 +87,9 @@ class FMODSTUDIO_API UFMODAudioComponent : public USceneComponent
 
 	/** Stored parameters to apply next time we create an instance */
 	TMap<FName, float> StoredParameters;
+
+	/** Stored properties to apply next time we create an instance */
+	float StoredProperties[EFMODEventProperty::Count];
 
 	/** Enable timeline callbacks for this sound, so that OnTimelineMarker and OnTimelineBeat can be used */
 	UPROPERTY(EditAnywhere, Category=Callbacks)
@@ -145,6 +169,10 @@ class FMODSTUDIO_API UFMODAudioComponent : public USceneComponent
 	/** Set a parameter into the event */
 	UFUNCTION(BlueprintCallable, Category="Audio|FMOD|Components")
 	float GetParameter(FName Name);
+
+	/** Set a parameter into the event */
+	UFUNCTION(BlueprintCallable, Category = "Audio|FMOD|Components")
+	void SetProperty(EFMODEventProperty::Type Property, float Value);
 
 	/** Set the timeline position in milliseconds  */
 	UFUNCTION(BlueprintCallable, Category="Audio|FMOD|Components")

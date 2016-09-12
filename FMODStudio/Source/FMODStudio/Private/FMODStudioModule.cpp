@@ -757,15 +757,27 @@ void FFMODStudioModule::FinishSetListenerPosition(int NumListeners, float DeltaS
 	for (int i = 0; i < ListenerCount; ++i)
 	{
 		AAudioVolume* CandidateVolume = Listeners[i].Volume;
+#if ENGINE_MINOR_VERSION >= 13
+		if (BestVolume == nullptr || (CandidateVolume != nullptr && CandidateVolume->GetPriority() > BestVolume->GetPriority()))
+#else
 		if (BestVolume == nullptr || (CandidateVolume != nullptr && CandidateVolume->Priority > BestVolume->Priority))
+#endif
 		{
 			BestVolume = CandidateVolume;
 		}
 	}
 	UFMODSnapshotReverb* NewSnapshot = nullptr;
+#if ENGINE_MINOR_VERSION >= 13
+	if (BestVolume && BestVolume->GetReverbSettings().bApplyReverb)
+#else
 	if (BestVolume && BestVolume->Settings.bApplyReverb)
+#endif
 	{
+#if ENGINE_MINOR_VERSION >= 13
+		NewSnapshot = Cast<UFMODSnapshotReverb>(BestVolume->GetReverbSettings().ReverbEffect);
+#else
 		NewSnapshot = Cast<UFMODSnapshotReverb>(BestVolume->Settings.ReverbEffect);
+#endif
 	}
 
 	if (NewSnapshot != nullptr)
@@ -810,7 +822,11 @@ void FFMODStudioModule::FinishSetListenerPosition(int NumListeners, float DeltaS
 		// Fade up
 		if (ReverbSnapshots[SnapshotEntryIndex].FadeIntensityEnd == 0.0f)
 		{
+#if ENGINE_MINOR_VERSION >= 13
+			ReverbSnapshots[SnapshotEntryIndex].FadeTo(BestVolume->GetReverbSettings().Volume, BestVolume->GetReverbSettings().FadeTime);
+#else
 			ReverbSnapshots[SnapshotEntryIndex].FadeTo(BestVolume->Settings.Volume, BestVolume->Settings.FadeTime);
+#endif
 		}
 	}
 	// Fade out all other entries

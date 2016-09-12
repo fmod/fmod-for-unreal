@@ -395,6 +395,19 @@ float UFMODBlueprintStatics::EventInstanceGetParameter(FFMODEventInstance EventI
 	return Value;
 }
 
+void UFMODBlueprintStatics::EventInstanceSetProperty(FFMODEventInstance EventInstance, EFMODEventProperty::Type Property, float Value)
+{
+	if (EventInstance.Instance)
+	{
+		FMOD_RESULT Result = EventInstance.Instance->setProperty((FMOD_STUDIO_EVENT_PROPERTY)Property, Value);
+
+		if (Result != FMOD_OK)
+		{
+			UE_LOG(LogFMOD, Warning, TEXT("Failed to set event instance property type %d to value %f (%s)"), (int)Property, Value, FMOD_ErrorString(Result));
+		}
+	}
+}
+
 void UFMODBlueprintStatics::EventInstancePlay(FFMODEventInstance EventInstance)
 {
 	if (EventInstance.Instance)

@@ -27,6 +27,7 @@
 #include "SocketSubsystem.h"
 #include "Sockets.h"
 #include "IPAddress.h"
+#include "FileHelpers.h"
 
 #include "fmod_studio.hpp"
 
@@ -776,18 +777,33 @@ void FFMODStudioEditorModule::TickTest( float DeltaTime )
 		}
 		case 2:
 		{
+			// Save FMOD directory to package
+			UProjectPackagingSettings* PackagingSettings = Cast<UProjectPackagingSettings>(UProjectPackagingSettings::StaticClass()->GetDefaultObject());
+			const UFMODSettings& Settings = *GetDefault<UFMODSettings>();
+			PackagingSettings->DirectoriesToAlwaysStageAsUFS.Add(Settings.BankOutputDirectory);
+			PackagingSettings->UpdateDefaultConfigFile();
+			break;
+		}
+		case 3:
+		{
+			// Save map
+			FEditorFileUtils::SaveDirtyPackages(false, true, false, true, false, false);
+			break;
+		}
+		case 4:
+		{
 			// Begin PIE
 			UWorld* EditorWorld = GEditor->GetEditorWorldContext().World();
 			GEditor->PlayInEditor(EditorWorld, false);
 			break;
 		}
-		case 3:
+		case 5:
 		{
 			// Extra delay
 			TestDelay = 10.0f;
 			break;
 		}
-		case 4:
+		case 6:
 		{
 			// Finish test
 			GIsRequestingExit = true;

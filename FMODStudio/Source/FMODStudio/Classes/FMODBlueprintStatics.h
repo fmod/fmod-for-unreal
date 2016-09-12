@@ -3,6 +3,7 @@
 #pragma once
 
 #include "UnrealString.h"
+#include "FMODAudioComponent.h"
 #include "FMODBlueprintStatics.generated.h"
 
 class UFMODAudioComponent;
@@ -27,7 +28,6 @@ struct FFMODEventInstance
 
 	FMOD::Studio::EventInstance* Instance;
 };
-
 
 UCLASS()
 class FMODSTUDIO_API UFMODBlueprintStatics : public UBlueprintFunctionLibrary
@@ -194,6 +194,14 @@ class FMODSTUDIO_API UFMODBlueprintStatics : public UBlueprintFunctionLibrary
 	UFUNCTION(BlueprintCallable, Category="Audio|FMOD|EventInstance", meta = (UnsafeDuringActorConstruction = "true"))
 	static float EventInstanceGetParameter(FFMODEventInstance EventInstance, FName Name);
 
+	/** Set an FMOD event property on an FMOD Event Instance.
+	* @param EventInstance - Event instance
+	* @param Property - Property to set
+	* @param Value - Value to set
+	*/
+	UFUNCTION(BlueprintCallable, Category = "Audio|FMOD|EventInstance", meta = (UnsafeDuringActorConstruction = "true"))
+	static void EventInstanceSetProperty(FFMODEventInstance EventInstance, EFMODEventProperty::Type Property, float Value);
+	
 	/** Plays a FMOD Event Instance.
 	 * @param EventInstance - Event instance
 	 */

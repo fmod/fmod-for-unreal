@@ -129,9 +129,7 @@ namespace UnrealBuildTool.Rules
 					dllExtension = ".so";
 					libPrefix = "lib";
 					break;
-				case UnrealTargetPlatform.WinRT:
-				case UnrealTargetPlatform.WinRT_ARM:
-				case UnrealTargetPlatform.HTML5:
+				default:
 					//extName = ".a";
 					throw new System.Exception(System.String.Format("Unsupported platform {0}", Target.Platform.ToString()));
 					//break;
