@@ -71,8 +71,10 @@ namespace UnrealBuildTool.Rules
 
 			// ModuleDirectory points to FMODStudio\source\FMODStudio, need to get back to binaries directory for our libs
 			string BasePath = System.IO.Path.Combine(ModuleDirectory, "../../Binaries", platformName);
+            // Collapse the directory path, otherwise OSX is having issues with plugin paths.
+            Utils.CollapseRelativeDirectories(ref BasePath);
 
-			string copyThirdPartyPath = "";
+            string copyThirdPartyPath = "";
 			bool bAddRuntimeDependencies = true;
 			bool bAddDelayLoad = false;
 			bool bShortLinkNames = false;
