@@ -861,7 +861,11 @@ void FFMODStudioEditorModule::ViewportDraw(UCanvas* Canvas, APlayerController*)
 		UWorld* World = GCurrentLevelEditingViewportClient->GetWorld();
 		const FVector& ViewLocation = GCurrentLevelEditingViewportClient->GetViewLocation();
 
+#if ENGINE_MINOR_VERSION >= 14
+		FMatrix CameraToWorld = View->ViewMatrices.GetViewMatrix().InverseFast();
+#else
 		FMatrix CameraToWorld = View->ViewMatrices.ViewMatrix.InverseFast();
+#endif
 		FVector ProjUp = CameraToWorld.TransformVector(FVector(0, 1000, 0));
 		FVector ProjRight = CameraToWorld.TransformVector(FVector(1000, 0, 0));
 

@@ -67,7 +67,13 @@ inline bool IsWorldAudible(UWorld* World)
 
 		if (World->bAllowAudioPlayback && World->GetNetMode() != NM_DedicatedServer)
 		{
-			if (World->IsGameWorld() || World->WorldType == EWorldType::Preview)
+			EWorldType::Type previewEnum;
+#if ENGINE_MINOR_VERSION >= 14
+			previewEnum = EWorldType::EditorPreview;
+#else
+			previewEnum = EWorldType::Preview;
+#endif
+			if (World->IsGameWorld() || World->WorldType == previewEnum)
 			{
 				return true;
 			}
