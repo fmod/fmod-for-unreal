@@ -17,8 +17,8 @@ namespace FMOD
 class FFMODEventEditor : public FAssetEditorToolkit
 {
 public:
-	virtual void RegisterTabSpawners(const TSharedRef<class FTabManager>& TabManager) override;
-	virtual void UnregisterTabSpawners(const TSharedRef<class FTabManager>& TabManager) override;
+	virtual void RegisterTabSpawners(const TSharedRef<class FTabManager>& NewTabManager) override;
+	virtual void UnregisterTabSpawners(const TSharedRef<class FTabManager>& NewTabManager) override;
 
 	/**
 	* Edits the specified event
