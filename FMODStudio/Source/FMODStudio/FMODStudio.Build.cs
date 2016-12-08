@@ -102,7 +102,7 @@ namespace UnrealBuildTool.Rules
 					linkExtension = "_vc.lib";
 					dllExtension = ".dll";
 					copyThirdPartyPath = "../XBoxOne"; // XBoxOne still doesn't seem to support plugins with .dlls
-					bAddDelayLoad = true;
+					bAddDelayLoad = false;
 					break;
 				case UnrealTargetPlatform.PS4:
 					linkExtension = "_stub.a";

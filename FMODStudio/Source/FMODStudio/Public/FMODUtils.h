@@ -21,34 +21,46 @@ inline void LogError(FMOD_RESULT result, const char* function)
 	IFMODStudioModule::Get().LogError(result, function);
 }
 
-inline void Assign(FMOD_VECTOR& Dest, const FVector& Src, float Scale=1.0f)
+inline void Assign(FMOD_VECTOR& Dest, const FVector& Src)
 {
-	Dest.x = Src.X * Scale;
-	Dest.y = Src.Y * Scale;
-	Dest.z = Src.Z * Scale;
-}
-
-inline void Assign(FMOD_3D_ATTRIBUTES& Dest, const FTransform& Src)
-{
-	Assign(Dest.position, Src.GetTranslation(), FMOD_VECTOR_SCALE_DEFAULT);
-	Assign(Dest.forward, Src.GetUnitAxis(EAxis::X), 1.0f);
-	Assign(Dest.up, Src.GetUnitAxis(EAxis::Z), 1.0f);
+	Dest.x = Src.X;
+	Dest.y = Src.Y;
+	Dest.z = Src.Z;
 }
 
 inline FMOD_VECTOR ConvertWorldVector(const FVector& Src)
 {
+	static FMatrix UE4toFMOD(
+		FVector(0.0f, 0.0f, FMOD_VECTOR_SCALE_DEFAULT),
+		FVector(FMOD_VECTOR_SCALE_DEFAULT, 0.0f, 0.0f),
+		FVector(0.0f, FMOD_VECTOR_SCALE_DEFAULT, 0.0f),
+		FVector::ZeroVector
+	);
+	
 	FMOD_VECTOR Dest;
-	Assign(Dest, Src, FMOD_VECTOR_SCALE_DEFAULT);
+	Assign(Dest, UE4toFMOD.TransformPosition(Src));
 	return Dest;
 }
 
 inline FMOD_VECTOR ConvertUnitVector(const FVector& Src)
 {
+	static FMatrix UE4toFMOD(
+		FVector(0.0f, 0.0f, 1.0f),
+		FVector(1.0f, 0.0f, 0.0f),
+		FVector(0.0f, 1.0f, 0.0f),
+		FVector::ZeroVector
+	);
+
 	FMOD_VECTOR Dest;
-	Dest.x = Src.X;
-	Dest.y = Src.Y;
-	Dest.z = Src.Z;
+	Assign(Dest, UE4toFMOD.TransformVector(Src));
 	return Dest;
+}
+
+inline void Assign(FMOD_3D_ATTRIBUTES& Dest, const FTransform& Src)
+{
+	Dest.position = ConvertWorldVector(Src.GetTranslation());
+	Dest.forward = ConvertUnitVector(Src.GetUnitAxis(EAxis::X));
+	Dest.up = ConvertUnitVector(Src.GetUnitAxis(EAxis::Z));
 }
 
 inline float DistanceToUEScale(float FMODDistance)
