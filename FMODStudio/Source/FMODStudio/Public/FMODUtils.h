@@ -71,7 +71,7 @@ inline bool IsWorldAudible(UWorld* World)
 #if ENGINE_MINOR_VERSION >= 14
 			previewEnum = EWorldType::EditorPreview;
 #else
-			previewEnum = EWorldType::GamePreview;
+			previewEnum = EWorldType::Preview;
 #endif
 			if (World->IsGameWorld() || World->WorldType == previewEnum)
 			{
