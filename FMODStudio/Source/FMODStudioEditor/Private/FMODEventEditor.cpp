@@ -17,25 +17,25 @@ DEFINE_LOG_CATEGORY_STATIC(LogFMODEventEditor, Log, All);
 const FName FFMODEventEditor::EventEditorTabId(TEXT("FFMODEventEditor_EventView"));
 const FName FFMODEventEditor::FMODEventEditorAppIdentifier(TEXT("FMODEventEditorApp"));
 
-void FFMODEventEditor::RegisterTabSpawners(const TSharedRef<class FTabManager>& TabManager)
+void FFMODEventEditor::RegisterTabSpawners(const TSharedRef<class FTabManager>& NewTabManager)
 {
-	WorkspaceMenuCategory = TabManager->AddLocalWorkspaceMenuCategory(LOCTEXT("WorkspaceMenu_FMODEventEditor", "FMOD Event Editor"));
+	WorkspaceMenuCategory = NewTabManager->AddLocalWorkspaceMenuCategory(LOCTEXT("WorkspaceMenu_FMODEventEditor", "FMOD Event Editor"));
 	auto WorkspaceMenuCategoryRef = WorkspaceMenuCategory.ToSharedRef();
 
-	FAssetEditorToolkit::RegisterTabSpawners(TabManager);
+	FAssetEditorToolkit::RegisterTabSpawners(NewTabManager);
 
-	TabManager->RegisterTabSpawner(
+	NewTabManager->RegisterTabSpawner(
 		EventEditorTabId,
 		FOnSpawnTab::CreateSP(this, &FFMODEventEditor::SpawnTab_EventEditor))
 		.SetDisplayName(LOCTEXT("EventTab", "FMOD Event"))
 		.SetGroup(WorkspaceMenuCategoryRef);
 }
 
-void FFMODEventEditor::UnregisterTabSpawners(const TSharedRef<class FTabManager>& TabManager)
+void FFMODEventEditor::UnregisterTabSpawners(const TSharedRef<class FTabManager>& NewTabManager)
 {
-	FAssetEditorToolkit::UnregisterTabSpawners(TabManager);
+	FAssetEditorToolkit::UnregisterTabSpawners(NewTabManager);
 
-	TabManager->UnregisterTabSpawner(EventEditorTabId);
+	NewTabManager->UnregisterTabSpawner(EventEditorTabId);
 }
 
 FFMODEventEditor::FFMODEventEditor()
