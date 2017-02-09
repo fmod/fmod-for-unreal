@@ -1,7 +1,7 @@
 /*$ preserve start $*/
 
 /* ================================================================================================== */
-/* FMOD Studio - Common C/C++ header file. Copyright (c), Firelight Technologies Pty, Ltd. 2004-2016. */
+/* FMOD Studio - Common C/C++ header file. Copyright (c), Firelight Technologies Pty, Ltd. 2004-2017. */
 /*                                                                                                    */
 /* This header is included by fmod.hpp (C++ interface) and fmod.h (C interface) therefore is the      */
 /* base header for all FMOD headers.                                                                  */

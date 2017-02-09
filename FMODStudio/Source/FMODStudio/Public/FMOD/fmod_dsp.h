@@ -1,5 +1,5 @@
 /* ========================================================================================== */
-/* FMOD Studio - DSP header file. Copyright (c), Firelight Technologies Pty, Ltd. 2004-2016.  */
+/* FMOD Studio - DSP header file. Copyright (c), Firelight Technologies Pty, Ltd. 2004-2017.  */
 /*                                                                                            */
 /* Use this header if you are interested in delving deeper into the FMOD software mixing /    */
 /* DSP engine.                                                                                */
@@ -144,7 +144,8 @@ typedef FMOD_RESULT (F_CALLBACK *FMOD_DSP_PAN_SUM_MONO_TO_SURROUND_MATRIX)  (FMO
 typedef FMOD_RESULT (F_CALLBACK *FMOD_DSP_PAN_SUM_STEREO_TO_SURROUND_MATRIX)(FMOD_DSP_STATE *dsp_state, int targetSpeakerMode, float direction, float extent, float rotation, float lowFrequencyGain, float overallGain, int matrixHop, float *matrix);
 typedef FMOD_RESULT (F_CALLBACK *FMOD_DSP_PAN_3D_GET_ROLLOFF_GAIN)          (FMOD_DSP_STATE *dsp_state, FMOD_DSP_PAN_3D_ROLLOFF_TYPE rolloff, float distance, float mindistance, float maxdistance, float *gain);
 
-typedef FMOD_RESULT (F_CALLBACK *FMOD_DSP_STATE_GETCLOCK) (FMOD_DSP_STATE *dsp_state, unsigned long long *clock, unsigned int *offset, unsigned int *length);
+typedef FMOD_RESULT (F_CALLBACK *FMOD_DSP_STATE_GETCLOCK)               (FMOD_DSP_STATE *dsp_state, unsigned long long *clock, unsigned int *offset, unsigned int *length);
+typedef FMOD_RESULT (F_CALLBACK *FMOD_DSP_STATE_GETLISTENERATTRIBUTES)  (FMOD_DSP_STATE *dsp_state, int *numlisteners, FMOD_3D_ATTRIBUTES *attributes);
 
 
 /*
@@ -466,6 +467,8 @@ typedef struct FMOD_DSP_PARAMETER_OVERALLGAIN
     The system will set this parameter automatically if a sound's position changes.
 
     [REMARKS]
+    FMOD will convert passed in co-ordinates to left-handed for the plugin if the System was initialized with the FMOD_INIT_3D_RIGHTHANDED flag.
+
     Members marked with [r] mean the variable is modified by FMOD and is for reading purposes only.  Do not change this value.<br>
     Members marked with [w] mean the variable can be written to.  The user can set the value.<br>
 
@@ -490,6 +493,8 @@ typedef struct FMOD_DSP_PARAMETER_3DATTRIBUTES
     The system will set this parameter automatically if a sound's position changes.
 
     [REMARKS]
+    FMOD will convert passed in co-ordinates to left-handed for the plugin if the System was initialized with the FMOD_INIT_3D_RIGHTHANDED flag.
+
     Members marked with [r] mean the variable is modified by FMOD and is for reading purposes only.  Do not change this value.<br>
     Members marked with [w] mean the variable can be written to.  The user can set the value.<br>
 
@@ -629,7 +634,7 @@ typedef struct FMOD_DSP_PARAMETER_FFT
     (_paramstruct).description  = _description; \
     (_paramstruct).datadesc.datatype     = _datatype;
 
-#define FMOD_PLUGIN_SDK_VERSION 108
+#define FMOD_PLUGIN_SDK_VERSION 109
 
 /*
 [STRUCTURE] 
@@ -769,15 +774,16 @@ typedef struct FMOD_DSP_STATE_PAN_CALLBACKS
 */
 typedef struct FMOD_DSP_STATE_SYSTEMCALLBACKS
 {
-    FMOD_MEMORY_ALLOC_CALLBACK              alloc;          /* [r] Memory allocation callback. Use this for all dynamic memory allocation within the plugin. */
-    FMOD_MEMORY_REALLOC_CALLBACK            realloc;        /* [r] Memory reallocation callback. */
-    FMOD_MEMORY_FREE_CALLBACK               free;           /* [r] Memory free callback. */
-    FMOD_DSP_SYSTEM_GETSAMPLERATE           getsamplerate;  /* [r] Callback for getting the system samplerate. */
-    FMOD_DSP_SYSTEM_GETBLOCKSIZE            getblocksize;   /* [r] Callback for getting the system's block size.  DSPs will be requested to process blocks of varying length up to this size.*/
-    FMOD_DSP_STATE_DFTCALLBACKS            *dft;            /* [r] Struct containing callbacks for performing FFTs and inverse FFTs. */
-    FMOD_DSP_STATE_PAN_CALLBACKS           *pancallbacks;   /* [r] Pointer to a structure of callbacks for calculating pan, up-mix and down-mix matrices. */
-    FMOD_DSP_SYSTEM_GETSPEAKERMODE          getspeakermode; /* [r] Callback for getting the system's speaker modes.  One is the mixer's default speaker mode, the other is the output mode the system is downmixing or upmixing to.*/
-    FMOD_DSP_STATE_GETCLOCK                 getclock;       /* [r] Callback for getting the clock of the current DSP, as well as the subset of the input buffer that contains the signal */
+    FMOD_MEMORY_ALLOC_CALLBACK              alloc;                  /* [r] Memory allocation callback. Use this for all dynamic memory allocation within the plugin. */
+    FMOD_MEMORY_REALLOC_CALLBACK            realloc;                /* [r] Memory reallocation callback. */
+    FMOD_MEMORY_FREE_CALLBACK               free;                   /* [r] Memory free callback. */
+    FMOD_DSP_SYSTEM_GETSAMPLERATE           getsamplerate;          /* [r] Callback for getting the system samplerate. */
+    FMOD_DSP_SYSTEM_GETBLOCKSIZE            getblocksize;           /* [r] Callback for getting the system's block size.  DSPs will be requested to process blocks of varying length up to this size.*/
+    FMOD_DSP_STATE_DFTCALLBACKS            *dft;                    /* [r] Struct containing callbacks for performing FFTs and inverse FFTs. */
+    FMOD_DSP_STATE_PAN_CALLBACKS           *pancallbacks;           /* [r] Pointer to a structure of callbacks for calculating pan, up-mix and down-mix matrices. */
+    FMOD_DSP_SYSTEM_GETSPEAKERMODE          getspeakermode;         /* [r] Callback for getting the system's speaker modes.  One is the mixer's default speaker mode, the other is the output mode the system is downmixing or upmixing to.*/
+    FMOD_DSP_STATE_GETCLOCK                 getclock;               /* [r] Callback for getting the clock of the current DSP, as well as the subset of the input buffer that contains the signal */
+    FMOD_DSP_STATE_GETLISTENERATTRIBUTES    getlistenerattributes;  /* [r] Callback for getting the absolute listener attributes set via the API (returned as left-handed co-ordinates). */
 } FMOD_DSP_STATE_SYSTEMCALLBACKS;
 
 

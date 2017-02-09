@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2016.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2017.
 
 #pragma once
 
@@ -174,6 +174,10 @@ class FMODSTUDIO_API UFMODAudioComponent : public USceneComponent
 	UFUNCTION(BlueprintCallable, Category = "Audio|FMOD|Components")
 	void SetProperty(EFMODEventProperty::Type Property, float Value);
 
+	/** Get the event length in milliseconds */
+	UFUNCTION(BlueprintCallable, Category = "Audio|FMOD|Components")
+	int32 GetLength() const;
+
 	/** Set the timeline position in milliseconds  */
 	UFUNCTION(BlueprintCallable, Category="Audio|FMOD|Components")
 	void SetTimelinePosition(int32 Time);
@@ -277,6 +281,8 @@ private:
 
 	// Direct assignment of programmer sound from other C++ code
 	FMOD::Sound* ProgrammerSound;
+	
+	int32 EventLength;
 };
 
 

@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2016.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2017.
 
 #include "FMODStudioPrivatePCH.h"
 #include "FMODAudioComponent.h"
@@ -564,7 +564,8 @@ void UFMODAudioComponent::Play()
 	// Only play events in PIE/game, not when placing them in the editor
 	FMOD::Studio::EventDescription* EventDesc = IFMODStudioModule::Get().GetEventDescription(Event.Get());
 	if (EventDesc != nullptr)
-	{
+	{		
+		EventDesc->getLength(&EventLength);
 		FMOD_RESULT result = EventDesc->createInstance(&StudioInstance);
 		if (StudioInstance != nullptr)
 		{
@@ -749,6 +750,11 @@ void UFMODAudioComponent::SetProperty(EFMODEventProperty::Type Property, float V
 		}
 	}
 	StoredProperties[Property] = Value;
+}
+
+int32 UFMODAudioComponent::GetLength() const
+{
+	return EventLength;
 }
 
 void UFMODAudioComponent::SetTimelinePosition(int32 Time)
