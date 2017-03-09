@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2016.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2017.
 
 #include "FMODStudioPrivatePCH.h"
 
@@ -61,8 +61,8 @@ void F_CALLBACK FMODMemoryFree(void *ptr, FMOD_MEMORY_TYPE type, const char *sou
 
 struct FFMODSnapshotEntry
 {
-	FFMODSnapshotEntry(UFMODSnapshotReverb* InSnapshot = nullptr, FMOD::Studio::EventInstance* InInstance = nullptr)
-		: Snapshot(InSnapshot),
+	FFMODSnapshotEntry(UFMODSnapshotReverb* InSnapshot=nullptr, FMOD::Studio::EventInstance* InInstance=nullptr)
+	:	Snapshot(InSnapshot),
 		Instance(InInstance),
 		StartTime(0.0),
 		FadeDuration(0.0f),
@@ -108,7 +108,7 @@ class FFMODStudioModule : public IFMODStudioModule
 public:
 	/** IModuleInterface implementation */
 	FFMODStudioModule()
-		: AuditioningInstance(nullptr),
+	:	AuditioningInstance(nullptr),
 		ListenerCount(1),
 		bSimulating(false),
 		bIsInPIE(false),
@@ -118,7 +118,7 @@ public:
 		LowLevelLibHandle(nullptr),
 		StudioLibHandle(nullptr)
 	{
-		for (int i = 0; i<EFMODSystemContext::Max; ++i)
+		for (int i=0; i<EFMODSystemContext::Max; ++i)
 		{
 			StudioSystem[i] = nullptr;
 		}
@@ -141,7 +141,7 @@ public:
 	void CreateStudioSystem(EFMODSystemContext::Type Type);
 	void DestroyStudioSystem(EFMODSystemContext::Type Type);
 
-	bool Tick(float DeltaTime);
+	bool Tick( float DeltaTime );
 
 	void UpdateViewportPosition();
 
@@ -237,7 +237,7 @@ public:
 
 	/** True if simulating */
 	bool bSimulating;
-
+	
 	/** True if in PIE */
 	bool bIsInPIE;
 
@@ -256,7 +256,7 @@ public:
 	void* StudioLibHandle;
 };
 
-IMPLEMENT_MODULE(FFMODStudioModule, FMODStudio)
+IMPLEMENT_MODULE( FFMODStudioModule, FMODStudio )
 
 void FFMODStudioModule::LogError(int result, const char* function)
 {
@@ -270,7 +270,7 @@ bool FFMODStudioModule::LoadPlugin(const TCHAR* ShortName)
 	UE_LOG(LogFMOD, Log, TEXT("Loading plugin '%s'"), ShortName);
 
 	static const int ATTEMPT_COUNT = 2;
-	static const TCHAR* AttemptPrefixes[ATTEMPT_COUNT] =
+	static const TCHAR* AttemptPrefixes[ATTEMPT_COUNT] = 
 	{
 		TEXT(""),
 #if PLATFORM_64BITS
@@ -345,11 +345,11 @@ FString FFMODStudioModule::GetDllPath(const TCHAR* ShortName, bool bExplicitPath
 #elif PLATFORM_LINUX
 	return FString::Printf(TEXT("%s%s.so"), LibPrefixName, ShortName);
 #elif PLATFORM_WINDOWS
-#if PLATFORM_64BITS
-	return FString::Printf(TEXT("%s/Win64/%s.dll"), *BaseLibPath, ShortName);
-#else
-	return FString::Printf(TEXT("%s/Win32/%s.dll"), *BaseLibPath, ShortName);
-#endif
+	#if PLATFORM_64BITS
+		return FString::Printf(TEXT("%s/Win64/%s.dll"), *BaseLibPath, ShortName);
+	#else
+		return FString::Printf(TEXT("%s/Win32/%s.dll"), *BaseLibPath, ShortName);
+	#endif
 #else
 	UE_LOG(LogFMOD, Error, TEXT("Unsupported platform for dynamic libs"));
 	return "";
@@ -358,6 +358,12 @@ FString FFMODStudioModule::GetDllPath(const TCHAR* ShortName, bool bExplicitPath
 
 bool FFMODStudioModule::LoadLibraries()
 {
+#if ENGINE_MINOR_VERSION > 14
+	#if PLATFORM_SWITCH
+		return true; // Nothing to do
+	#endif
+#endif
+
 #if PLATFORM_IOS || PLATFORM_ANDROID || PLATFORM_LINUX || PLATFORM_MAC
 	return true; // Nothing to do on those platforms
 #elif PLATFORM_HTML5
@@ -373,7 +379,7 @@ bool FFMODStudioModule::LoadLibraries()
 #elif defined(FMODSTUDIO_LINK_RELEASE)
 	FString ConfigName = TEXT("");
 #else
-#error FMODSTUDIO_LINK not defined
+	#error FMODSTUDIO_LINK not defined
 #endif
 
 #if PLATFORM_WINDOWS && PLATFORM_64BITS
@@ -394,19 +400,19 @@ void FFMODStudioModule::StartupModule()
 	BaseLibPath = IPluginManager::Get().FindPlugin(TEXT("FMODStudio"))->GetBaseDir() + TEXT("/Binaries");
 	UE_LOG(LogFMOD, Log, TEXT(" Lib path = '%s'"), *BaseLibPath);
 
-	if (FParse::Param(FCommandLine::Get(), TEXT("nosound")) || FApp::IsBenchmarking() || IsRunningDedicatedServer() || IsRunningCommandlet())
+	if(FParse::Param(FCommandLine::Get(),TEXT("nosound")) || FApp::IsBenchmarking() || IsRunningDedicatedServer() || IsRunningCommandlet())
 	{
 		bUseSound = false;
 	}
 
-	if (FParse::Param(FCommandLine::Get(), TEXT("noliveupdate")))
+	if(FParse::Param(FCommandLine::Get(),TEXT("noliveupdate")))
 	{
 		bAllowLiveUpdate = false;
 	}
 
 	if (LoadLibraries())
 	{
-		verifyfmod(FMOD::Debug_Initialize(FMOD_DEBUG_LEVEL_LOG, FMOD_DEBUG_MODE_CALLBACK, FMODLogCallback));
+		verifyfmod(FMOD::Debug_Initialize(FMOD_DEBUG_LEVEL_WARNING, FMOD_DEBUG_MODE_CALLBACK, FMODLogCallback));
 		verifyfmod(FMOD::Memory_Initialize(0, 0, FMODMemoryAlloc, FMODMemoryRealloc, FMODMemoryFree));
 		verifyfmod(FMODPlatformSystemSetup());
 
@@ -426,8 +432,8 @@ void FFMODStudioModule::StartupModule()
 		}
 	}
 
-	OnTick = FTickerDelegate::CreateRaw(this, &FFMODStudioModule::Tick);
-	TickDelegateHandle = FTicker::GetCoreTicker().AddTicker(OnTick);
+	OnTick = FTickerDelegate::CreateRaw( this, &FFMODStudioModule::Tick );
+	TickDelegateHandle = FTicker::GetCoreTicker().AddTicker( OnTick );
 
 	if (GIsEditor)
 	{
@@ -439,15 +445,15 @@ inline FMOD_SPEAKERMODE ConvertSpeakerMode(EFMODSpeakerMode::Type Mode)
 {
 	switch (Mode)
 	{
-	case EFMODSpeakerMode::Stereo:
-		return FMOD_SPEAKERMODE_STEREO;
-	case EFMODSpeakerMode::Surround_5_1:
-		return FMOD_SPEAKERMODE_5POINT1;
-	case EFMODSpeakerMode::Surround_7_1:
-		return FMOD_SPEAKERMODE_7POINT1;
-	default:
-		check(0);
-		return FMOD_SPEAKERMODE_DEFAULT;
+		case EFMODSpeakerMode::Stereo:
+			return FMOD_SPEAKERMODE_STEREO;
+		case EFMODSpeakerMode::Surround_5_1:
+			return FMOD_SPEAKERMODE_5POINT1;
+		case EFMODSpeakerMode::Surround_7_1:
+			return FMOD_SPEAKERMODE_7POINT1;
+		default:
+			check(0);
+			return FMOD_SPEAKERMODE_DEFAULT;
 	};
 }
 
@@ -477,7 +483,7 @@ void FFMODStudioModule::CreateStudioSystem(EFMODSystemContext::Type Type)
 		StudioInitFlags |= FMOD_STUDIO_INIT_LIVEUPDATE;
 #endif
 	}
-
+	
 	verifyfmod(FMOD::Studio::System::create(&StudioSystem[Type]));
 	FMOD::System* lowLevelSystem = nullptr;
 	verifyfmod(StudioSystem[Type]->getLowLevelSystem(&lowLevelSystem));
@@ -487,7 +493,7 @@ void FFMODStudioModule::CreateStudioSystem(EFMODSystemContext::Type Type)
 	{
 		int DriverCount = 0;
 		verifyfmod(lowLevelSystem->getNumDrivers(&DriverCount));
-		for (int id = 0; id<DriverCount; ++id)
+		for (int id=0; id<DriverCount; ++id)
 		{
 			char DriverNameUTF8[256] = {};
 			verifyfmod(lowLevelSystem->getDriverInfo(id, DriverNameUTF8, sizeof(DriverNameUTF8), 0, 0, 0, 0));
@@ -537,7 +543,7 @@ void FFMODStudioModule::CreateStudioSystem(EFMODSystemContext::Type Type)
 		verifyfmod(lowLevelSystem->setDSPBufferSize(Settings.DSPBufferLength, Settings.DSPBufferCount));
 	}
 
-	FMOD_ADVANCEDSETTINGS advSettings = { 0 };
+	FMOD_ADVANCEDSETTINGS advSettings = {0};
 	advSettings.cbSize = sizeof(advSettings);
 	if (Settings.bVol0Virtual)
 	{
@@ -545,11 +551,15 @@ void FFMODStudioModule::CreateStudioSystem(EFMODSystemContext::Type Type)
 		InitFlags |= FMOD_INIT_VOL0_BECOMES_VIRTUAL;
 	}
 #if PLATFORM_IOS || PLATFORM_ANDROID
-	advSettings.maxADPCMCodecs = Settings.RealChannelCount;
+	advSettings.maxFADPCMCodecs = Settings.RealChannelCount;
 #elif PLATFORM_PS4
 	advSettings.maxAT9Codecs = Settings.RealChannelCount;
 #elif PLATFORM_XBOXONE
 	advSettings.maxXMACodecs = Settings.RealChannelCount;
+#elif ENGINE_MINOR_VERSION > 14
+	#if PLATFORM_SWITCH
+		advSettings.maxFADPCMCodecs = Settings.RealChannelCount;
+	#endif
 #else
 	advSettings.maxVorbisCodecs = Settings.RealChannelCount;
 #endif
@@ -557,9 +567,9 @@ void FFMODStudioModule::CreateStudioSystem(EFMODSystemContext::Type Type)
 	advSettings.randomSeed = FMath::Rand();
 	verifyfmod(lowLevelSystem->setAdvancedSettings(&advSettings));
 
-	FMOD_STUDIO_ADVANCEDSETTINGS advStudioSettings = { 0 };
-	advStudioSettings.cbSize = sizeof(advStudioSettings);
-	advStudioSettings.studioUpdatePeriod = Settings.StudioUpdatePeriod;
+	FMOD_STUDIO_ADVANCEDSETTINGS advStudioSettings = {0};
+	advStudioSettings.cbsize = sizeof(advStudioSettings);
+	advStudioSettings.studioupdateperiod = Settings.StudioUpdatePeriod;
 	verifyfmod(StudioSystem[Type]->setAdvancedSettings(&advStudioSettings));
 
 	verifyfmod(StudioSystem[Type]->initialize(Settings.TotalChannelCount, StudioInitFlags, InitFlags, InitData));
@@ -585,7 +595,7 @@ void FFMODStudioModule::DestroyStudioSystem(EFMODSystemContext::Type Type)
 	}
 }
 
-bool FFMODStudioModule::Tick(float DeltaTime)
+bool FFMODStudioModule::Tick( float DeltaTime )
 {
 	bListenerMoved = false;
 
@@ -602,8 +612,8 @@ bool FFMODStudioModule::Tick(float DeltaTime)
 	{
 		FMOD_STUDIO_CPU_USAGE Usage = {};
 		StudioSystem[EFMODSystemContext::Runtime]->getCPUUsage(&Usage);
-		SET_FLOAT_STAT(STAT_FMOD_CPUMixer, Usage.dspUsage);
-		SET_FLOAT_STAT(STAT_FMOD_CPUStudio, Usage.studioUsage);
+		SET_FLOAT_STAT(STAT_FMOD_CPUMixer, Usage.dspusage);
+		SET_FLOAT_STAT(STAT_FMOD_CPUStudio, Usage.studiousage);
 
 		int currentAlloc, maxAlloc;
 		FMOD::Memory_GetStats(&currentAlloc, &maxAlloc, false);
@@ -630,7 +640,7 @@ void FFMODStudioModule::UpdateViewportPosition()
 	int ListenerIndex = 0;
 
 	UWorld* ViewportWorld = nullptr;
-	if (GEngine && GEngine->GameViewport)
+	if(GEngine && GEngine->GameViewport)
 	{
 		ViewportWorld = GEngine->GameViewport->GetWorld();
 	}
@@ -640,13 +650,21 @@ void FFMODStudioModule::UpdateViewportPosition()
 
 	if (ViewportWorld)
 	{
-		for (FConstPlayerControllerIterator Iterator = ViewportWorld->GetPlayerControllerIterator(); Iterator; ++Iterator)
+		for( FConstPlayerControllerIterator Iterator = ViewportWorld->GetPlayerControllerIterator(); Iterator; ++Iterator )
 		{
+#if ENGINE_MINOR_VERSION > 14
+			APlayerController* PlayerController = Iterator->Get();
+#else
 			APlayerController* PlayerController = *Iterator;
-			if (PlayerController)
+#endif
+			if( PlayerController )
 			{
-				//ULocalPlayer* LocalPlayer = Cast<ULocalPlayer>(PlayerController->Player);
-				if (PlayerController->IsLocalPlayerController())
+#if ENGINE_MINOR_VERSION > 14
+				ULocalPlayer* LocalPlayer = PlayerController->GetLocalPlayer();
+#else
+				ULocalPlayer* LocalPlayer = Cast<ULocalPlayer>(PlayerController->Player);
+#endif
+				if (LocalPlayer)
 				{
 					FVector Location;
 					FVector ProjFront;
@@ -708,9 +726,9 @@ void FFMODStudioModule::SetListenerPosition(int ListenerIndex, UWorld* World, co
 		FInteriorSettings InteriorSettings;
 		AAudioVolume* Volume = World->GetAudioSettings(ListenerPos, NULL, &InteriorSettings);
 
-		Listeners[ListenerIndex].Velocity = DeltaSeconds > 0.f ?
-			(ListenerTransform.GetTranslation() - Listeners[ListenerIndex].Transform.GetTranslation()) / DeltaSeconds
-			: FVector::ZeroVector;
+		Listeners[ListenerIndex].Velocity = DeltaSeconds > 0.f ? 
+												(ListenerTransform.GetTranslation() - Listeners[ ListenerIndex ].Transform.GetTranslation()) / DeltaSeconds
+												: FVector::ZeroVector;
 
 		Listeners[ListenerIndex].Transform = ListenerTransform;
 
@@ -722,7 +740,7 @@ void FFMODStudioModule::SetListenerPosition(int ListenerIndex, UWorld* World, co
 		const FVector Right = Listeners[ListenerIndex].GetFront();
 		const FVector Forward = Right ^ Up;
 
-		FMOD_3D_ATTRIBUTES Attributes = { { 0 } };
+		FMOD_3D_ATTRIBUTES Attributes = {{0}};
 		Attributes.position = FMODUtils::ConvertWorldVector(ListenerPos);
 		Attributes.forward = FMODUtils::ConvertUnitVector(Forward);
 		Attributes.up = FMODUtils::ConvertUnitVector(Up);
@@ -733,7 +751,7 @@ void FFMODStudioModule::SetListenerPosition(int ListenerIndex, UWorld* World, co
 		if (ListenerIndex >= ListenerCount)
 		{
 			Listeners[ListenerIndex] = FFMODListener();
-			ListenerCount = ListenerIndex + 1;
+			ListenerCount = ListenerIndex+1;
 			verifyfmod(System->setNumListeners(ListenerCount));
 		}
 		verifyfmod(System->setListenerAttributes(ListenerIndex, &Attributes));
@@ -804,7 +822,7 @@ void FFMODStudioModule::FinishSetListenerPosition(int NumListeners, float DeltaS
 		// Try to steal old entry
 		FFMODSnapshotEntry SnapshotEntry;
 		int SnapshotEntryIndex = -1;
-		for (int i = 0; i<ReverbSnapshots.Num(); ++i)
+		for (int i=0; i<ReverbSnapshots.Num(); ++i)
 		{
 			if (ReverbSnapshots[i].Snapshot == NewSnapshot)
 			{
@@ -846,7 +864,7 @@ void FFMODStudioModule::FinishSetListenerPosition(int NumListeners, float DeltaS
 		}
 	}
 	// Fade out all other entries
-	for (int i = 0; i<ReverbSnapshots.Num(); ++i)
+	for (int i=0; i<ReverbSnapshots.Num(); ++i)
 	{
 		UE_LOG(LogFMOD, Verbose, TEXT("Ramping intensity (%f,%f) -> %f"), ReverbSnapshots[i].FadeIntensityStart, ReverbSnapshots[i].FadeIntensityEnd, ReverbSnapshots[i].CurrentIntensity());
 		ReverbSnapshots[i].Instance->setParameterValue("Intensity", 100.0f * ReverbSnapshots[i].CurrentIntensity());
@@ -1015,7 +1033,7 @@ void FFMODStudioModule::LoadBanks(EFMODSystemContext::Type Type)
 		UE_LOG(LogFMOD, Verbose, TEXT("LoadBanks for context %s"), FMODSystemContextNames[Type]);
 
 		/*
-		Queue up all banks to load asynchronously then wait at the end.
+			Queue up all banks to load asynchronously then wait at the end.
 		*/
 		bool bLoadAllBanks = ((Type == EFMODSystemContext::Auditioning) || Settings.bLoadAllBanks);
 		bool bLoadSampleData = ((Type == EFMODSystemContext::Runtime) && Settings.bLoadAllSampleData);
@@ -1025,7 +1043,7 @@ void FFMODStudioModule::LoadBanks(EFMODSystemContext::Type Type)
 		// Always load the master bank at startup
 		FString MasterBankPath = Settings.GetMasterBankPath();
 		UE_LOG(LogFMOD, Verbose, TEXT("Loading master bank: %s"), *MasterBankPath);
-
+		
 		TArray<NamedBankEntry> BankEntries;
 
 		FMOD::Studio::Bank* MasterBank = nullptr;
@@ -1055,7 +1073,7 @@ void FFMODStudioModule::LoadBanks(EFMODSystemContext::Type Type)
 				UE_LOG(LogFMOD, Verbose, TEXT("Loading all banks"));
 				TArray<FString> BankFiles;
 				Settings.GetAllBankPaths(BankFiles);
-				for (const FString& OtherFile : BankFiles)
+				for ( const FString& OtherFile : BankFiles )
 				{
 					if (Settings.SkipLoadBankName.Len() && OtherFile.Contains(Settings.SkipLoadBankName))
 					{
@@ -1089,7 +1107,7 @@ void FFMODStudioModule::LoadBanks(EFMODSystemContext::Type Type)
 					BusList.AddZeroed(BusCount);
 					verifyfmod(MasterBank->getBusList(BusList.GetData(), BusCount, &BusCount));
 					BusList.SetNum(BusCount);
-					for (int BusIdx = 0; BusIdx<BusCount; ++BusIdx)
+					for (int BusIdx=0; BusIdx<BusCount; ++BusIdx)
 					{
 						verifyfmod(BusList[BusIdx]->lockChannelGroup());
 					}

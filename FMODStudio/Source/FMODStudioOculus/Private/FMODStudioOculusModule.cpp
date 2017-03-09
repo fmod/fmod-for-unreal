@@ -12,7 +12,7 @@
 #include "fmod.hpp"
 #include "fmod_studio.hpp"
 
-#if FMOD_OSP_SUPPORTED
+#ifdef FMOD_OSP_SUPPORTED
 	#include "OculusFMODSpatializerSettings.h"
 #endif
 
@@ -84,7 +84,7 @@ void FFMODStudioOculusModule::OnInitialize()
 {
 	UE_LOG(LogFMODOculus, Verbose, TEXT("OnInitialize"));
 
-#if FMOD_OSP_SUPPORTED
+#ifdef FMOD_OSP_SUPPORTED
 	const UFMODOculusSettings& Settings = *GetDefault<UFMODOculusSettings>();
 	if (!Settings.bOculusEnabled)
 	{

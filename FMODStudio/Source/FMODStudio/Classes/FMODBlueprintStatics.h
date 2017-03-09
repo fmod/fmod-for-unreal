@@ -124,12 +124,12 @@ class FMODSTUDIO_API UFMODBlueprintStatics : public UBlueprintFunctionLibrary
 	UFUNCTION(BlueprintCallable, Category="Audio|FMOD", meta=(HidePin="WorldContextObject", DefaultToSelf="WorldContextObject", UnsafeDuringActorConstruction = "true"))
 	static TArray<FFMODEventInstance> FindEventInstances(UObject* WorldContextObject, UFMODEvent* Event);
 
-	/** Set fader level on a bus
+	/** Set volume on a bus
 	 * @param Bus - bus to use
-	 * @param Level - fader level
+	 * @param Volume - volume
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Audio|FMOD|Bus", meta = (UnsafeDuringActorConstruction = "true"))
-	static void BusSetFaderLevel(class UFMODBus* Bus, float Level);
+	static void BusSetVolume(class UFMODBus* Bus, float Volume);
 
 	/** Pause/Unpause all events going through this bus
 	 * @param Bus - bus to use
@@ -145,12 +145,12 @@ class FMODSTUDIO_API UFMODBlueprintStatics : public UBlueprintFunctionLibrary
 	UFUNCTION(BlueprintCallable, Category = "Audio|FMOD|Bus", meta = (UnsafeDuringActorConstruction = "true"))
 	static void BusSetMute(class UFMODBus* Bus, bool bMute);
 
-	/** Set fader level on a VCA
+	/** Set volume on a VCA
 	 * @param Vca - VCA to use
-	 * @param Level - fader level
+	 * @param Volume - volume
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Audio|FMOD|VCA", meta = (UnsafeDuringActorConstruction = "true"))
-	static void VCASetFaderLevel(class UFMODVCA* Vca, float Level);
+	static void VCASetVolume(class UFMODVCA* Vca, float Volume);
 
 	/** Returns whether this FMOD Event Instance is valid.  The instance will be invalidated when the sound stops.
 	 * @param EventInstance - Event instance

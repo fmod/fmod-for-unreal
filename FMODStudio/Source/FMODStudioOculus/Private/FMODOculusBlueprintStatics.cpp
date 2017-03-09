@@ -5,7 +5,7 @@
 #include "FMODOculusBlueprintStatics.h"
 #include "FMODUtils.h"
 
-#if FMOD_OSP_SUPPORTED
+#ifdef FMOD_OSP_SUPPORTED
 	#include "OculusFMODSpatializerSettings.h"
 #endif
 
@@ -19,7 +19,7 @@ UFMODOculusBlueprintStatics::UFMODOculusBlueprintStatics(const FObjectInitialize
 
 void UFMODOculusBlueprintStatics::SetEarlyReflectionsEnabled(bool bEnable)
 {
-#if FMOD_OSP_SUPPORTED
+#ifdef FMOD_OSP_SUPPORTED
 	if (IFMODStudioOculusModule::Get().IsRunning())
 	{
 		OSP_FMOD_SetEarlyReflectionsEnabled(bEnable);
@@ -29,7 +29,7 @@ void UFMODOculusBlueprintStatics::SetEarlyReflectionsEnabled(bool bEnable)
 
 void UFMODOculusBlueprintStatics::SetLateReverberationEnabled(bool bEnable)
 {
-#if FMOD_OSP_SUPPORTED
+#ifdef FMOD_OSP_SUPPORTED
 	if (IFMODStudioOculusModule::Get().IsRunning())
 	{
 		OSP_FMOD_SetLateReverberationEnabled(bEnable);
@@ -39,7 +39,7 @@ void UFMODOculusBlueprintStatics::SetLateReverberationEnabled(bool bEnable)
 
 void UFMODOculusBlueprintStatics::SetRoomParameters(const FFMODOculusRoomParameters& Params)
 {
-#if FMOD_OSP_SUPPORTED
+#ifdef FMOD_OSP_SUPPORTED
 	if (IFMODStudioOculusModule::Get().IsRunning())
 	{
 		// If we have a set of empty parameters, don't set it into oculus

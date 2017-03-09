@@ -259,7 +259,7 @@ TArray<FFMODEventInstance> UFMODBlueprintStatics::FindEventInstances(UObject* Wo
 	return Instances;
 }
 
-void UFMODBlueprintStatics::BusSetFaderLevel(class UFMODBus* Bus, float Level)
+void UFMODBlueprintStatics::BusSetVolume(class UFMODBus* Bus, float Volume)
 {
 	FMOD::Studio::System* StudioSystem = IFMODStudioModule::Get().GetStudioSystem(EFMODSystemContext::Runtime);
 	if (StudioSystem != nullptr && Bus != nullptr)
@@ -269,7 +269,7 @@ void UFMODBlueprintStatics::BusSetFaderLevel(class UFMODBus* Bus, float Level)
 		FMOD_RESULT result = StudioSystem->getBusByID(&guid, &bus);
 		if (result == FMOD_OK && bus != nullptr)
 		{
-			bus->setFaderLevel(Level);
+			bus->setVolume(Volume);
 		}
 	}
 }
@@ -304,7 +304,7 @@ void UFMODBlueprintStatics::BusSetMute(class UFMODBus* Bus, bool bMute)
 	}
 }
 
-void UFMODBlueprintStatics::VCASetFaderLevel(class UFMODVCA* Vca, float Level)
+void UFMODBlueprintStatics::VCASetVolume(class UFMODVCA* Vca, float Volume)
 {
 	FMOD::Studio::System* StudioSystem = IFMODStudioModule::Get().GetStudioSystem(EFMODSystemContext::Runtime);
 	if (StudioSystem != nullptr && Vca != nullptr)
@@ -314,7 +314,7 @@ void UFMODBlueprintStatics::VCASetFaderLevel(class UFMODVCA* Vca, float Level)
 		FMOD_RESULT result = StudioSystem->getVCAByID(&guid, &vca);
 		if (result == FMOD_OK && vca != nullptr)
 		{
-			vca->setFaderLevel(Level);
+			vca->setVolume(Volume);
 		}
 	}
 }

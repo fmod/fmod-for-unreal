@@ -213,7 +213,12 @@ void UFMODAudioComponent::UpdateAttenuation()
 {
 	if (!GetOwner()) return; // May not have owner when previewing animations
 
+#if ENGINE_MINOR_VERSION > 14
+	const FSoundAttenuationSettings* AttenuationSettingsPtr = nullptr;
+#else
 	const FAttenuationSettings* AttenuationSettingsPtr = nullptr;
+#endif
+
 	if (bOverrideAttenuation)
 	{
 		AttenuationSettingsPtr = &AttenuationOverrides;
@@ -450,8 +455,8 @@ void UFMODAudioComponent::EventCallbackAddBeat(FMOD_STUDIO_TIMELINE_BEAT_PROPERT
 	info.Beat = props->beat;
 	info.Position = props->position;
 	info.Tempo = props->tempo;
-	info.TimeSignatureUpper = props->timeSignatureUpper;
-	info.TimeSignatureLower = props->timeSignatureLower;
+	info.TimeSignatureUpper = props->timesignatureupper;
+	info.TimeSignatureLower = props->timesignaturelower;
 	CallbackBeatQueue.Push(info);
 }
 
@@ -511,7 +516,7 @@ void UFMODAudioComponent::EventCallbackCreateProgrammerSound(FMOD_STUDIO_PROGRAM
 					UE_LOG(LogFMOD, Verbose, TEXT("Creating programmer sound using audio entry '%s'"), *SoundName);
 
 					props->sound = (FMOD_SOUND*)Sound;
-					props->subsoundIndex = SoundInfo.subsoundIndex;
+					props->subsoundIndex = SoundInfo.subsoundindex;
 				}
 				else
 				{
@@ -575,14 +580,14 @@ void UFMODAudioComponent::Play()
 			{
 				if (UserProp.type == FMOD_STUDIO_USER_PROPERTY_TYPE_FLOAT) // All numbers are stored as float
 				{
-					bApplyAmbientVolumes = (UserProp.floatValue != 0.0f);
+					bApplyAmbientVolumes = (UserProp.floatvalue != 0.0f);
 				}
 			}
 			if (EventDesc->getUserProperty("Occlusion", &UserProp) == FMOD_OK)
 			{
 				if (UserProp.type == FMOD_STUDIO_USER_PROPERTY_TYPE_FLOAT) // All numbers are stored as float
 				{
-					bApplyOcclusionDirect = (UserProp.floatValue != 0.0f);
+					bApplyOcclusionDirect = (UserProp.floatvalue != 0.0f);
 				}
 			}
 			FMOD_STUDIO_PARAMETER_DESCRIPTION paramDesc = {};

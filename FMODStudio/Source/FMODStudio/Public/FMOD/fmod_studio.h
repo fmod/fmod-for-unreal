@@ -20,8 +20,8 @@ extern "C"
 /*
     Global
 */
-FMOD_RESULT F_API FMOD_Studio_ParseID(const char *idString, FMOD_GUID *id);
-FMOD_RESULT F_API FMOD_Studio_System_Create(FMOD_STUDIO_SYSTEM **system, unsigned int headerVersion);
+FMOD_RESULT F_API FMOD_Studio_ParseID(const char *idstring, FMOD_GUID *id);
+FMOD_RESULT F_API FMOD_Studio_System_Create(FMOD_STUDIO_SYSTEM **system, unsigned int headerversion);
 
 /*$ preserve end $*/
 
@@ -34,7 +34,7 @@ FMOD_RESULT F_API FMOD_Studio_System_GetAdvancedSettings(FMOD_STUDIO_SYSTEM *sys
 FMOD_RESULT F_API FMOD_Studio_System_Initialize(FMOD_STUDIO_SYSTEM *system, int maxchannels, FMOD_STUDIO_INITFLAGS studioflags, FMOD_INITFLAGS flags, void *extradriverdata);
 FMOD_RESULT F_API FMOD_Studio_System_Release(FMOD_STUDIO_SYSTEM *system);
 FMOD_RESULT F_API FMOD_Studio_System_Update(FMOD_STUDIO_SYSTEM *system);
-FMOD_RESULT F_API FMOD_Studio_System_GetLowLevelSystem(FMOD_STUDIO_SYSTEM *system, FMOD_SYSTEM **lowLevelSystem);
+FMOD_RESULT F_API FMOD_Studio_System_GetLowLevelSystem(FMOD_STUDIO_SYSTEM *system, FMOD_SYSTEM **lowlevelsystem);
 FMOD_RESULT F_API FMOD_Studio_System_GetEvent(FMOD_STUDIO_SYSTEM *system, const char *pathOrID, FMOD_STUDIO_EVENTDESCRIPTION **event);
 FMOD_RESULT F_API FMOD_Studio_System_GetBus(FMOD_STUDIO_SYSTEM *system, const char *pathOrID, FMOD_STUDIO_BUS **bus);
 FMOD_RESULT F_API FMOD_Studio_System_GetVCA(FMOD_STUDIO_SYSTEM *system, const char *pathOrID, FMOD_STUDIO_VCA **vca);
@@ -50,6 +50,8 @@ FMOD_RESULT F_API FMOD_Studio_System_GetNumListeners(FMOD_STUDIO_SYSTEM *system,
 FMOD_RESULT F_API FMOD_Studio_System_SetNumListeners(FMOD_STUDIO_SYSTEM *system, int numlisteners);
 FMOD_RESULT F_API FMOD_Studio_System_GetListenerAttributes(FMOD_STUDIO_SYSTEM *system, int index, FMOD_3D_ATTRIBUTES *attributes);
 FMOD_RESULT F_API FMOD_Studio_System_SetListenerAttributes(FMOD_STUDIO_SYSTEM *system, int index, FMOD_3D_ATTRIBUTES *attributes);
+FMOD_RESULT F_API FMOD_Studio_System_GetListenerWeight(FMOD_STUDIO_SYSTEM *system, int index, float *weight);
+FMOD_RESULT F_API FMOD_Studio_System_SetListenerWeight(FMOD_STUDIO_SYSTEM *system, int index, float weight);
 FMOD_RESULT F_API FMOD_Studio_System_LoadBankFile(FMOD_STUDIO_SYSTEM *system, const char *filename, FMOD_STUDIO_LOAD_BANK_FLAGS flags, FMOD_STUDIO_BANK **bank);
 FMOD_RESULT F_API FMOD_Studio_System_LoadBankMemory(FMOD_STUDIO_SYSTEM *system, const char *buffer, int length, FMOD_STUDIO_LOAD_MEMORY_MODE mode, FMOD_STUDIO_LOAD_BANK_FLAGS flags, FMOD_STUDIO_BANK **bank);
 FMOD_RESULT F_API FMOD_Studio_System_LoadBankCustom(FMOD_STUDIO_SYSTEM *system, const FMOD_STUDIO_BANK_INFO *info, FMOD_STUDIO_LOAD_BANK_FLAGS flags, FMOD_STUDIO_BANK **bank);
@@ -99,17 +101,17 @@ FMOD_RESULT F_API FMOD_Studio_EventDescription_UnloadSampleData(FMOD_STUDIO_EVEN
 FMOD_RESULT F_API FMOD_Studio_EventDescription_GetSampleLoadingState(FMOD_STUDIO_EVENTDESCRIPTION *eventDesc, FMOD_STUDIO_LOADING_STATE *state);
 FMOD_RESULT F_API FMOD_Studio_EventDescription_ReleaseAllInstances(FMOD_STUDIO_EVENTDESCRIPTION *eventdescription);
 FMOD_RESULT F_API FMOD_Studio_EventDescription_SetCallback(FMOD_STUDIO_EVENTDESCRIPTION *eventdescription, FMOD_STUDIO_EVENT_CALLBACK callback, FMOD_STUDIO_EVENT_CALLBACK_TYPE callbackmask);
-FMOD_RESULT F_API FMOD_Studio_EventDescription_GetUserData(FMOD_STUDIO_EVENTDESCRIPTION *eventdescription, void **userData);
-FMOD_RESULT F_API FMOD_Studio_EventDescription_SetUserData(FMOD_STUDIO_EVENTDESCRIPTION *eventdescription, void *userData);   
+FMOD_RESULT F_API FMOD_Studio_EventDescription_GetUserData(FMOD_STUDIO_EVENTDESCRIPTION *eventdescription, void **userdata);
+FMOD_RESULT F_API FMOD_Studio_EventDescription_SetUserData(FMOD_STUDIO_EVENTDESCRIPTION *eventdescription, void *userdata);   
 
 /*
     EventInstance
 */
 FMOD_BOOL   F_API FMOD_Studio_EventInstance_IsValid(FMOD_STUDIO_EVENTINSTANCE *eventinstance);
 FMOD_RESULT F_API FMOD_Studio_EventInstance_GetDescription(FMOD_STUDIO_EVENTINSTANCE *eventinstance, FMOD_STUDIO_EVENTDESCRIPTION **description);
-FMOD_RESULT F_API FMOD_Studio_EventInstance_GetVolume(FMOD_STUDIO_EVENTINSTANCE *eventinstance, float *volume);
+FMOD_RESULT F_API FMOD_Studio_EventInstance_GetVolume(FMOD_STUDIO_EVENTINSTANCE *eventinstance, float *volume, float *finalvolume);
 FMOD_RESULT F_API FMOD_Studio_EventInstance_SetVolume(FMOD_STUDIO_EVENTINSTANCE *eventinstance, float volume);
-FMOD_RESULT F_API FMOD_Studio_EventInstance_GetPitch(FMOD_STUDIO_EVENTINSTANCE *eventinstance, float *pitch);
+FMOD_RESULT F_API FMOD_Studio_EventInstance_GetPitch(FMOD_STUDIO_EVENTINSTANCE *eventinstance, float *pitch, float *finalpitch);
 FMOD_RESULT F_API FMOD_Studio_EventInstance_SetPitch(FMOD_STUDIO_EVENTINSTANCE *eventinstance, float pitch);
 FMOD_RESULT F_API FMOD_Studio_EventInstance_Get3DAttributes(FMOD_STUDIO_EVENTINSTANCE *eventinstance, FMOD_3D_ATTRIBUTES *attributes);
 FMOD_RESULT F_API FMOD_Studio_EventInstance_Set3DAttributes(FMOD_STUDIO_EVENTINSTANCE *eventinstance, FMOD_3D_ATTRIBUTES *attributes);
@@ -117,6 +119,8 @@ FMOD_RESULT F_API FMOD_Studio_EventInstance_GetListenerMask(FMOD_STUDIO_EVENTINS
 FMOD_RESULT F_API FMOD_Studio_EventInstance_SetListenerMask(FMOD_STUDIO_EVENTINSTANCE *eventinstance, unsigned int mask);
 FMOD_RESULT F_API FMOD_Studio_EventInstance_GetProperty(FMOD_STUDIO_EVENTINSTANCE *eventinstance, FMOD_STUDIO_EVENT_PROPERTY index, float *value);
 FMOD_RESULT F_API FMOD_Studio_EventInstance_SetProperty(FMOD_STUDIO_EVENTINSTANCE *eventinstance, FMOD_STUDIO_EVENT_PROPERTY index, float value);
+FMOD_RESULT F_API FMOD_Studio_EventInstance_GetReverbLevel(FMOD_STUDIO_EVENTINSTANCE *eventinstance, int index, float *level);
+FMOD_RESULT F_API FMOD_Studio_EventInstance_SetReverbLevel(FMOD_STUDIO_EVENTINSTANCE *eventinstance, int index, float level);
 FMOD_RESULT F_API FMOD_Studio_EventInstance_GetPaused(FMOD_STUDIO_EVENTINSTANCE *eventinstance, FMOD_BOOL *paused);
 FMOD_RESULT F_API FMOD_Studio_EventInstance_SetPaused(FMOD_STUDIO_EVENTINSTANCE *eventinstance, FMOD_BOOL paused);
 FMOD_RESULT F_API FMOD_Studio_EventInstance_Start(FMOD_STUDIO_EVENTINSTANCE *eventinstance);
@@ -130,14 +134,14 @@ FMOD_RESULT F_API FMOD_Studio_EventInstance_IsVirtual(FMOD_STUDIO_EVENTINSTANCE 
 FMOD_RESULT F_API FMOD_Studio_EventInstance_GetParameter(FMOD_STUDIO_EVENTINSTANCE *eventinstance, const char *name, FMOD_STUDIO_PARAMETERINSTANCE **parameter);
 FMOD_RESULT F_API FMOD_Studio_EventInstance_GetParameterByIndex(FMOD_STUDIO_EVENTINSTANCE *eventinstance, int index, FMOD_STUDIO_PARAMETERINSTANCE **parameter);
 FMOD_RESULT F_API FMOD_Studio_EventInstance_GetParameterCount(FMOD_STUDIO_EVENTINSTANCE *eventinstance, int *count);
-FMOD_RESULT F_API FMOD_Studio_EventInstance_GetParameterValue(FMOD_STUDIO_EVENTINSTANCE *eventinstance, const char *name, float *value);
+FMOD_RESULT F_API FMOD_Studio_EventInstance_GetParameterValue(FMOD_STUDIO_EVENTINSTANCE *eventinstance, const char *name, float *value, float *finalvalue);
 FMOD_RESULT F_API FMOD_Studio_EventInstance_SetParameterValue(FMOD_STUDIO_EVENTINSTANCE *eventinstance, const char *name, float value);
-FMOD_RESULT F_API FMOD_Studio_EventInstance_GetParameterValueByIndex(FMOD_STUDIO_EVENTINSTANCE *eventinstance, int index, float *value);
+FMOD_RESULT F_API FMOD_Studio_EventInstance_GetParameterValueByIndex(FMOD_STUDIO_EVENTINSTANCE *eventinstance, int index, float *value, float *finalvalue);
 FMOD_RESULT F_API FMOD_Studio_EventInstance_SetParameterValueByIndex(FMOD_STUDIO_EVENTINSTANCE *eventinstance, int index, float value);
 FMOD_RESULT F_API FMOD_Studio_EventInstance_TriggerCue(FMOD_STUDIO_EVENTINSTANCE *eventinstance);
 FMOD_RESULT F_API FMOD_Studio_EventInstance_SetCallback(FMOD_STUDIO_EVENTINSTANCE *eventinstance, FMOD_STUDIO_EVENT_CALLBACK callback, FMOD_STUDIO_EVENT_CALLBACK_TYPE callbackmask);
-FMOD_RESULT F_API FMOD_Studio_EventInstance_GetUserData(FMOD_STUDIO_EVENTINSTANCE *eventinstance, void **userData);
-FMOD_RESULT F_API FMOD_Studio_EventInstance_SetUserData(FMOD_STUDIO_EVENTINSTANCE *eventinstance, void *userData);
+FMOD_RESULT F_API FMOD_Studio_EventInstance_GetUserData(FMOD_STUDIO_EVENTINSTANCE *eventinstance, void **userdata);
+FMOD_RESULT F_API FMOD_Studio_EventInstance_SetUserData(FMOD_STUDIO_EVENTINSTANCE *eventinstance, void *userdata);
 
 /*
     ParameterInstance
@@ -153,8 +157,8 @@ FMOD_RESULT F_API FMOD_Studio_ParameterInstance_SetValue(FMOD_STUDIO_PARAMETERIN
 FMOD_BOOL   F_API FMOD_Studio_Bus_IsValid(FMOD_STUDIO_BUS *bus);
 FMOD_RESULT F_API FMOD_Studio_Bus_GetID(FMOD_STUDIO_BUS *bus, FMOD_GUID *id);
 FMOD_RESULT F_API FMOD_Studio_Bus_GetPath(FMOD_STUDIO_BUS *bus, char *path, int size, int *retrieved);
-FMOD_RESULT F_API FMOD_Studio_Bus_GetFaderLevel(FMOD_STUDIO_BUS *bus, float *level);
-FMOD_RESULT F_API FMOD_Studio_Bus_SetFaderLevel(FMOD_STUDIO_BUS *bus, float level);
+FMOD_RESULT F_API FMOD_Studio_Bus_GetVolume(FMOD_STUDIO_BUS *bus, float *volume, float *finalvolume);
+FMOD_RESULT F_API FMOD_Studio_Bus_SetVolume(FMOD_STUDIO_BUS *bus, float volume);
 FMOD_RESULT F_API FMOD_Studio_Bus_GetPaused(FMOD_STUDIO_BUS *bus, FMOD_BOOL *paused);
 FMOD_RESULT F_API FMOD_Studio_Bus_SetPaused(FMOD_STUDIO_BUS *bus, FMOD_BOOL paused);
 FMOD_RESULT F_API FMOD_Studio_Bus_GetMute(FMOD_STUDIO_BUS *bus, FMOD_BOOL *mute);
@@ -170,8 +174,8 @@ FMOD_RESULT F_API FMOD_Studio_Bus_GetChannelGroup(FMOD_STUDIO_BUS *bus, FMOD_CHA
 FMOD_BOOL   F_API FMOD_Studio_VCA_IsValid(FMOD_STUDIO_VCA *vca);
 FMOD_RESULT F_API FMOD_Studio_VCA_GetID(FMOD_STUDIO_VCA *vca, FMOD_GUID *id);
 FMOD_RESULT F_API FMOD_Studio_VCA_GetPath(FMOD_STUDIO_VCA *vca, char *path, int size, int *retrieved);
-FMOD_RESULT F_API FMOD_Studio_VCA_GetFaderLevel(FMOD_STUDIO_VCA *vca, float *level);
-FMOD_RESULT F_API FMOD_Studio_VCA_SetFaderLevel(FMOD_STUDIO_VCA *vca, float level);
+FMOD_RESULT F_API FMOD_Studio_VCA_GetVolume(FMOD_STUDIO_VCA *vca, float *volume, float *finalvolume);
+FMOD_RESULT F_API FMOD_Studio_VCA_SetVolume(FMOD_STUDIO_VCA *vca, float volume);
 
 /*
     Bank
@@ -192,7 +196,7 @@ FMOD_RESULT F_API FMOD_Studio_Bank_GetBusCount(FMOD_STUDIO_BANK *bank, int *coun
 FMOD_RESULT F_API FMOD_Studio_Bank_GetBusList(FMOD_STUDIO_BANK *bank, FMOD_STUDIO_BUS **array, int capacity, int *count);
 FMOD_RESULT F_API FMOD_Studio_Bank_GetVCACount(FMOD_STUDIO_BANK *bank, int *count);
 FMOD_RESULT F_API FMOD_Studio_Bank_GetVCAList(FMOD_STUDIO_BANK *bank, FMOD_STUDIO_VCA **array, int capacity, int *count);
-FMOD_RESULT F_API FMOD_Studio_Bank_GetUserData(FMOD_STUDIO_BANK *bank, void **userData);
+FMOD_RESULT F_API FMOD_Studio_Bank_GetUserData(FMOD_STUDIO_BANK *bank, void **userdata);
 FMOD_RESULT F_API FMOD_Studio_Bank_SetUserData(FMOD_STUDIO_BANK *bank, void *userData);
 
 /*
@@ -202,18 +206,18 @@ FMOD_BOOL   F_API FMOD_Studio_CommandReplay_IsValid(FMOD_STUDIO_COMMANDREPLAY *r
 FMOD_RESULT F_API FMOD_Studio_CommandReplay_GetSystem(FMOD_STUDIO_COMMANDREPLAY *replay, FMOD_STUDIO_SYSTEM **system);
 FMOD_RESULT F_API FMOD_Studio_CommandReplay_GetLength(FMOD_STUDIO_COMMANDREPLAY *replay, float *length);
 FMOD_RESULT F_API FMOD_Studio_CommandReplay_GetCommandCount(FMOD_STUDIO_COMMANDREPLAY *replay, int *count);
-FMOD_RESULT F_API FMOD_Studio_CommandReplay_GetCommandInfo(FMOD_STUDIO_COMMANDREPLAY *replay, int commandIndex, FMOD_STUDIO_COMMAND_INFO *info);
-FMOD_RESULT F_API FMOD_Studio_CommandReplay_GetCommandString(FMOD_STUDIO_COMMANDREPLAY *replay, int commandIndex, char *description, int capacity);
-FMOD_RESULT F_API FMOD_Studio_CommandReplay_GetCommandAtTime(FMOD_STUDIO_COMMANDREPLAY *replay, float time, int *commandIndex);
+FMOD_RESULT F_API FMOD_Studio_CommandReplay_GetCommandInfo(FMOD_STUDIO_COMMANDREPLAY *replay, int commandindex, FMOD_STUDIO_COMMAND_INFO *info);
+FMOD_RESULT F_API FMOD_Studio_CommandReplay_GetCommandString(FMOD_STUDIO_COMMANDREPLAY *replay, int commandindex, char *description, int capacity);
+FMOD_RESULT F_API FMOD_Studio_CommandReplay_GetCommandAtTime(FMOD_STUDIO_COMMANDREPLAY *replay, float time, int *commandindex);
 FMOD_RESULT F_API FMOD_Studio_CommandReplay_SetBankPath(FMOD_STUDIO_COMMANDREPLAY *replay, const char *bankPath);
 FMOD_RESULT F_API FMOD_Studio_CommandReplay_Start(FMOD_STUDIO_COMMANDREPLAY *replay);
 FMOD_RESULT F_API FMOD_Studio_CommandReplay_Stop(FMOD_STUDIO_COMMANDREPLAY *replay);
 FMOD_RESULT F_API FMOD_Studio_CommandReplay_SeekToTime(FMOD_STUDIO_COMMANDREPLAY *replay, float time);
-FMOD_RESULT F_API FMOD_Studio_CommandReplay_SeekToCommand(FMOD_STUDIO_COMMANDREPLAY *replay, int commandIndex);
+FMOD_RESULT F_API FMOD_Studio_CommandReplay_SeekToCommand(FMOD_STUDIO_COMMANDREPLAY *replay, int commandindex);
 FMOD_RESULT F_API FMOD_Studio_CommandReplay_GetPaused(FMOD_STUDIO_COMMANDREPLAY *replay, FMOD_BOOL *paused);
 FMOD_RESULT F_API FMOD_Studio_CommandReplay_SetPaused(FMOD_STUDIO_COMMANDREPLAY *replay, FMOD_BOOL paused);
 FMOD_RESULT F_API FMOD_Studio_CommandReplay_GetPlaybackState(FMOD_STUDIO_COMMANDREPLAY *replay, FMOD_STUDIO_PLAYBACK_STATE *state);
-FMOD_RESULT F_API FMOD_Studio_CommandReplay_GetCurrentCommand(FMOD_STUDIO_COMMANDREPLAY *replay, int *commandIndex, float *currentTime);
+FMOD_RESULT F_API FMOD_Studio_CommandReplay_GetCurrentCommand(FMOD_STUDIO_COMMANDREPLAY *replay, int *commandindex, float *currenttime);
 FMOD_RESULT F_API FMOD_Studio_CommandReplay_Release(FMOD_STUDIO_COMMANDREPLAY *replay);
 FMOD_RESULT F_API FMOD_Studio_CommandReplay_SetFrameCallback(FMOD_STUDIO_COMMANDREPLAY *replay, FMOD_STUDIO_COMMANDREPLAY_FRAME_CALLBACK callback);
 FMOD_RESULT F_API FMOD_Studio_CommandReplay_SetLoadBankCallback(FMOD_STUDIO_COMMANDREPLAY *replay, FMOD_STUDIO_COMMANDREPLAY_LOAD_BANK_CALLBACK callback);

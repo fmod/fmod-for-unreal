@@ -29,7 +29,7 @@ namespace Studio
     class Bank;
     class CommandReplay;
 
-    FMOD_RESULT F_API parseID(const char *idString, FMOD_GUID *id);
+    inline FMOD_RESULT parseID(const char *idstring, FMOD_GUID *id) { return FMOD_Studio_ParseID(idstring, id); }
 
     class System
     {
@@ -39,7 +39,7 @@ namespace Studio
         System(const System &);
 
     public:
-        static FMOD_RESULT F_API create(System **system, unsigned int headerVersion = FMOD_VERSION);
+        static FMOD_RESULT F_API create(System **system, unsigned int headerversion = FMOD_VERSION);
         FMOD_RESULT F_API setAdvancedSettings(FMOD_STUDIO_ADVANCEDSETTINGS *settings);
         FMOD_RESULT F_API getAdvancedSettings(FMOD_STUDIO_ADVANCEDSETTINGS *settings);
         FMOD_RESULT F_API initialize(int maxchannels, FMOD_STUDIO_INITFLAGS studioflags, FMOD_INITFLAGS flags, void *extradriverdata);
@@ -76,6 +76,8 @@ namespace Studio
         FMOD_RESULT F_API setNumListeners(int numlisteners);
         FMOD_RESULT F_API getListenerAttributes(int listener, FMOD_3D_ATTRIBUTES *attributes) const;
         FMOD_RESULT F_API setListenerAttributes(int listener, const FMOD_3D_ATTRIBUTES *attributes);
+        FMOD_RESULT F_API getListenerWeight(int listener, float *weight);
+        FMOD_RESULT F_API setListenerWeight(int listener, float weight);
 
         // Bank control
         FMOD_RESULT F_API loadBankFile(const char *filename, FMOD_STUDIO_LOAD_BANK_FLAGS flags, Bank **bank);
@@ -101,8 +103,8 @@ namespace Studio
 
         // Callbacks
         FMOD_RESULT F_API setCallback(FMOD_STUDIO_SYSTEM_CALLBACK callback, FMOD_STUDIO_SYSTEM_CALLBACK_TYPE callbackmask = FMOD_STUDIO_SYSTEM_CALLBACK_ALL);
-        FMOD_RESULT F_API getUserData(void **userData) const;
-        FMOD_RESULT F_API setUserData(void *userData);
+        FMOD_RESULT F_API getUserData(void **userdata) const;
+        FMOD_RESULT F_API setUserData(void *userdata);
 
     };
 
@@ -152,8 +154,8 @@ namespace Studio
 
         // Callbacks
         FMOD_RESULT F_API setCallback(FMOD_STUDIO_EVENT_CALLBACK callback, FMOD_STUDIO_EVENT_CALLBACK_TYPE callbackmask = FMOD_STUDIO_EVENT_CALLBACK_ALL);
-        FMOD_RESULT F_API getUserData(void **userData) const;
-        FMOD_RESULT F_API setUserData(void *userData);
+        FMOD_RESULT F_API getUserData(void **userdata) const;
+        FMOD_RESULT F_API setUserData(void *userdata);
     };
 
     class EventInstance
@@ -171,10 +173,10 @@ namespace Studio
         FMOD_RESULT F_API getDescription(EventDescription **description) const;
 
         // Playback control
-        FMOD_RESULT F_API getVolume(float *volume) const;
+        FMOD_RESULT F_API getVolume(float *volume, float *finalvolume = 0) const;
         FMOD_RESULT F_API setVolume(float volume);
 
-        FMOD_RESULT F_API getPitch(float *pitch) const;
+        FMOD_RESULT F_API getPitch(float *pitch, float *finalpitch = 0) const;
         FMOD_RESULT F_API setPitch(float pitch);
 
         FMOD_RESULT F_API get3DAttributes(FMOD_3D_ATTRIBUTES *attributes) const;
@@ -185,6 +187,9 @@ namespace Studio
 
         FMOD_RESULT F_API getProperty(FMOD_STUDIO_EVENT_PROPERTY index, float *value) const;
         FMOD_RESULT F_API setProperty(FMOD_STUDIO_EVENT_PROPERTY index, float value);
+
+        FMOD_RESULT F_API getReverbLevel(int index, float *level) const;
+        FMOD_RESULT F_API setReverbLevel(int index, float level);
 
         FMOD_RESULT F_API getPaused(bool *paused) const;
         FMOD_RESULT F_API setPaused(bool paused);
@@ -203,10 +208,10 @@ namespace Studio
 
         FMOD_RESULT F_API isVirtual(bool *virtualState) const;
 
-        FMOD_RESULT F_API getParameterValue(const char *name, float *value);
+        FMOD_RESULT F_API getParameterValue(const char *name, float *value, float *finalvalue = 0);
         FMOD_RESULT F_API setParameterValue(const char *name, float value);
 
-        FMOD_RESULT F_API getParameterValueByIndex(int index, float *value);
+        FMOD_RESULT F_API getParameterValueByIndex(int index, float *value, float *finalvalue = 0);
         FMOD_RESULT F_API setParameterValueByIndex(int index, float value);
 
         // Deprecated - please use getParameterValue, setParameterValue, getParameterValueByIndex and setParameterValueByIndex instead
@@ -218,8 +223,8 @@ namespace Studio
 
         // Callbacks
         FMOD_RESULT F_API setCallback(FMOD_STUDIO_EVENT_CALLBACK callback, FMOD_STUDIO_EVENT_CALLBACK_TYPE callbackmask = FMOD_STUDIO_EVENT_CALLBACK_ALL);
-        FMOD_RESULT F_API getUserData(void **userData) const;
-        FMOD_RESULT F_API setUserData(void *userData);
+        FMOD_RESULT F_API getUserData(void **userdata) const;
+        FMOD_RESULT F_API setUserData(void *userdata);
     };
 
     // Deprecated
@@ -258,8 +263,8 @@ namespace Studio
         FMOD_RESULT F_API getPath(char *path, int size, int *retrieved) const;
 
         // Playback control
-        FMOD_RESULT F_API getFaderLevel(float *level) const;
-        FMOD_RESULT F_API setFaderLevel(float level);
+        FMOD_RESULT F_API getVolume(float *volume, float *finalvolume = 0) const;
+        FMOD_RESULT F_API setVolume(float volume);
 
         FMOD_RESULT F_API getPaused(bool *paused) const;
         FMOD_RESULT F_API setPaused(bool paused);
@@ -291,8 +296,8 @@ namespace Studio
         FMOD_RESULT F_API getPath(char *path, int size, int *retrieved) const;
 
         // Playback control
-        FMOD_RESULT F_API getFaderLevel(float *level) const;
-        FMOD_RESULT F_API setFaderLevel(float level);
+        FMOD_RESULT F_API getVolume(float *volume, float *finalvolume = 0) const;
+        FMOD_RESULT F_API setVolume(float volume);
     };
 
     class Bank
@@ -328,8 +333,8 @@ namespace Studio
         FMOD_RESULT F_API getVCACount(int *count) const;
         FMOD_RESULT F_API getVCAList(VCA **array, int capacity, int *count) const;
 
-        FMOD_RESULT F_API getUserData(void **userData) const;
-        FMOD_RESULT F_API setUserData(void *userData);
+        FMOD_RESULT F_API getUserData(void **userdata) const;
+        FMOD_RESULT F_API setUserData(void *userdata);
     };
 
     class CommandReplay
@@ -348,20 +353,20 @@ namespace Studio
         FMOD_RESULT F_API getLength(float *length) const;
 
         FMOD_RESULT F_API getCommandCount(int *count) const;
-        FMOD_RESULT F_API getCommandInfo(int commandIndex, FMOD_STUDIO_COMMAND_INFO *info) const;
-        FMOD_RESULT F_API getCommandString(int commandIndex, char *buffer, int length) const;
-        FMOD_RESULT F_API getCommandAtTime(float time, int *commandIndex) const;
+        FMOD_RESULT F_API getCommandInfo(int commandindex, FMOD_STUDIO_COMMAND_INFO *info) const;
+        FMOD_RESULT F_API getCommandString(int commandindex, char *buffer, int length) const;
+        FMOD_RESULT F_API getCommandAtTime(float time, int *commandindex) const;
 
         // Playback
         FMOD_RESULT F_API setBankPath(const char *bankPath);
         FMOD_RESULT F_API start();
         FMOD_RESULT F_API stop();
         FMOD_RESULT F_API seekToTime(float time);
-        FMOD_RESULT F_API seekToCommand(int commandIndex);
+        FMOD_RESULT F_API seekToCommand(int commandindex);
         FMOD_RESULT F_API getPaused(bool *paused) const;
         FMOD_RESULT F_API setPaused(bool paused);
         FMOD_RESULT F_API getPlaybackState(FMOD_STUDIO_PLAYBACK_STATE *state) const;
-        FMOD_RESULT F_API getCurrentCommand(int *commandIndex, float *currentTime) const;
+        FMOD_RESULT F_API getCurrentCommand(int *commandindex, float *currenttime) const;
 
         // Release
         FMOD_RESULT F_API release();
@@ -371,8 +376,8 @@ namespace Studio
         FMOD_RESULT F_API setLoadBankCallback(FMOD_STUDIO_COMMANDREPLAY_LOAD_BANK_CALLBACK callback);
         FMOD_RESULT F_API setCreateInstanceCallback(FMOD_STUDIO_COMMANDREPLAY_CREATE_INSTANCE_CALLBACK callback);
 
-        FMOD_RESULT F_API getUserData(void **userData) const;
-        FMOD_RESULT F_API setUserData(void *userData);
+        FMOD_RESULT F_API getUserData(void **userdata) const;
+        FMOD_RESULT F_API setUserData(void *userdata);
     };
 
 } // namespace Studio

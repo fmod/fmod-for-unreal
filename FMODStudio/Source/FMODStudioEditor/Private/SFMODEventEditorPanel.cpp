@@ -323,16 +323,16 @@ TSharedRef<SExpandableArea> SFMODEventEditorPanel::ConstructUserProperties(FMOD:
 			switch (UserProperty.type)
 			{
 			case FMOD_STUDIO_USER_PROPERTY_TYPE_INTEGER:
-				PropertyText = FText::AsNumber(UserProperty.intValue);
+				PropertyText = FText::AsNumber(UserProperty.intvalue);
 				break;
 			case FMOD_STUDIO_USER_PROPERTY_TYPE_BOOLEAN:
-				PropertyText = UserProperty.boolValue ? LOCTEXT("True", "True") : LOCTEXT("False", "False");
+				PropertyText = UserProperty.boolvalue ? LOCTEXT("True", "True") : LOCTEXT("False", "False");
 				break;
 			case FMOD_STUDIO_USER_PROPERTY_TYPE_FLOAT:
-				PropertyText = FText::AsNumber(UserProperty.floatValue);
+				PropertyText = FText::AsNumber(UserProperty.floatvalue);
 				break;
 			case FMOD_STUDIO_USER_PROPERTY_TYPE_STRING:
-				PropertyText = FText::FromString(UTF8_TO_TCHAR(UserProperty.stringValue));
+				PropertyText = FText::FromString(UTF8_TO_TCHAR(UserProperty.stringvalue));
 				break;
 			}
 

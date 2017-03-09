@@ -5,6 +5,8 @@
 #include "fmod_studio.hpp"
 #include "fmod.hpp"
 
+#include "Runtime/Launch/Resources/Version.h"
+
 #include "FMODStudioModule.h"
 
 #define verifyfmod(fn) { FMOD_RESULT _result = (fn); if (_result != FMOD_OK) { FMODUtils::LogError(_result, #fn); } }
@@ -80,7 +82,7 @@ inline bool IsWorldAudible(UWorld* World)
 		if (World->bAllowAudioPlayback && World->GetNetMode() != NM_DedicatedServer)
 		{
 			EWorldType::Type previewEnum;
-#if ENGINE_MINOR_VERSION >= 14
+#if ENGINE_MINOR_VERSION > 13
 			previewEnum = EWorldType::EditorPreview;
 #else
 			previewEnum = EWorldType::Preview;
