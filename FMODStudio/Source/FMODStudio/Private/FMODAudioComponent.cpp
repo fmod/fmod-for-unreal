@@ -310,6 +310,12 @@ void UFMODAudioComponent::ApplyVolumeLPF()
 						ChanDSP->setParameterFloat(FMOD_DSP_LOWPASS_CUTOFF, CurLPF);
 						LastLPF = CurLPF; // Actually set it!
 						break;
+					}					
+					else if (DSPType == FMOD_DSP_TYPE_THREE_EQ)
+					{
+						ChanDSP->setParameterFloat(FMOD_DSP_THREE_EQ_LOWCROSSOVER, CurLPF);
+						LastLPF = CurLPF; // Actually set it!
+						break;
 					}
 				}
 			}

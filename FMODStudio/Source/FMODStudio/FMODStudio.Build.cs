@@ -34,7 +34,9 @@ namespace UnrealBuildTool.Rules
 			PrivateDependencyModuleNames.AddRange(
 				new string[]
 				{
-				}
+                    "MovieScene",
+                    "MovieSceneTracks"
+                }
 				);
 
 			if (UEBuildConfiguration.bBuildEditor == true)

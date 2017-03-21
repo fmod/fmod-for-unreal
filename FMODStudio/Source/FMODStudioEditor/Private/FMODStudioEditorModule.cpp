@@ -13,6 +13,8 @@
 #include "FMODEventEditor.h"
 #include "FMODAudioComponentVisualizer.h"
 #include "FMODAmbientSoundDetails.h"
+#include "Sequencer/FMODEventControlTrackEditor.h"
+#include "Sequencer/FMODEventParameterTrackEditor.h"
 
 #include "SlateBasics.h"
 #include "AssetSelection.h"
@@ -28,6 +30,7 @@
 #include "Sockets.h"
 #include "IPAddress.h"
 #include "FileHelpers.h"
+#include "ISequencerModule.h"
 
 #include "fmod_studio.hpp"
 
@@ -216,6 +219,8 @@ public:
 	FDelegateHandle PausePIEDelegateHandle;
 	FDelegateHandle ResumePIEDelegateHandle;
 	FDelegateHandle HandleBanksReloadedDelegateHandle;
+    FDelegateHandle FMODControlTrackEditorCreateTrackEditorHandle;
+    FDelegateHandle FMODParamTrackEditorCreateTrackEditorHandle;
 
 	/** Hook for drawing viewport */
 	FDebugDrawDelegate ViewportDrawingDelegate;
@@ -261,6 +266,11 @@ void FFMODStudioEditorModule::StartupModule()
 			SettingsSection->OnModified().BindRaw(this, &FFMODStudioEditorModule::HandleSettingsSaved);
 		}
 	}
+
+    // Register with the sequencer module that we provide auto-key handlers.
+    ISequencerModule& SequencerModule = FModuleManager::Get().LoadModuleChecked<ISequencerModule>("Sequencer");
+    FMODControlTrackEditorCreateTrackEditorHandle = SequencerModule.RegisterTrackEditor_Handle(FOnCreateTrackEditor::CreateStatic(&FFMODEventControlTrackEditor::CreateTrackEditor));
+    FMODParamTrackEditorCreateTrackEditorHandle = SequencerModule.RegisterTrackEditor_Handle(FOnCreateTrackEditor::CreateStatic(&FFMODEventParameterTrackEditor::CreateTrackEditor));
 
 	// Register the details customizations
 	{
@@ -392,7 +402,7 @@ void FFMODStudioEditorModule::ShowVersion()
 	unsigned int DLLVersion = GetDLLVersion();
 
 	FText VersionMessage = FText::Format(
-		LOCTEXT("FMODStudio_About", "FMOD Studio\n\nBuilt Version: {0}\nDLL Version: {1}\n\nCopyright Firelight Technologies Pty Ltd"),
+		LOCTEXT("FMODStudio_About", "FMOD Studio\n\nBuilt Version: {0}\nDLL Version: {1}\n\nCopyright \u00A9 Firelight Technologies Pty Ltd.\n\nSee LICENSE.TXT for additional license information."),
 			FText::FromString(VersionToString(HeaderVersion)),
 			FText::FromString(VersionToString(DLLVersion)));
 	FMessageDialog::Open(EAppMsgType::Ok, VersionMessage);
@@ -932,7 +942,15 @@ void FFMODStudioEditorModule::ShutdownModule()
 		}
 	}
 
-	IFMODStudioModule::Get().BanksReloadedEvent().Remove(HandleBanksReloadedDelegateHandle);
+    // Unregister sequencer track creation delegates
+    ISequencerModule* SequencerModule = FModuleManager::GetModulePtr<ISequencerModule>("Sequencer");
+    if (SequencerModule != nullptr)
+    {
+        SequencerModule->UnRegisterTrackEditor_Handle(FMODControlTrackEditorCreateTrackEditorHandle);
+        SequencerModule->UnRegisterTrackEditor_Handle(FMODParamTrackEditorCreateTrackEditorHandle);
+    }
+    
+    IFMODStudioModule::Get().BanksReloadedEvent().Remove(HandleBanksReloadedDelegateHandle);
 }
 
 bool FFMODStudioEditorModule::HandleSettingsSaved()

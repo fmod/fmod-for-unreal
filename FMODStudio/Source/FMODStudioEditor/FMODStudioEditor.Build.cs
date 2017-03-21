@@ -17,8 +17,14 @@ namespace UnrealBuildTool.Rules
 				new string[] {
 					"FMODStudioEditor/Private",
 					"FMODStudio/Private",
+                    "Editor/MovieSceneTools/Private",
+                    "Editor/MovieSceneTools/Private/CurveKeyEditors",
+                    "Editor/MovieSceneTools/Private/TrackEditors",
+                    "Editor/MovieSceneTools/Private/TrackEditors/PropertyTrackEditors",
+                    "Editor/MovieSceneTools/Private/TrackEditorThumbnail",
+                    "Editor/MovieSceneTools/Private/Sections"
 				}
-				);
+                );
 
 			PublicDependencyModuleNames.AddRange(
 				new string[]
@@ -26,17 +32,18 @@ namespace UnrealBuildTool.Rules
 					"Core",
 					"CoreUObject",
 					"Engine",
-					"FMODStudio"
-				}
-				);
+					"FMODStudio",
+                    "InputCore",
+                    "UnrealEd",
+                    "Sequencer"
+                }
+                );
 
 			PrivateDependencyModuleNames.AddRange(
 				new string[]
 				{
-					"UnrealEd",
 					"Slate",
 					"SlateCore",
-					"InputCore",
 					"Settings",
 					"EditorStyle",
 					"LevelEditor",
@@ -44,15 +51,19 @@ namespace UnrealBuildTool.Rules
 					"AssetRegistry",
 					"PropertyEditor",
 					"WorkspaceMenuStructure",
-					"Sockets"
-				}
-				);
+					"Sockets",
+                    "LevelSequence",
+                    "MovieScene",
+                    "MovieSceneTracks",
+                    "MovieSceneTools"
+                }
+                );
 
 			DynamicallyLoadedModuleNames.AddRange(
 				new string[]
 				{
-				}
-				);
+                }
+                );
 		}
 	}
 }

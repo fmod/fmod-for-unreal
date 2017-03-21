@@ -579,7 +579,8 @@ void FFMODStudioModule::CreateStudioSystem(EFMODSystemContext::Type Type)
 	{
 		for (FString PluginName : Settings.PluginFiles)
 		{
-			LoadPlugin(*PluginName);
+			if (!PluginName.IsEmpty())
+				LoadPlugin(*PluginName);
 		}
 	}
 }
