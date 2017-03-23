@@ -5,6 +5,7 @@
 #include "Map.h"
 #include "Runtime/Launch/Resources/Version.h"
 #include "Sound/SoundAttenuation.h"
+#include "Audio.h"
 #include "FMODAudioComponent.generated.h"
 
 // Event property
