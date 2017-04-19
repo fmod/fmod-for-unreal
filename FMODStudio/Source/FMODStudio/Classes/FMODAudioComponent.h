@@ -5,6 +5,11 @@
 #include "Map.h"
 #include "Runtime/Launch/Resources/Version.h"
 #include "Sound/SoundAttenuation.h"
+
+// UE Includes
+#include "Audio.h"
+#include "Components/SceneComponent.h"
+
 #include "FMODAudioComponent.generated.h"
 
 // Event property
