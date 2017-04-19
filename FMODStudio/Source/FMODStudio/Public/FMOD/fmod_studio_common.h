@@ -398,6 +398,9 @@ typedef unsigned int FMOD_STUDIO_EVENT_CALLBACK_TYPE;
     This data is passed to the event callback function when type is FMOD_STUDIO_EVENT_CALLBACK_CREATE_PROGRAMMER_SOUND
     or FMOD_STUDIO_EVENT_CALLBACK_DESTROY_PROGRAMMER_SOUND.
 
+    The provided sound should be created with the FMOD_LOOP_NORMAL mode bit set. FMOD will set this bit internally if
+    it is not set, possibly incurring a slight performance penalty.
+
     To support non-blocking loading of FSB subsounds, you can specify the subsound you want to use by setting the
     subsoundIndex field. This will cause FMOD to wait until the provided sound is ready and then get the specified
     subsound from it.
@@ -413,8 +416,8 @@ typedef unsigned int FMOD_STUDIO_EVENT_CALLBACK_TYPE;
 typedef struct FMOD_STUDIO_PROGRAMMER_SOUND_PROPERTIES
 {
     const char  *name;                              /* The name of the programmer instrument (set in FMOD Studio). */
-    FMOD_SOUND  *sound;                             /* The programmer-created sound. This should be filled in by the create callback, and cleaned up by the destroy callback. This can be cast to/from FMOD::Sound* type. */
-    int          subsoundIndex;                     /* The index of the subsound to use, or -1 if the provided sound should be used directly. Defaults to -1. */
+    FMOD_SOUND  *sound;                             /* The programmer-created sound. This should be filled in by the create callback, and cleaned up by the destroy callback. The provided sound should be created with the FMOD_LOOP_NORMAL mode bit set. This can be cast to/from FMOD::Sound* type. */
+    int          subsoundIndex;                     /* The index of the subsound to use. This should be filled in by the create callback, or set to -1 if the provided sound should be used directly. Defaults to -1. */
 } FMOD_STUDIO_PROGRAMMER_SOUND_PROPERTIES;
 
 

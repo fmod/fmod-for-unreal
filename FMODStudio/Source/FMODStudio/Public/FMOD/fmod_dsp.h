@@ -197,10 +197,10 @@ typedef FMOD_RESULT (F_CALL *FMOD_DSP_PAN_GETROLLOFFGAIN_FUNC)            (FMOD_
 */
 typedef enum
 {
-    FMOD_DSP_PARAMETER_TYPE_FLOAT,
-    FMOD_DSP_PARAMETER_TYPE_INT,
-    FMOD_DSP_PARAMETER_TYPE_BOOL,
-    FMOD_DSP_PARAMETER_TYPE_DATA,
+    FMOD_DSP_PARAMETER_TYPE_FLOAT,              /* FMOD_DSP_PARAMETER_DESC will use the FMOD_DSP_PARAMETER_DESC_FLOAT. */
+    FMOD_DSP_PARAMETER_TYPE_INT,                /* FMOD_DSP_PARAMETER_DESC will use the FMOD_DSP_PARAMETER_DESC_INT. */
+    FMOD_DSP_PARAMETER_TYPE_BOOL,               /* FMOD_DSP_PARAMETER_DESC will use the FMOD_DSP_PARAMETER_DESC_BOOL. */
+    FMOD_DSP_PARAMETER_TYPE_DATA,               /* FMOD_DSP_PARAMETER_DESC will use the FMOD_DSP_PARAMETER_DESC_DATA. */
 
     FMOD_DSP_PARAMETER_TYPE_MAX,                /* Maximum number of DSP parameter types. */
     FMOD_DSP_PARAMETER_TYPE_FORCEINT = 65536    /* Makes sure this enum is signed 32bit. */
@@ -476,10 +476,13 @@ typedef struct FMOD_DSP_PARAMETER_OVERALLGAIN
 [
     [DESCRIPTION]
     Structure for data parameters of type FMOD_DSP_PARAMETER_DATA_TYPE_3DATTRIBUTES.
-    A parameter of this type is used in effects that respond to a sound's 3D position.
-    The system will set this parameter automatically if a sound's position changes.
+    
+    A parameter of this type is used in effects that respond to a 3D position.
 
     [REMARKS]
+    The FMOD::Studio::System will set this parameter automatically if an FMOD::Studio::EventInstance position
+    changes, however if using the low level FMOD::System you must set this DSP parameter explicitly.
+
     FMOD will convert passed in co-ordinates to left-handed for the plugin if the System was initialized with the FMOD_INIT_3D_RIGHTHANDED flag.
 
     Members marked with [r] mean the variable is modified by FMOD and is for reading purposes only.  Do not change this value.<br>
@@ -502,10 +505,13 @@ typedef struct FMOD_DSP_PARAMETER_3DATTRIBUTES
 [
     [DESCRIPTION]
     Structure for data parameters of type FMOD_DSP_PARAMETER_DATA_TYPE_3DATTRIBUTES_MULTI.
-    A parameter of this type is used in effects that respond to a sound's 3D position, and support multiple listeners.
-    The system will set this parameter automatically if a sound's position changes.
+
+    A parameter of this type is used in effects that respond to a 3D position and support multiple listeners.
 
     [REMARKS]
+    The FMOD::Studio::System will set this parameter automatically if an FMOD::Studio::EventInstance position
+    changes, however if using the low level FMOD::System you must set this DSP parameter explicitly.
+
     FMOD will convert passed in co-ordinates to left-handed for the plugin if the System was initialized with the FMOD_INIT_3D_RIGHTHANDED flag.
 
     Members marked with [r] mean the variable is modified by FMOD and is for reading purposes only.  Do not change this value.<br>
