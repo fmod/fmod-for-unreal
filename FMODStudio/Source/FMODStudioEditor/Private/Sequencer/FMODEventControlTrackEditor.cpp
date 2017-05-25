@@ -59,7 +59,11 @@ int32 FFMODEventControlSection::OnPaintSection(FSequencerSectionPainter& InPaint
         return InPainter.LayerId + 1;
     }
 
-    const ESlateDrawEffect::Type DrawEffects = InPainter.bParentEnabled ? ESlateDrawEffect::None : ESlateDrawEffect::DisabledEffect;
+#if ENGINE_MINOR_VERSION > 15
+    const ESlateDrawEffect DrawEffects = InPainter.bParentEnabled ? ESlateDrawEffect::None : ESlateDrawEffect::DisabledEffect;
+#else
+	const ESlateDrawEffect::Type DrawEffects = InPainter.bParentEnabled ? ESlateDrawEffect::None : ESlateDrawEffect::DisabledEffect;
+#endif
     const FTimeToPixel& TimeToPixelConverter = InPainter.GetTimeConverter();
 
     FLinearColor TrackColor;

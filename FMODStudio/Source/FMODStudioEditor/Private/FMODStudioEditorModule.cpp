@@ -269,9 +269,13 @@ void FFMODStudioEditorModule::StartupModule()
 
     // Register with the sequencer module that we provide auto-key handlers.
     ISequencerModule& SequencerModule = FModuleManager::Get().LoadModuleChecked<ISequencerModule>("Sequencer");
+#if ENGINE_MINOR_VERSION > 15
+    FMODControlTrackEditorCreateTrackEditorHandle = SequencerModule.RegisterTrackEditor(FOnCreateTrackEditor::CreateStatic(&FFMODEventControlTrackEditor::CreateTrackEditor));
+    FMODParamTrackEditorCreateTrackEditorHandle = SequencerModule.RegisterTrackEditor(FOnCreateTrackEditor::CreateStatic(&FFMODEventParameterTrackEditor::CreateTrackEditor));
+#else
     FMODControlTrackEditorCreateTrackEditorHandle = SequencerModule.RegisterTrackEditor_Handle(FOnCreateTrackEditor::CreateStatic(&FFMODEventControlTrackEditor::CreateTrackEditor));
     FMODParamTrackEditorCreateTrackEditorHandle = SequencerModule.RegisterTrackEditor_Handle(FOnCreateTrackEditor::CreateStatic(&FFMODEventParameterTrackEditor::CreateTrackEditor));
-
+#endif
 	// Register the details customizations
 	{
 		FPropertyEditorModule& PropertyModule = FModuleManager::LoadModuleChecked<FPropertyEditorModule>("PropertyEditor");
@@ -946,10 +950,14 @@ void FFMODStudioEditorModule::ShutdownModule()
     ISequencerModule* SequencerModule = FModuleManager::GetModulePtr<ISequencerModule>("Sequencer");
     if (SequencerModule != nullptr)
     {
+#if ENGINE_MINOR_VERSION > 15
+        SequencerModule->UnRegisterTrackEditor(FMODControlTrackEditorCreateTrackEditorHandle);
+        SequencerModule->UnRegisterTrackEditor(FMODParamTrackEditorCreateTrackEditorHandle);
+#else
         SequencerModule->UnRegisterTrackEditor_Handle(FMODControlTrackEditorCreateTrackEditorHandle);
         SequencerModule->UnRegisterTrackEditor_Handle(FMODParamTrackEditorCreateTrackEditorHandle);
+#endif
     }
-    
     IFMODStudioModule::Get().BanksReloadedEvent().Remove(HandleBanksReloadedDelegateHandle);
 }
 

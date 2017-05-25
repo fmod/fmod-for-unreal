@@ -39,6 +39,21 @@ DECLARE_MEMORY_STAT(TEXT("FMOD Memory - Max"), STAT_FMOD_Max_Memory, STATGROUP_F
 DECLARE_DWORD_COUNTER_STAT(TEXT("FMOD Channels - Total"), STAT_FMOD_Total_Channels, STATGROUP_FMOD);
 DECLARE_DWORD_COUNTER_STAT(TEXT("FMOD Channels - Real"), STAT_FMOD_Real_Channels, STATGROUP_FMOD);
 
+#if ENGINE_MINOR_VERSION > 15
+FInteriorSettings::FInteriorSettings()
+	: bIsWorldSettings(false)
+	, ExteriorVolume(1.0f)
+	, ExteriorTime(0.5f)
+	, ExteriorLPF(MAX_FILTER_FREQUENCY)
+	, ExteriorLPFTime(0.5f)
+	, InteriorVolume(1.0f)
+	, InteriorTime(0.5f)
+	, InteriorLPF(MAX_FILTER_FREQUENCY)
+	, InteriorLPFTime(0.5f)
+{
+}
+#endif
+
 const TCHAR* FMODSystemContextNames[EFMODSystemContext::Max] =
 {
 	TEXT("Auditioning"),
