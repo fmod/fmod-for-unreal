@@ -30,8 +30,7 @@ void FFMODListener::UpdateCurrentInteriorSettings()
 
 void FFMODListener::ApplyInteriorSettings( class AAudioVolume* InVolume, const FInteriorSettings& Settings )
 {
-	// Note: FInteriorSettings operator!= is not exported, so just do a memcmp instead
-	if( InVolume != Volume || (0 != memcmp(&Settings, &InteriorSettings, sizeof(FInteriorSettings))) )
+	if (InteriorSettings != Settings)
 	{
 		// Use previous/ current interpolation time if we're transitioning to the default worldsettings zone.
 		InteriorStartTime = FApp::GetCurrentTime();

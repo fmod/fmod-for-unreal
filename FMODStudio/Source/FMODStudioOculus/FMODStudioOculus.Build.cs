@@ -4,8 +4,15 @@ namespace UnrealBuildTool.Rules
 {
 	public class FMODStudioOculus : ModuleRules
 	{
-		public FMODStudioOculus(TargetInfo Target)
-		{
+    #if WITH_FORWARDED_MODULE_RULES_CTOR
+        public FMODStudioOculus(ReadOnlyTargetRules Target) : base(Target)
+    #else
+        public FMODStudioOculus(TargetInfo Target)
+    #endif
+        {
+            bEnforceIWYU = false;
+            PCHUsage = PCHUsageMode.UseSharedPCHs;
+			
 			// For some reason this flag blows out the size of the compiled lib from under 50MB to over 100MB!
 			//bFasterWithoutUnity = true;
 

@@ -4,8 +4,15 @@ namespace UnrealBuildTool.Rules
 {
 	public class FMODStudioEditor : ModuleRules
 	{
-		public FMODStudioEditor(TargetInfo Target)
-		{
+    #if WITH_FORWARDED_MODULE_RULES_CTOR
+        public FMODStudioEditor(ReadOnlyTargetRules Target) : base(Target)
+    #else
+        public FMODStudioEditor(TargetInfo Target)
+    #endif
+        {
+            bEnforceIWYU = false;
+            PCHUsage = PCHUsageMode.UseSharedPCHs;
+			
 			bFasterWithoutUnity = true;
 
 			PublicIncludePaths.AddRange(

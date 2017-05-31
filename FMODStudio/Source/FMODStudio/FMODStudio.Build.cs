@@ -4,8 +4,15 @@ namespace UnrealBuildTool.Rules
 {
 	public class FMODStudio : ModuleRules
 	{
-		public FMODStudio(TargetInfo Target)
-		{
+    #if WITH_FORWARDED_MODULE_RULES_CTOR
+        public FMODStudio(ReadOnlyTargetRules Target) : base(Target)
+    #else
+        public FMODStudio(TargetInfo Target)
+    #endif
+        {
+            bEnforceIWYU = false;
+            PCHUsage = PCHUsageMode.UseSharedPCHs;
+			
 			bFasterWithoutUnity = true;
 
 			PublicIncludePaths.AddRange(
@@ -74,7 +81,7 @@ namespace UnrealBuildTool.Rules
 			// ModuleDirectory points to FMODStudio\source\FMODStudio, need to get back to binaries directory for our libs
 			string BasePath = System.IO.Path.Combine(ModuleDirectory, "../../Binaries", platformName);
             // Collapse the directory path, otherwise OSX is having issues with plugin paths.
-            Utils.CollapseRelativeDirectories(ref BasePath);
+            BasePath = Utils.CleanDirectorySeparators(BasePath);
 
             string copyThirdPartyPath = "";
 			bool bAddRuntimeDependencies = true;

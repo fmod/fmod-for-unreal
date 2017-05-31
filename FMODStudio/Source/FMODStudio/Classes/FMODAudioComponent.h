@@ -74,10 +74,6 @@ namespace FMOD
 struct FMOD_STUDIO_TIMELINE_MARKER_PROPERTIES;
 struct FMOD_STUDIO_TIMELINE_BEAT_PROPERTIES;
 
-#if ENGINE_MINOR_VESION > 15
-struct FInteriorSettings;
-#endif
-
 /**
  * Plays FMOD Studio events.
  */
@@ -171,7 +167,7 @@ class FMODSTUDIO_API UFMODAudioComponent : public USceneComponent
 	UFUNCTION(BlueprintCallable, Category="Audio|FMOD|Components")
 	void SetParameter(FName Name, float Value);
 
-	/** Set a parameter into the event */
+	/** Get parameter value from the event */
 	UFUNCTION(BlueprintCallable, Category="Audio|FMOD|Components")
 	float GetParameter(FName Name);
 

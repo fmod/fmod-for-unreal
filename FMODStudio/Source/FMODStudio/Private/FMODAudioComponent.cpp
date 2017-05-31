@@ -149,9 +149,9 @@ void UFMODAudioComponent::UpdateInteriorVolumes()
 	float NewAmbientVolumeMultiplier = 1.0f;
 	float NewAmbientHighFrequencyGain = 1.0f;
 
-	FInteriorSettings Ambient;
+	FInteriorSettings* Ambient = (FInteriorSettings*)alloca(sizeof(FInteriorSettings)); // FinteriorSetting::FInteriorSettings() isn't exposed (possible UE4 bug???)
 	const FVector& Location = GetOwner()->GetTransform().GetTranslation();
-	AAudioVolume* AudioVolume = GetWorld()->GetAudioSettings(Location, NULL, &Ambient);
+	AAudioVolume* AudioVolume = GetWorld()->GetAudioSettings(Location, NULL, Ambient);
 
 	const FFMODListener& Listener = IFMODStudioModule::Get().GetNearestListener(Location);
 	if( InteriorLastUpdateTime < Listener.InteriorStartTime )
@@ -176,7 +176,7 @@ void UFMODAudioComponent::UpdateInteriorVolumes()
 	else
 	{
 		// Ambient and listener in different ambient zone
-		if( Ambient.bIsWorldSettings )
+		if( Ambient->bIsWorldSettings )
 		{
 			// The ambient sound is 'outside' - use the listener's exterior volume
 			CurrentInteriorVolume = ( SourceInteriorVolume * ( 1.0f - Listener.ExteriorVolumeInterp ) ) + ( Listener.InteriorSettings.ExteriorVolume * Listener.ExteriorVolumeInterp );
@@ -190,11 +190,11 @@ void UFMODAudioComponent::UpdateInteriorVolumes()
 		else
 		{
 			// The ambient sound is 'inside' - use the ambient sound's interior volume multiplied with the listeners exterior volume
-			CurrentInteriorVolume = (( SourceInteriorVolume * ( 1.0f - Listener.InteriorVolumeInterp ) ) + ( Ambient.InteriorVolume * Listener.InteriorVolumeInterp ))
+			CurrentInteriorVolume = (( SourceInteriorVolume * ( 1.0f - Listener.InteriorVolumeInterp ) ) + ( Ambient->InteriorVolume * Listener.InteriorVolumeInterp ))
 										* (( SourceInteriorVolume * ( 1.0f - Listener.ExteriorVolumeInterp ) ) + ( Listener.InteriorSettings.ExteriorVolume * Listener.ExteriorVolumeInterp ));
 			NewAmbientVolumeMultiplier *= CurrentInteriorVolume;
 
-			CurrentInteriorLPF = (( SourceInteriorLPF * ( 1.0f - Listener.InteriorLPFInterp ) ) + ( Ambient.InteriorLPF * Listener.InteriorLPFInterp ))
+			CurrentInteriorLPF = (( SourceInteriorLPF * ( 1.0f - Listener.InteriorLPFInterp ) ) + ( Ambient->InteriorLPF * Listener.InteriorLPFInterp ))
 										* (( SourceInteriorLPF * ( 1.0f - Listener.ExteriorLPFInterp ) ) + ( Listener.InteriorSettings.ExteriorLPF * Listener.ExteriorLPFInterp ));
 			NewAmbientHighFrequencyGain *= CurrentInteriorLPF;
 
