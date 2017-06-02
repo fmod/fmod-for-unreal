@@ -6,7 +6,6 @@
 	"VersionName" : "1.08.15",
 	"CreatedBy" : "Firelight Technologies",
 	"CreatedByURL" : "http://fmod.com",
-	"EngineVersion" : "4.6.0",
 	"Description" : "FMOD Studio Integration.",
 	"Category" : "Audio",
 	"EnabledByDefault" : true,

@@ -2,79 +2,26 @@
 
 #pragma once
 
-struct FMODInteriorSettings
+/** Struct encapsulating settings for interior areas. */
+struct FFMODInteriorSettings
 {
-	// Whether these interior settings are the default values for the world
 	uint32 bIsWorldSettings : 1;
-
-	// The desired volume of sounds outside the volume when the player is inside the volume
 	float ExteriorVolume;
-
-	// The time over which to interpolate from the current volume to the desired volume of sounds outside the volume when the player enters the volume
 	float ExteriorTime;
-
-	// The desired LPF frequency cutoff in hertz of sounds outside the volume when the player is inside the volume
 	float ExteriorLPF;
-
-	// The time over which to interpolate from the current LPF to the desired LPF of sounds outside the volume when the player enters the volume
 	float ExteriorLPFTime;
-
-	// The desired volume of sounds inside the volume when the player is outside the volume
 	float InteriorVolume;
-
-	// The time over which to interpolate from the current volume to the desired volume of sounds inside the volume when the player enters the volume
 	float InteriorTime;
-
-	// The desired LPF frequency cutoff in hertz of sounds inside  the volume when the player is outside the volume
 	float InteriorLPF;
-
-	// The time over which to interpolate from the current LPF to the desired LPF of sounds inside the volume when the player enters the volume
 	float InteriorLPFTime;
 
-	FMODInteriorSettings::FMODInteriorSettings()
-		: bIsWorldSettings(false)
-		, ExteriorVolume(1.0f)
-		, ExteriorTime(0.5f)
-		, ExteriorLPF(MAX_FILTER_FREQUENCY)
-		, ExteriorLPFTime(0.5f)
-		, InteriorVolume(1.0f)
-		, InteriorTime(0.5f)
-		, InteriorLPF(MAX_FILTER_FREQUENCY)
-		, InteriorLPFTime(0.5f)
-	{
-	}
+	FFMODInteriorSettings();
 
-	bool operator ==(const FInteriorSettings& Other) const
-	{
-		return (this->bIsWorldSettings == Other.bIsWorldSettings)
-			&& (this->ExteriorVolume == Other.ExteriorVolume)
-			&& (this->ExteriorTime == Other.ExteriorTime)
-			&& (this->ExteriorLPF == Other.ExteriorLPF)
-			&& (this->ExteriorLPFTime == Other.ExteriorLPFTime)
-			&& (this->InteriorVolume == Other.InteriorVolume)
-			&& (this->InteriorTime == Other.InteriorTime)
-			&& (this->InteriorLPF == Other.InteriorLPF)
-			&& (this->InteriorLPFTime == Other.InteriorLPFTime);
-	}
-	bool operator !=(const FInteriorSettings& Other) const
-	{
-		return !(*this == Other);
-	}
-
-	FMODInteriorSettings& operator =(FInteriorSettings Other)
-	{
-		bIsWorldSettings = Other.bIsWorldSettings;
-		ExteriorVolume = Other.ExteriorVolume;
-		ExteriorTime = Other.ExteriorTime;
-		ExteriorLPF = Other.ExteriorLPF;
-		ExteriorLPFTime = Other.ExteriorLPFTime;
-		InteriorVolume = Other.InteriorVolume;
-		InteriorTime = Other.InteriorTime;
-		InteriorLPF = Other.InteriorLPF;
-		InteriorLPFTime = Other.InteriorLPFTime;
-		return *this;
-	}
+	bool operator==(const FInteriorSettings& Other) const;
+	bool operator!=(const FInteriorSettings& Other) const;
+	FFMODInteriorSettings& operator =(FInteriorSettings Other);
 };
+
 
 /** A direct copy of FListener (which doesn't have external linkage, unfortunately) **/
 struct FFMODListener
@@ -82,7 +29,8 @@ struct FFMODListener
 	FTransform Transform;
 	FVector Velocity;
 
-	struct FMODInteriorSettings InteriorSettings;
+	struct FFMODInteriorSettings InteriorSettings;
+
 	/** The volume the listener resides in */
 	class AAudioVolume* Volume;
 

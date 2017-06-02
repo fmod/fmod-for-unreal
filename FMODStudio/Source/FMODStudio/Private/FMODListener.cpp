@@ -3,6 +3,51 @@
 #include "FMODStudioPrivatePCH.h"
 #include "FMODListener.h"
 
+FFMODInteriorSettings::FFMODInteriorSettings()
+	: bIsWorldSettings(false)
+	, ExteriorVolume(1.0f)
+	, ExteriorTime(0.5f)
+	, ExteriorLPF(MAX_FILTER_FREQUENCY)
+	, ExteriorLPFTime(0.5f)
+	, InteriorVolume(1.0f)
+	, InteriorTime(0.5f)
+	, InteriorLPF(MAX_FILTER_FREQUENCY)
+	, InteriorLPFTime(0.5f)
+{
+}
+
+bool FFMODInteriorSettings::operator ==(const FInteriorSettings& Other) const
+{
+	return (this->bIsWorldSettings == Other.bIsWorldSettings)
+		&& (this->ExteriorVolume == Other.ExteriorVolume)
+		&& (this->ExteriorTime == Other.ExteriorTime)
+		&& (this->ExteriorLPF == Other.ExteriorLPF)
+		&& (this->ExteriorLPFTime == Other.ExteriorLPFTime)
+		&& (this->InteriorVolume == Other.InteriorVolume)
+		&& (this->InteriorTime == Other.InteriorTime)
+		&& (this->InteriorLPF == Other.InteriorLPF)
+		&& (this->InteriorLPFTime == Other.InteriorLPFTime);
+}
+bool FFMODInteriorSettings::operator !=(const FInteriorSettings& Other) const
+{
+	return !(*this == Other);
+}
+
+FFMODInteriorSettings& FFMODInteriorSettings::operator =(FInteriorSettings Other)
+{
+	bIsWorldSettings = Other.bIsWorldSettings;
+	ExteriorVolume = Other.ExteriorVolume;
+	ExteriorTime = Other.ExteriorTime;
+	ExteriorLPF = Other.ExteriorLPF;
+	ExteriorLPFTime = Other.ExteriorLPFTime;
+	InteriorVolume = Other.InteriorVolume;
+	InteriorTime = Other.InteriorTime;
+	InteriorLPF = Other.InteriorLPF;
+	InteriorLPFTime = Other.InteriorLPFTime;
+	return *this;
+}
+
+
 float FFMODListener::Interpolate( const double EndTime )
 {
 	if( FApp::GetCurrentTime() < InteriorStartTime )
@@ -43,4 +88,3 @@ void FFMODListener::ApplyInteriorSettings( class AAudioVolume* InVolume, const F
 		InteriorSettings = Settings;
 	}
 }
-
