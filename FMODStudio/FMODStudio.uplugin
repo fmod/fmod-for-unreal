@@ -28,6 +28,5 @@
 		}
 	],
 
-	"CanContainContent" : true,
-	"Installed" : true
+	"CanContainContent" : true
 }
