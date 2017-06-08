@@ -92,37 +92,20 @@ TSharedRef<SWidget> FFMODEventParameterTrackEditor::BuildParameterMenu(FGuid Obj
 {
 	FMenuBuilder AddParameterMenuBuilder(true, nullptr);
 
-	if (AudioComponent != nullptr)
+	if (AudioComponent != nullptr && AudioComponent->Event.IsValid())
 	{
 		TArray<FParameterNameAndAction> ParameterNamesAndActions;
+        TArray<FMOD_STUDIO_PARAMETER_DESCRIPTION> ParameterDescriptions;
+        AudioComponent->Event->GetParameterDescriptions(ParameterDescriptions);
 
-		FMOD::Studio::EventDescription* EventDesc = IFMODStudioModule::Get().GetEventDescription(AudioComponent->Event.Get());
-		if (EventDesc != nullptr)
+		for (FMOD_STUDIO_PARAMETER_DESCRIPTION& ParameterDescription : ParameterDescriptions)
 		{
-			int ParameterCount;
-			FMOD_RESULT Result = EventDesc->getParameterCount(&ParameterCount);
-			if (Result == FMOD_OK)
-			{
-				for (int i = 0; i < ParameterCount; ++i)
-				{
-					FMOD_STUDIO_PARAMETER_DESCRIPTION ParameterDesc = {};
-					Result = EventDesc->getParameterByIndex(i, &ParameterDesc);
-					if (Result != FMOD_OK)
-					{
-						continue;
-					}
-
-					FName ParameterName(ParameterDesc.name);
-					FExecuteAction InitAction = FExecuteAction::CreateSP(this, &FFMODEventParameterTrackEditor::AddParameter, ObjectBinding, EventParameterTrack, ParameterName);
-					FUIAction AddParameterMenuAction(InitAction);
-					FParameterNameAndAction NameAndAction(ParameterName, AddParameterMenuAction);
-					ParameterNamesAndActions.Add(NameAndAction);
-				}
-			}
-			// TODO: else Something?
+            FName ParameterName(ParameterDescription.name);
+			FExecuteAction InitAction = FExecuteAction::CreateSP(this, &FFMODEventParameterTrackEditor::AddParameter, ObjectBinding, EventParameterTrack, ParameterName);
+			FUIAction AddParameterMenuAction(InitAction);
+			FParameterNameAndAction NameAndAction(ParameterName, AddParameterMenuAction);
+			ParameterNamesAndActions.Add(NameAndAction);
 		}
-
-		// TODO: "Built-in" parameters for volume etc
 
 		// Sort and generate menu.
 		ParameterNamesAndActions.Sort();

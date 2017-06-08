@@ -2,9 +2,9 @@
 
 #include "FMODStudioPrivatePCH.h"
 #include "FMODEventParameterSection.h"
+#include "FMODEventParameterSectionTemplate.h"
 #include "FMODEventParameterTrack.h"
 #include "IMovieScenePlayer.h"
-#include "FMODEventParameterTrackInstance.h"
 #include "MovieSceneCommonHelpers.h"
 
 #define LOCTEXT_NAMESPACE "FMODEventParameterTrack"
@@ -17,9 +17,9 @@ UFMODEventParameterTrack::UFMODEventParameterTrack(const FObjectInitializer& Obj
 #endif
 }
 
-TSharedPtr<IMovieSceneTrackInstance> UFMODEventParameterTrack::CreateInstance()
+FMovieSceneEvalTemplatePtr UFMODEventParameterTrack::CreateTemplateForSection(const UMovieSceneSection& InSection) const
 {
-    return MakeShareable(new FFMODEventParameterTrackInstance(*this));
+    return FFMODEventParameterSectionTemplate(*CastChecked<UFMODEventParameterSection>(&InSection));
 }
 
 UMovieSceneSection* UFMODEventParameterTrack::CreateNewSection()

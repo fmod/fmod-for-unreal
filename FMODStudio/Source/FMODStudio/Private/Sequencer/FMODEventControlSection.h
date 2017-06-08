@@ -30,6 +30,7 @@ public:
     FMODSTUDIO_API void AddKey(float Time, EFMODEventControlKey::Type KeyType);
 
     FMODSTUDIO_API FIntegralCurve& GetControlCurve();
+    const FIntegralCurve& GetControlCurve() const;
 
     // Begin UMovieSceneSection interface
     virtual void MoveSection(float DeltaPosition, TSet<FKeyHandle>& KeyHandles) override;

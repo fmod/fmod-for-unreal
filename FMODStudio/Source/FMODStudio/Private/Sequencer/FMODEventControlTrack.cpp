@@ -4,7 +4,7 @@
 #include "FMODEventControlSection.h"
 #include "FMODEventControlTrack.h"
 #include "IMovieScenePlayer.h"
-#include "FMODEventControlTrackInstance.h"
+#include "FMODEventControlSectionTemplate.h"
 #include "MovieSceneCommonHelpers.h"
 
 #define LOCTEXT_NAMESPACE "FMODEventControlTrack"
@@ -19,9 +19,9 @@ UFMODEventControlTrack::UFMODEventControlTrack(const FObjectInitializer& ObjectI
 }
 
 
-TSharedPtr<IMovieSceneTrackInstance> UFMODEventControlTrack::CreateInstance()
+FMovieSceneEvalTemplatePtr UFMODEventControlTrack::CreateTemplateForSection(const UMovieSceneSection& InSection) const
 {
-    return MakeShareable(new FFMODEventControlTrackInstance(*this)); 
+    return FFMODEventControlSectionTemplate(*CastChecked<UFMODEventControlSection>(&InSection));
 }
 
 

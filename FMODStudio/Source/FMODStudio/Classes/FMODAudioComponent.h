@@ -86,8 +86,9 @@ class FMODSTUDIO_API UFMODAudioComponent : public USceneComponent
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category=Sound)
 	TAssetPtr<class UFMODEvent> Event;
 
-	/** Stored parameters to apply next time we create an instance */
-	TMap<FName, float> StoredParameters;
+	/** Event parameter cache */
+	TMap<FName, float> ParameterCache;
+    bool bDefaultParameterValuesCached;
 
 	/** Stored properties to apply next time we create an instance */
 	float StoredProperties[EFMODEventProperty::Count];
@@ -218,6 +219,9 @@ class FMODSTUDIO_API UFMODAudioComponent : public USceneComponent
 
 	/** Apply Volume and LPF into event */
 	void ApplyVolumeLPF();
+
+    /** Cache default event parameter values */
+    void CacheDefaultParameterValues();
 
 public:
 

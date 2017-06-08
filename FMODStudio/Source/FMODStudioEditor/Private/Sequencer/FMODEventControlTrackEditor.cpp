@@ -62,7 +62,7 @@ int32 FFMODEventControlSection::OnPaintSection(FSequencerSectionPainter& InPaint
 #if ENGINE_MINOR_VERSION > 15
     const ESlateDrawEffect DrawEffects = InPainter.bParentEnabled ? ESlateDrawEffect::None : ESlateDrawEffect::DisabledEffect;
 #else
-	const ESlateDrawEffect::Type DrawEffects = InPainter.bParentEnabled ? ESlateDrawEffect::None : ESlateDrawEffect::DisabledEffect;
+    const ESlateDrawEffect::Type DrawEffects = InPainter.bParentEnabled ? ESlateDrawEffect::None : ESlateDrawEffect::DisabledEffect;
 #endif
     const FTimeToPixel& TimeToPixelConverter = InPainter.GetTimeConverter();
 

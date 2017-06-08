@@ -36,7 +36,7 @@ void FFMODAssetTable::Create()
 	FMOD::System* lowLevelSystem = nullptr;
 	verifyfmod(StudioSystem->getLowLevelSystem(&lowLevelSystem));
 	verifyfmod(lowLevelSystem->setOutput(FMOD_OUTPUTTYPE_NOSOUND));
-	verifyfmod(lowLevelSystem->setFileSystem(FMODOpen, FMODClose, FMODRead, FMODSeek, 0, 0, 2048));
+	AttachFMODFileSystem(lowLevelSystem);
 	verifyfmod(StudioSystem->initialize(1, FMOD_STUDIO_INIT_ALLOW_MISSING_PLUGINS | FMOD_STUDIO_INIT_SYNCHRONOUS_UPDATE, FMOD_INIT_MIX_FROM_UPDATE, 0));
 }
 

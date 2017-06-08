@@ -47,9 +47,14 @@ bool UFMODEventParameterSection::RemoveParameter(FName InParameterName)
     return false;
 }
 
-TArray<FFMODEventParameterNameAndCurve>* UFMODEventParameterSection::GetParameterNamesAndCurves()
+const TArray<FFMODEventParameterNameAndCurve>& UFMODEventParameterSection::GetParameterNamesAndCurves() const
 {
-    return &EventParameterNamesAndCurves;
+    return EventParameterNamesAndCurves;
+}
+
+TArray<FFMODEventParameterNameAndCurve>& UFMODEventParameterSection::GetParameterNamesAndCurves()
+{
+    return EventParameterNamesAndCurves;
 }
 
 void UFMODEventParameterSection::GetParameterNames(TSet<FName>& ParameterNames) const

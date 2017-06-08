@@ -36,3 +36,18 @@ FString UFMODEvent::GetDesc()
 	return FString::Printf( TEXT( "Event %s" ), *AssetGuid.ToString(EGuidFormats::DigitsWithHyphensInBraces) );
 }
 
+void UFMODEvent::GetParameterDescriptions(TArray<FMOD_STUDIO_PARAMETER_DESCRIPTION>& Parameters) const
+{
+    FMOD::Studio::EventDescription* EventDesc = IFMODStudioModule::Get().GetEventDescription(this, EFMODSystemContext::Auditioning);
+
+    if (EventDesc)
+    {
+        int ParameterCount;
+        EventDesc->getParameterCount(&ParameterCount);
+        Parameters.SetNumUninitialized(ParameterCount);
+        for (int ParameterIndex = 0; ParameterIndex < ParameterCount; ++ParameterIndex)
+        {
+            EventDesc->getParameterByIndex(ParameterIndex, &Parameters[ParameterIndex]);
+        }
+    }
+}

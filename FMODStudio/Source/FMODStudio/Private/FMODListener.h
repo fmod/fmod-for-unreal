@@ -16,12 +16,10 @@ struct FFMODInteriorSettings
 	float InteriorLPFTime;
 
 	FFMODInteriorSettings();
-
-	bool operator==(const FInteriorSettings& Other) const;
-	bool operator!=(const FInteriorSettings& Other) const;
+	bool operator ==(const FInteriorSettings& Other) const;
+	bool operator !=(const FInteriorSettings& Other) const;
 	FFMODInteriorSettings& operator =(FInteriorSettings Other);
 };
-
 
 /** A direct copy of FListener (which doesn't have external linkage, unfortunately) **/
 struct FFMODListener
@@ -30,7 +28,6 @@ struct FFMODListener
 	FVector Velocity;
 
 	struct FFMODInteriorSettings InteriorSettings;
-
 	/** The volume the listener resides in */
 	class AAudioVolume* Volume;
 

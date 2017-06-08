@@ -24,6 +24,10 @@ FIntegralCurve& UFMODEventControlSection::GetControlCurve()
     return ControlKeys;
 }
 
+const FIntegralCurve& UFMODEventControlSection::GetControlCurve() const
+{
+    return ControlKeys;
+}
 
 void UFMODEventControlSection::MoveSection(float DeltaPosition, TSet<FKeyHandle>& KeyHandles)
 {

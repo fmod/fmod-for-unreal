@@ -55,7 +55,8 @@ public:
     /** Removes a parameter from this section.  */
     FMODSTUDIO_API bool RemoveParameter(FName InParameterName);
 
-    FMODSTUDIO_API TArray<FFMODEventParameterNameAndCurve>* GetParameterNamesAndCurves();
+    const TArray<FFMODEventParameterNameAndCurve>& GetParameterNamesAndCurves() const;
+    FMODSTUDIO_API TArray<FFMODEventParameterNameAndCurve>& GetParameterNamesAndCurves();
 
     /** Gets the set of all parameter names used by this section. */
     FMODSTUDIO_API void GetParameterNames(TSet<FName>& ParameterNames) const;

@@ -34,12 +34,12 @@ void FFMODParameterSection::GenerateSectionLayout(class ISectionLayoutBuilder& L
     TArray<FIndexAndLayoutParameterDelegate> IndexAndLayoutDelegates;
 
     // Collect parameters
-    TArray<FFMODEventParameterNameAndCurve>* ParameterNamesAndCurves = ParameterSection->GetParameterNamesAndCurves();
-    for (int32 i = 0; i < ParameterNamesAndCurves->Num(); i++)
+    TArray<FFMODEventParameterNameAndCurve>& ParameterNamesAndCurves = ParameterSection->GetParameterNamesAndCurves();
+    for (int32 i = 0; i < ParameterNamesAndCurves.Num(); i++)
     {
         FIndexAndLayoutParameterDelegate IndexAndLayoutDelegate;
-        IndexAndLayoutDelegate.Index = (*ParameterNamesAndCurves)[i].Index;
-        IndexAndLayoutDelegate.LayoutParameterDelegate.BindStatic(&LayoutParameter, &LayoutBuilder, &(*ParameterNamesAndCurves)[i], ParameterSection);
+        IndexAndLayoutDelegate.Index = ParameterNamesAndCurves[i].Index;
+        IndexAndLayoutDelegate.LayoutParameterDelegate.BindStatic(&LayoutParameter, &LayoutBuilder, &ParameterNamesAndCurves[i], ParameterSection);
         IndexAndLayoutDelegates.Add(IndexAndLayoutDelegate);
     }
 

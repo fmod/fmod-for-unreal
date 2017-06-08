@@ -5,6 +5,7 @@
 
 class UFMODEventParameterTrack;
 class UFMODAudioComponent;
+struct FMOD_STUDIO_PARAMETER_DESCRIPTION;
 
 /**
  * Track editor for material parameters.

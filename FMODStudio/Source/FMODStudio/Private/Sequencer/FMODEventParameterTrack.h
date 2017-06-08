@@ -17,7 +17,7 @@ class UFMODEventParameterTrack
 public:
 
     // Begin UMovieSceneTrack interface
-    virtual TSharedPtr<IMovieSceneTrackInstance> CreateInstance() override;
+    virtual FMovieSceneEvalTemplatePtr CreateTemplateForSection(const UMovieSceneSection& InSection) const override;
     virtual UMovieSceneSection* CreateNewSection() override;
     virtual void RemoveAllAnimationData() override;
     virtual bool HasSection(const UMovieSceneSection& Section) const override;

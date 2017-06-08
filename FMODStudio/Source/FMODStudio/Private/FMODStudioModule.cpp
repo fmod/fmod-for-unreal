@@ -61,8 +61,8 @@ void F_CALLBACK FMODMemoryFree(void *ptr, FMOD_MEMORY_TYPE type, const char *sou
 
 struct FFMODSnapshotEntry
 {
-	FFMODSnapshotEntry(UFMODSnapshotReverb* InSnapshot=nullptr, FMOD::Studio::EventInstance* InInstance=nullptr)
-	:	Snapshot(InSnapshot),
+	FFMODSnapshotEntry(UFMODSnapshotReverb* InSnapshot = nullptr, FMOD::Studio::EventInstance* InInstance = nullptr)
+		: Snapshot(InSnapshot),
 		Instance(InInstance),
 		StartTime(0.0),
 		FadeDuration(0.0f),
@@ -416,6 +416,8 @@ void FFMODStudioModule::StartupModule()
 		verifyfmod(FMOD::Memory_Initialize(0, 0, FMODMemoryAlloc, FMODMemoryRealloc, FMODMemoryFree));
 		verifyfmod(FMODPlatformSystemSetup());
 
+		AcquireFMODFileSystem();
+
 		// Create sandbox system just for asset loading
 		AssetTable.Create();
 		RefreshSettings();
@@ -536,7 +538,7 @@ void FFMODStudioModule::CreateStudioSystem(EFMODSystemContext::Type Type)
 
 	verifyfmod(lowLevelSystem->setSoftwareFormat(SampleRate, OutputMode, 0));
 	verifyfmod(lowLevelSystem->setSoftwareChannels(Settings.RealChannelCount));
-	verifyfmod(lowLevelSystem->setFileSystem(FMODOpen, FMODClose, FMODRead, FMODSeek, 0, 0, 2048));
+	AttachFMODFileSystem(lowLevelSystem);
 
 	if (Settings.DSPBufferLength > 0 && Settings.DSPBufferCount > 0)
 	{
@@ -981,6 +983,8 @@ void FFMODStudioModule::ShutdownModule()
 
 	DestroyStudioSystem(EFMODSystemContext::Auditioning);
 	DestroyStudioSystem(EFMODSystemContext::Runtime);
+
+	ReleaseFMODFileSystem();
 
 	if (GIsEditor)
 	{
