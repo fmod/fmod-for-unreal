@@ -4,8 +4,8 @@
 #include "FMODEvent.h"
 #include "FMODAnimNotifyPlay.generated.h"
 
-UCLASS(const, hidecategories=Oject, collapsecategories, meta=(DisplayName="Play FMOD Event"))
-class FMODSTUDIO_API UFMODAnimNotifyPlay :	public UAnimNotify
+UCLASS(const, hidecategories = Object, collapsecategories, meta = (DisplayName = "Play FMOD Event"))
+class FMODSTUDIO_API UFMODAnimNotifyPlay : public UAnimNotify
 {
 	GENERATED_BODY()
 
@@ -19,15 +19,15 @@ public:
 	// End UAnimNotify interface
 
 	// If this sound should follow its owner
-	UPROPERTY(EditAnywhere)
-	uint32 bFollow:1;
+	UPROPERTY(EditAnywhere, Category = "FMOD Anim Notify")
+	uint32 bFollow : 1;
 
 	// Socket or bone name to attach sound to
-	UPROPERTY(EditAnywhere, meta=(EditCondition="bFollow"))
+	UPROPERTY(EditAnywhere, Category = "FMOD Anim Notify", meta = (EditCondition = "bFollow"))
 	FString AttachName;
 
 	// Sount to Play
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(EditAnywhere, Category = "FMOD Anim Notify", BlueprintReadWrite)
 	TAssetPtr<class UFMODEvent> Event;
 };
 
