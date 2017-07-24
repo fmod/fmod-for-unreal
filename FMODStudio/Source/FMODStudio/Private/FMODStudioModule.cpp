@@ -43,6 +43,7 @@ const TCHAR* FMODSystemContextNames[EFMODSystemContext::Max] =
 {
 	TEXT("Auditioning"),
 	TEXT("Runtime"),
+    TEXT("Editor"),
 };
 
 void* F_CALLBACK FMODMemoryAlloc(unsigned int size, FMOD_MEMORY_TYPE type, const char *sourcestr)
@@ -116,9 +117,10 @@ public:
 		bListenerMoved(true),
 		bAllowLiveUpdate(true),
 		LowLevelLibHandle(nullptr),
-		StudioLibHandle(nullptr)
+		StudioLibHandle(nullptr),
+		bBanksLoaded(false)
 	{
-		for (int i = 0; i<EFMODSystemContext::Max; ++i)
+		for (int i = 0; i < EFMODSystemContext::Max; ++i)
 		{
 			StudioSystem[i] = nullptr;
 		}
@@ -199,6 +201,8 @@ public:
 
 	virtual void LogError(int result, const char* function) override;
 
+	virtual bool AreBanksLoaded() override;
+
 	void ResetInterpolation();
 
 	/** The studio system handle. */
@@ -250,10 +254,13 @@ public:
 	/** True if we allow live update */
 	bool bAllowLiveUpdate;
 
+	bool bBanksLoaded;
+
 	/** Dynamic library */
 	FString BaseLibPath;
 	void* LowLevelLibHandle;
 	void* StudioLibHandle;
+
 };
 
 IMPLEMENT_MODULE(FFMODStudioModule, FMODStudio)
@@ -424,7 +431,8 @@ void FFMODStudioModule::StartupModule()
 
 		if (GIsEditor)
 		{
-			CreateStudioSystem(EFMODSystemContext::Auditioning);
+            CreateStudioSystem(EFMODSystemContext::Auditioning);
+            CreateStudioSystem(EFMODSystemContext::Editor);
 		}
 		else
 		{
@@ -474,7 +482,7 @@ void FFMODStudioModule::CreateStudioSystem(EFMODSystemContext::Type Type)
 	FMOD_SPEAKERMODE OutputMode = ConvertSpeakerMode(Settings.OutputFormat);
 	FMOD_STUDIO_INITFLAGS StudioInitFlags = FMOD_STUDIO_INIT_NORMAL;
 	FMOD_INITFLAGS InitFlags = FMOD_INIT_NORMAL;
-	if (Type == EFMODSystemContext::Auditioning)
+	if (Type == EFMODSystemContext::Auditioning || Type == EFMODSystemContext::Editor)
 	{
 		StudioInitFlags |= FMOD_STUDIO_INIT_ALLOW_MISSING_PLUGINS;
 	}
@@ -632,7 +640,10 @@ bool FFMODStudioModule::Tick(float DeltaTime)
 
 		verifyfmod(StudioSystem[EFMODSystemContext::Runtime]->update());
 	}
-
+    if (StudioSystem[EFMODSystemContext::Editor])
+    {
+        verifyfmod(StudioSystem[EFMODSystemContext::Editor]->update());
+    }
 	return true;
 }
 
@@ -929,6 +940,9 @@ void FFMODStudioModule::SetInPIE(bool bInPIE, bool simulating)
 			StudioSystem[EFMODSystemContext::Auditioning]->flushCommands();
 		}
 
+        // TODO: Stop sounds for the Editor system? What should happen if the user previews a sequence with transport
+        // controls then starts a PIE session? What does happen?
+
 		UE_LOG(LogFMOD, Log, TEXT("Creating runtime Studio System"));
 		ListenerCount = 1;
 		CreateStudioSystem(EFMODSystemContext::Runtime);
@@ -982,7 +996,8 @@ void FFMODStudioModule::ShutdownModule()
 	UE_LOG(LogFMOD, Verbose, TEXT("FFMODStudioModule shutdown"));
 
 	DestroyStudioSystem(EFMODSystemContext::Auditioning);
-	DestroyStudioSystem(EFMODSystemContext::Runtime);
+    DestroyStudioSystem(EFMODSystemContext::Runtime);
+    DestroyStudioSystem(EFMODSystemContext::Editor);
 
 	ReleaseFMODFileSystem();
 
@@ -1021,12 +1036,17 @@ struct NamedBankEntry
 	FMOD_RESULT Result;
 };
 
+bool FFMODStudioModule::AreBanksLoaded()
+{
+	return bBanksLoaded;
+}
+
 void FFMODStudioModule::LoadBanks(EFMODSystemContext::Type Type)
 {
 	const UFMODSettings& Settings = *GetDefault<UFMODSettings>();
 
 	FailedBankLoads[Type].Reset();
-	if (Type == EFMODSystemContext::Auditioning)
+	if (Type == EFMODSystemContext::Auditioning || Type == EFMODSystemContext::Editor)
 	{
 		RequiredPlugins.Reset();
 	}
@@ -1038,7 +1058,7 @@ void FFMODStudioModule::LoadBanks(EFMODSystemContext::Type Type)
 		/*
 			Queue up all banks to load asynchronously then wait at the end.
 		*/
-		bool bLoadAllBanks = ((Type == EFMODSystemContext::Auditioning) || Settings.bLoadAllBanks);
+		bool bLoadAllBanks = ((Type == EFMODSystemContext::Auditioning) || (Type == EFMODSystemContext::Editor) || Settings.bLoadAllBanks);
 		bool bLoadSampleData = ((Type == EFMODSystemContext::Runtime) && Settings.bLoadAllSampleData);
 		bool bLockAllBuses = ((Type == EFMODSystemContext::Runtime) && Settings.bLockAllBuses);
 		FMOD_STUDIO_LOAD_BANK_FLAGS BankFlags = ((bLoadSampleData || bLockAllBuses) ? FMOD_STUDIO_LOAD_BANK_NORMAL : FMOD_STUDIO_LOAD_BANK_NONBLOCKING);
@@ -1149,18 +1169,24 @@ void FFMODStudioModule::LoadBanks(EFMODSystemContext::Type Type)
 			}
 		}
 	}
+
+	bBanksLoaded = true;
 }
 
 void FFMODStudioModule::HandleBanksUpdated()
 {
 	UE_LOG(LogFMOD, Verbose, TEXT("Refreshing auditioning system"));
 
-	DestroyStudioSystem(EFMODSystemContext::Auditioning);
+    DestroyStudioSystem(EFMODSystemContext::Auditioning);
 
 	AssetTable.Refresh();
 
 	CreateStudioSystem(EFMODSystemContext::Auditioning);
 	LoadBanks(EFMODSystemContext::Auditioning);
+
+    DestroyStudioSystem(EFMODSystemContext::Editor);
+    CreateStudioSystem(EFMODSystemContext::Editor);
+    LoadBanks(EFMODSystemContext::Editor);
 
 	BanksReloadedDelegate.Broadcast();
 

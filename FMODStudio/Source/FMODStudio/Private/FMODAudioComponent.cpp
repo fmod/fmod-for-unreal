@@ -585,13 +585,19 @@ void UFMODAudioComponent::SetProgrammerSound(FMOD::Sound* Sound)
 	ProgrammerSound = Sound;
 }
 
+
 void UFMODAudioComponent::Play()
+{
+    PlayInternal(EFMODSystemContext::Max);
+}
+
+void UFMODAudioComponent::PlayInternal(EFMODSystemContext::Type Context)
 {
 	Stop();
 
 	bHasCheckedOcclusion = false;
 
-	if (!FMODUtils::IsWorldAudible(GetWorld()))
+	if (!FMODUtils::IsWorldAudible(GetWorld(), Context == EFMODSystemContext::Editor))
 	{
 		return;
 	}
@@ -599,7 +605,7 @@ void UFMODAudioComponent::Play()
 	UE_LOG(LogFMOD, Verbose, TEXT("UFMODAudioComponent %p Play"), this);
 	
 	// Only play events in PIE/game, not when placing them in the editor
-	FMOD::Studio::EventDescription* EventDesc = IFMODStudioModule::Get().GetEventDescription(Event.Get());
+	FMOD::Studio::EventDescription* EventDesc = IFMODStudioModule::Get().GetEventDescription(Event.Get(), Context);
 	if (EventDesc != nullptr)
 	{		
 		EventDesc->getLength(&EventLength);
@@ -675,6 +681,7 @@ void UFMODAudioComponent::Stop()
 		StudioInstance = nullptr;
 	}
 	InteriorLastUpdateTime = 0.0;
+    bIsActive = false;
 }
 
 void UFMODAudioComponent::TriggerCue()

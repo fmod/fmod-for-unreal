@@ -32,7 +32,7 @@ FFMODEventInstance UFMODBlueprintStatics::PlayEventAtLocation(UObject* WorldCont
 	Instance.Instance = nullptr;
 	
 	UWorld* ThisWorld = GEngine->GetWorldFromContextObject(WorldContextObject);
-	if (FMODUtils::IsWorldAudible(ThisWorld))
+	if (FMODUtils::IsWorldAudible(ThisWorld, false))
 	{
 		FMOD::Studio::EventDescription* EventDesc = IFMODStudioModule::Get().GetEventDescription(Event);
 		if (EventDesc != nullptr)

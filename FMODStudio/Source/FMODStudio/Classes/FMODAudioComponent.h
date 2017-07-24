@@ -6,6 +6,7 @@
 #include "Runtime/Launch/Resources/Version.h"
 #include "Sound/SoundAttenuation.h"
 #include "AudioDevice.h"
+#include "FMODStudioModule.h"
 #include "FMODAudioComponent.generated.h"
 
 // Event property
@@ -224,6 +225,9 @@ class FMODSTUDIO_API UFMODAudioComponent : public USceneComponent
     void CacheDefaultParameterValues();
 
 public:
+
+    /** Internal play function which can play events in the editor */
+    void PlayInternal(EFMODSystemContext::Type Context);
 
 	/** Actual Studio instance handle */
 	FMOD::Studio::EventInstance* StudioInstance;

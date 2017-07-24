@@ -743,6 +743,26 @@ bool FFMODStudioEditorModule::Tick( float DeltaTime )
 		TickTest(DeltaTime);
 	}
 
+    // Update listener position for Editor sound system
+    FMOD::Studio::System* StudioSystem = IFMODStudioModule::Get().GetStudioSystem(EFMODSystemContext::Editor);
+    if (StudioSystem)
+    {
+        if (GCurrentLevelEditingViewportClient)
+        {
+            const FVector& ViewLocation = GCurrentLevelEditingViewportClient->GetViewLocation();
+            FMatrix CameraToWorld = FRotationMatrix::Make(GCurrentLevelEditingViewportClient->GetViewRotation());
+            FVector Up = CameraToWorld.GetUnitAxis(EAxis::Z);
+            FVector Forward = CameraToWorld.GetUnitAxis(EAxis::X);
+
+            FMOD_3D_ATTRIBUTES Attributes = { { 0 } };
+            Attributes.position = FMODUtils::ConvertWorldVector(ViewLocation);
+            Attributes.forward = FMODUtils::ConvertUnitVector(Forward);
+            Attributes.up = FMODUtils::ConvertUnitVector(Up);
+
+            verifyfmod(StudioSystem->setListenerAttributes(0, &Attributes));
+        }
+    }
+
 	return true;
 }
 

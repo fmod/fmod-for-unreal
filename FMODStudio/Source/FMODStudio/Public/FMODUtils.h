@@ -70,7 +70,7 @@ inline float DistanceToUEScale(float FMODDistance)
 	return FMODDistance / FMOD_VECTOR_SCALE_DEFAULT;
 }
 
-inline bool IsWorldAudible(UWorld* World)
+inline bool IsWorldAudible(UWorld* World, bool AllowInEditor)
 {
 	if (GEngine && IFMODStudioModule::Get().UseSound())
 	{
@@ -87,7 +87,7 @@ inline bool IsWorldAudible(UWorld* World)
 #else
 			previewEnum = EWorldType::Preview;
 #endif
-			if (World->IsGameWorld() || World->WorldType == previewEnum)
+			if (World->IsGameWorld() || World->WorldType == previewEnum || (AllowInEditor && World->WorldType == EWorldType::Editor))
 			{
 				return true;
 			}

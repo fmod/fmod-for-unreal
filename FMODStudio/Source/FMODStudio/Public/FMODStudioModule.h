@@ -32,6 +32,9 @@ namespace EFMODSystemContext
 		// For use in PIE and in-game
 		Runtime,
 
+        // For use when playing events in an editor world (e.g. previewing a level sequence)
+        Editor,
+
 		// Max number of types
 		Max
 	};
@@ -151,5 +154,8 @@ public:
 
 	/** Log a FMOD error */
 	virtual void LogError(int result, const char* function) = 0;
+
+	/** Returns if the banks have been loaded */
+	virtual bool AreBanksLoaded() = 0;
 
 };

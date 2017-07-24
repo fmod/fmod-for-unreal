@@ -14,21 +14,24 @@ UFMODEvent::UFMODEvent(const FObjectInitializer& ObjectInitializer)
 void UFMODEvent::GetAssetRegistryTags(TArray<FAssetRegistryTag>& OutTags) const
 {
 	Super::GetAssetRegistryTags(OutTags);
-	FMOD::Studio::EventDescription* EventDesc = IFMODStudioModule::Get().GetEventDescription(this, EFMODSystemContext::Auditioning);
-	
-	bool bOneshot = false;
-	bool bStream = false;
-	bool b3D = false;
-	if (EventDesc)
+	if (IFMODStudioModule::Get().AreBanksLoaded())
 	{
-		EventDesc->isOneshot(&bOneshot);
-		EventDesc->isStream(&bStream);
-		EventDesc->is3D(&b3D);
-	}
+		FMOD::Studio::EventDescription* EventDesc = IFMODStudioModule::Get().GetEventDescription(this, EFMODSystemContext::Max);
 
-	OutTags.Add(UObject::FAssetRegistryTag("Oneshot", bOneshot ? TEXT("True") : TEXT("False"), UObject::FAssetRegistryTag::TT_Alphabetical));
-	OutTags.Add(UObject::FAssetRegistryTag("Streaming", bStream ? TEXT("True") : TEXT("False"), UObject::FAssetRegistryTag::TT_Alphabetical));
-	OutTags.Add(UObject::FAssetRegistryTag("3D", b3D ? TEXT("True") : TEXT("False"), UObject::FAssetRegistryTag::TT_Alphabetical));
+		bool bOneshot = false;
+		bool bStream = false;
+		bool b3D = false;
+		if (EventDesc)
+		{
+			EventDesc->isOneshot(&bOneshot);
+			EventDesc->isStream(&bStream);
+			EventDesc->is3D(&b3D);
+		}
+
+		OutTags.Add(UObject::FAssetRegistryTag("Oneshot", bOneshot ? TEXT("True") : TEXT("False"), UObject::FAssetRegistryTag::TT_Alphabetical));
+		OutTags.Add(UObject::FAssetRegistryTag("Streaming", bStream ? TEXT("True") : TEXT("False"), UObject::FAssetRegistryTag::TT_Alphabetical));
+		OutTags.Add(UObject::FAssetRegistryTag("3D", b3D ? TEXT("True") : TEXT("False"), UObject::FAssetRegistryTag::TT_Alphabetical));
+	}
 }
 
 FString UFMODEvent::GetDesc()
@@ -38,16 +41,19 @@ FString UFMODEvent::GetDesc()
 
 void UFMODEvent::GetParameterDescriptions(TArray<FMOD_STUDIO_PARAMETER_DESCRIPTION>& Parameters) const
 {
-    FMOD::Studio::EventDescription* EventDesc = IFMODStudioModule::Get().GetEventDescription(this, EFMODSystemContext::Auditioning);
+	if (IFMODStudioModule::Get().AreBanksLoaded())
+	{
+		FMOD::Studio::EventDescription* EventDesc = IFMODStudioModule::Get().GetEventDescription(this, EFMODSystemContext::Auditioning);
 
-    if (EventDesc)
-    {
-        int ParameterCount;
-        EventDesc->getParameterCount(&ParameterCount);
-        Parameters.SetNumUninitialized(ParameterCount);
-        for (int ParameterIndex = 0; ParameterIndex < ParameterCount; ++ParameterIndex)
-        {
-            EventDesc->getParameterByIndex(ParameterIndex, &Parameters[ParameterIndex]);
-        }
-    }
+		if (EventDesc)
+		{
+			int ParameterCount;
+			EventDesc->getParameterCount(&ParameterCount);
+			Parameters.SetNumUninitialized(ParameterCount);
+			for (int ParameterIndex = 0; ParameterIndex < ParameterCount; ++ParameterIndex)
+			{
+				EventDesc->getParameterByIndex(ParameterIndex, &Parameters[ParameterIndex]);
+			}
+		}
+	}
 }

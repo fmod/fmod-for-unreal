@@ -66,27 +66,27 @@ struct FFMODEventControlPreAnimatedTokenProducer : IMovieScenePreAnimatedTokenPr
     }
 };
 
+struct FFMODEventKeyState : IPersistentEvaluationData
+{
+    FKeyHandle LastKeyHandle;
+    FKeyHandle InvalidKeyHandle;
+};
+
 struct FFMODEventControlExecutionToken : IMovieSceneExecutionToken
 {
-    FFMODEventControlExecutionToken() = default;
-
-#if PLATFORM_COMPILER_HAS_DEFAULTED_FUNCTIONS
-    FFMODEventControlExecutionToken(FFMODEventControlExecutionToken&&) = default;
-    FFMODEventControlExecutionToken& operator=(FFMODEventControlExecutionToken&&) = default;
-#else
-    FFMODEventControlExecutionToken(FFMODEventControlExecutionToken&& RHS)
-        : Values(MoveTemp(RHS.Values))
+    FFMODEventControlExecutionToken(EFMODEventControlKey::Type InEventControlKey, TOptional<FKeyHandle> InKeyHandle, float InKeyTime)
+        : EventControlKey(InEventControlKey), KeyHandle(InKeyHandle), KeyTime(InKeyTime)
     {
     }
-    FFMODEventControlExecutionToken& operator=(FFMODEventControlExecutionToken&& RHS)
-    {
-        Values = MoveTemp(RHS.Values);
-        return *this;
-    }
-#endif
 
+    /** Execute this token, operating on all objects referenced by 'Operand' */
     virtual void Execute(const FMovieSceneContext& Context, const FMovieSceneEvaluationOperand& Operand, FPersistentEvaluationData& PersistentData, IMovieScenePlayer& Player)
     {
+        if (KeyHandle.IsSet())
+        {
+            PersistentData.GetOrAddSectionData<FFMODEventKeyState>().LastKeyHandle = KeyHandle.GetValue();
+        }
+
         for (TWeakObjectPtr<>& WeakObject : Player.FindBoundObjects(Operand))
         {
             UFMODAudioComponent* AudioComponent = Cast<UFMODAudioComponent>(WeakObject.Get());
@@ -103,19 +103,29 @@ struct FFMODEventControlExecutionToken : IMovieSceneExecutionToken
 
             Player.SavePreAnimatedState(*AudioComponent, TMovieSceneAnimTypeID<FFMODEventControlExecutionToken>(), FFMODEventControlPreAnimatedTokenProducer());
 
-            if (Value == EFMODEventControlKey::Play)
+            if (EventControlKey == EFMODEventControlKey::Play)
             {
-                if (!AudioComponent->IsPlaying())
-                    AudioComponent->Play();
+                if (AudioComponent->IsPlaying())
+                {
+                    AudioComponent->Stop();
+                }
+
+                EFMODSystemContext::Type SystemContext = (GWorld && GWorld->WorldType == EWorldType::Editor) ? EFMODSystemContext::Editor : EFMODSystemContext::Runtime;
+                AudioComponent->PlayInternal(SystemContext);
+
+                float seekTime = Context.GetTime() - KeyTime;
+                AudioComponent->SetTimelinePosition(seekTime * 1000.0f);
             }
-            else if (Value == EFMODEventControlKey::Stop)
+            else if (EventControlKey == EFMODEventControlKey::Stop)
             {
                 AudioComponent->Stop();
             }
         }
     }
 
-    EFMODEventControlKey::Type Value;
+    EFMODEventControlKey::Type EventControlKey;
+    TOptional<FKeyHandle> KeyHandle;
+    float KeyTime;
 };
 
 FFMODEventControlSectionTemplate::FFMODEventControlSectionTemplate(const UFMODEventControlSection& Section)
@@ -125,11 +135,24 @@ FFMODEventControlSectionTemplate::FFMODEventControlSectionTemplate(const UFMODEv
 
 void FFMODEventControlSectionTemplate::Evaluate(const FMovieSceneEvaluationOperand& Operand, const FMovieSceneContext& Context, const FPersistentEvaluationData& PersistentData, FMovieSceneExecutionTokens& ExecutionTokens) const
 {
-    FFMODEventControlExecutionToken ExecutionToken;
+    const bool bPlaying = Context.IsSilent() == false && Context.GetDirection() == EPlayDirection::Forwards && Context.GetRange().Size<float>() >= 0.f && 
+        Context.GetStatus() == EMovieScenePlayerStatus::Playing;
 
-    float Time = Context.GetTime();
+    const FFMODEventKeyState* SectionData = PersistentData.FindSectionData<FFMODEventKeyState>();
 
-    ExecutionToken.Value = (EFMODEventControlKey::Type)ControlCurve.Evaluate(Time);
+    if (!bPlaying)
+    {
+        ExecutionTokens.Add(FFMODEventControlExecutionToken(EFMODEventControlKey::Stop, SectionData ? SectionData->InvalidKeyHandle : TOptional<FKeyHandle>(), 0.f));
+    }
+    else
+    {
+        float Time = Context.GetTime();
+        FKeyHandle PreviousHandle = ControlCurve.FindKeyBeforeOrAt(Time);
 
-    ExecutionTokens.Add(MoveTemp(ExecutionToken));
+        if (ControlCurve.IsKeyHandleValid(PreviousHandle) && (!SectionData || SectionData->LastKeyHandle != PreviousHandle))
+        {
+            FIntegralKey Key = ControlCurve.GetKey(PreviousHandle);
+            ExecutionTokens.Add(FFMODEventControlExecutionToken((EFMODEventControlKey::Type)Key.Value, PreviousHandle, Key.Time));
+        }
+    }
 }
