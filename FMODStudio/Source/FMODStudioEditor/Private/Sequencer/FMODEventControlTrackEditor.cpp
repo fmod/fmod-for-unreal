@@ -112,12 +112,17 @@ int32 FFMODEventControlSection::OnPaintSection(FSequencerSectionPainter& InPaint
     {
         float XOffset = TimeToPixelConverter.TimeToPixel(DrawRange.GetLowerBoundValue());
         float XSize = TimeToPixelConverter.TimeToPixel(DrawRange.GetUpperBoundValue()) - XOffset;
+#if ENGINE_MINOR_VERSION >= 17
+        InPainter.DrawElements.PushClip(FSlateClippingZone(InPainter.SectionClippingRect));
+#endif
         FSlateDrawElement::MakeBox(
             InPainter.DrawElements,
             InPainter.LayerId,
             InPainter.SectionGeometry.ToPaintGeometry(FVector2D(XOffset, (InPainter.SectionGeometry.GetLocalSize().Y - SequencerSectionConstants::KeySize.Y) / 2), FVector2D(XSize, SequencerSectionConstants::KeySize.Y)),
             FEditorStyle::GetBrush("Sequencer.Section.Background"),
+#if ENGINE_MINOR_VERSION < 17
             InPainter.SectionClippingRect,
+#endif
             DrawEffects
         );
         FSlateDrawElement::MakeBox(
@@ -125,10 +130,15 @@ int32 FFMODEventControlSection::OnPaintSection(FSequencerSectionPainter& InPaint
             InPainter.LayerId,
             InPainter.SectionGeometry.ToPaintGeometry(FVector2D(XOffset, (InPainter.SectionGeometry.GetLocalSize().Y - SequencerSectionConstants::KeySize.Y) / 2), FVector2D(XSize, SequencerSectionConstants::KeySize.Y)),
             FEditorStyle::GetBrush("Sequencer.Section.BackgroundTint"),
+#if ENGINE_MINOR_VERSION < 17
             InPainter.SectionClippingRect,
+#endif
             DrawEffects,
             TrackColor
         );
+#if ENGINE_MINOR_VERSION >= 17
+        InPainter.DrawElements.PopClip();
+#endif
     }
 
     return InPainter.LayerId + 1;
@@ -220,7 +230,11 @@ void FFMODEventControlTrackEditor::AddControlKey(const FGuid ObjectGuid)
     }
 }
 
+#if ENGINE_MINOR_VERSION >= 17
+FKeyPropertyResult FFMODEventControlTrackEditor::AddKeyInternal(float KeyTime, UObject* Object)
+#else
 bool FFMODEventControlTrackEditor::AddKeyInternal(float KeyTime, UObject* Object)
+#endif
 {
     bool bHandleCreated = false;
     bool bTrackCreated = false;
@@ -243,7 +257,14 @@ bool FFMODEventControlTrackEditor::AddKeyInternal(float KeyTime, UObject* Object
         }
     }
 
+#if ENGINE_MINOR_VERSION >= 17
+    FKeyPropertyResult Result;
+    Result.bHandleCreated = bHandleCreated;
+    Result.bTrackCreated = bTrackCreated;
+    return Result;
+#else
     return bHandleCreated || bTrackCreated;
+#endif
 }
 
 #undef LOCTEXT_NAMESPACE

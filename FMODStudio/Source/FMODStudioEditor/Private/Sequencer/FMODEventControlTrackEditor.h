@@ -2,6 +2,8 @@
 
 #pragma once
 
+#include "Runtime/Launch/Resources/Version.h"
+
 /** FMOD Event control track */
 class FFMODEventControlTrackEditor : public FMovieSceneTrackEditor
 {
@@ -21,7 +23,11 @@ public:
 private:
 
     /** Delegate for AnimatablePropertyChanged in AddKey. */
+#if ENGINE_MINOR_VERSION >= 17
+    virtual FKeyPropertyResult AddKeyInternal(float KeyTime, UObject* Object);
+#else
     virtual bool AddKeyInternal(float KeyTime, UObject* Object);
+#endif
 };
 
 
