@@ -116,9 +116,9 @@ public:
 		bUseSound(true),
 		bListenerMoved(true),
 		bAllowLiveUpdate(true),
+		bBanksLoaded(false),
 		LowLevelLibHandle(nullptr),
-		StudioLibHandle(nullptr),
-		bBanksLoaded(false)
+		StudioLibHandle(nullptr)
 	{
 		for (int i = 0; i < EFMODSystemContext::Max; ++i)
 		{
