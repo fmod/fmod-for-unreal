@@ -127,9 +127,9 @@ void UFMODAudioComponent::OnUpdateTransform(bool bSkipPhysicsMove)
 	if (StudioInstance)
 	{
 		FMOD_3D_ATTRIBUTES attr = {{0}};
-		attr.position = FMODUtils::ConvertWorldVector(ComponentToWorld.GetLocation());
-		attr.up = FMODUtils::ConvertUnitVector(ComponentToWorld.GetUnitAxis(EAxis::Z));
-		attr.forward = FMODUtils::ConvertUnitVector(ComponentToWorld.GetUnitAxis(EAxis::X));
+		attr.position = FMODUtils::ConvertWorldVector(GetComponentTransform().GetLocation());
+		attr.up = FMODUtils::ConvertUnitVector(GetComponentTransform().GetUnitAxis(EAxis::Z));
+		attr.forward = FMODUtils::ConvertUnitVector(GetComponentTransform().GetUnitAxis(EAxis::X));
 
 		StudioInstance->set3DAttributes(&attr);
 

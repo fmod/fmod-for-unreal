@@ -24,7 +24,7 @@ void FFMODAudioComponentVisualizer::DrawVisualization(const UActorComponent* Com
 					const FColor AudioOuterRadiusColor(255, 153, 0);
 					const FColor AudioInnerRadiusColor(216, 130, 0);
 
-					const FTransform& Transform = AudioComp->ComponentToWorld;
+					const FTransform& Transform = AudioComp->GetComponentTransform();
 
 					float MinDistance = 0.0f;
 					float MaxDistance = 0.0f;

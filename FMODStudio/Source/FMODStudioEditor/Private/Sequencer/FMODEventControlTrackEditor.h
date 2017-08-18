@@ -21,7 +21,7 @@ public:
 private:
 
     /** Delegate for AnimatablePropertyChanged in AddKey. */
-    virtual bool AddKeyInternal(float KeyTime, UObject* Object);
+    virtual FKeyPropertyResult AddKeyInternal(float KeyTime, UObject* Object);
 };
 
 
@@ -35,7 +35,6 @@ public:
 
     // Begin ISequencerSection interface
     virtual UMovieSceneSection* GetSectionObject() override;
-    virtual FText GetDisplayName() const override;
     virtual FText GetSectionTitle() const override { return FText::GetEmpty(); }
     virtual float GetSectionHeight() const override;
     virtual void GenerateSectionLayout(class ISectionLayoutBuilder& LayoutBuilder) const override;

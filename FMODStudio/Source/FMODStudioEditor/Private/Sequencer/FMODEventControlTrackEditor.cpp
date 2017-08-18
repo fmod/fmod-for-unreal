@@ -33,11 +33,6 @@ UMovieSceneSection* FFMODEventControlSection::GetSectionObject()
     return &Section;
 }
 
-FText FFMODEventControlSection::GetDisplayName() const
-{
-    return LOCTEXT("Event", "FMOD Event");
-}
-
 float FFMODEventControlSection::GetSectionHeight() const
 {
     static const float SectionHeight = 20.0f;
@@ -117,7 +112,6 @@ int32 FFMODEventControlSection::OnPaintSection(FSequencerSectionPainter& InPaint
             InPainter.LayerId,
             InPainter.SectionGeometry.ToPaintGeometry(FVector2D(XOffset, (InPainter.SectionGeometry.GetLocalSize().Y - SequencerSectionConstants::KeySize.Y) / 2), FVector2D(XSize, SequencerSectionConstants::KeySize.Y)),
             FEditorStyle::GetBrush("Sequencer.Section.Background"),
-            InPainter.SectionClippingRect,
             DrawEffects
         );
         FSlateDrawElement::MakeBox(
@@ -125,7 +119,6 @@ int32 FFMODEventControlSection::OnPaintSection(FSequencerSectionPainter& InPaint
             InPainter.LayerId,
             InPainter.SectionGeometry.ToPaintGeometry(FVector2D(XOffset, (InPainter.SectionGeometry.GetLocalSize().Y - SequencerSectionConstants::KeySize.Y) / 2), FVector2D(XSize, SequencerSectionConstants::KeySize.Y)),
             FEditorStyle::GetBrush("Sequencer.Section.BackgroundTint"),
-            InPainter.SectionClippingRect,
             DrawEffects,
             TrackColor
         );
@@ -220,22 +213,21 @@ void FFMODEventControlTrackEditor::AddControlKey(const FGuid ObjectGuid)
     }
 }
 
-bool FFMODEventControlTrackEditor::AddKeyInternal(float KeyTime, UObject* Object)
+FKeyPropertyResult FFMODEventControlTrackEditor::AddKeyInternal(float KeyTime, UObject* Object)
 {
-    bool bHandleCreated = false;
-    bool bTrackCreated = false;
+	FKeyPropertyResult KeyPropertyResult;
 
     FFindOrCreateHandleResult HandleResult = FindOrCreateHandleToObject(Object);
     FGuid ObjectHandle = HandleResult.Handle;
-    bHandleCreated |= HandleResult.bWasCreated;
+	KeyPropertyResult.bHandleCreated |= HandleResult.bWasCreated;
 
     if (ObjectHandle.IsValid())
     {
         FFindOrCreateTrackResult TrackResult = FindOrCreateTrackForObject(ObjectHandle, UFMODEventControlTrack::StaticClass());
         UMovieSceneTrack* Track = TrackResult.Track;
-        bTrackCreated |= TrackResult.bWasCreated;
+		KeyPropertyResult.bTrackCreated |= TrackResult.bWasCreated;
 
-        if (bTrackCreated && ensure(Track))
+        if (KeyPropertyResult.bTrackCreated && ensure(Track))
         {
             UFMODEventControlTrack* EventTrack = Cast<UFMODEventControlTrack>(Track);
             EventTrack->AddNewSection(KeyTime);
@@ -243,7 +235,7 @@ bool FFMODEventControlTrackEditor::AddKeyInternal(float KeyTime, UObject* Object
         }
     }
 
-    return bHandleCreated || bTrackCreated;
+	return KeyPropertyResult;
 }
 
 #undef LOCTEXT_NAMESPACE
