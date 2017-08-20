@@ -112,9 +112,6 @@ int32 FFMODEventControlSection::OnPaintSection(FSequencerSectionPainter& InPaint
     {
         float XOffset = TimeToPixelConverter.TimeToPixel(DrawRange.GetLowerBoundValue());
         float XSize = TimeToPixelConverter.TimeToPixel(DrawRange.GetUpperBoundValue()) - XOffset;
-#if ENGINE_MINOR_VERSION >= 17
-        InPainter.DrawElements.PushClip(FSlateClippingZone(InPainter.SectionClippingRect));
-#endif
         FSlateDrawElement::MakeBox(
             InPainter.DrawElements,
             InPainter.LayerId,
@@ -136,9 +133,6 @@ int32 FFMODEventControlSection::OnPaintSection(FSequencerSectionPainter& InPaint
             DrawEffects,
             TrackColor
         );
-#if ENGINE_MINOR_VERSION >= 17
-        InPainter.DrawElements.PopClip();
-#endif
     }
 
     return InPainter.LayerId + 1;
