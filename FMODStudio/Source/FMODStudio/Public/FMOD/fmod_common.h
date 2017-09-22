@@ -15,7 +15,7 @@
     0xaaaabbcc -> aaaa = major version number.  bb = minor version number.  cc = development version number.
 */
 
-#define FMOD_VERSION    0x00010906
+#define FMOD_VERSION    0x00011000
 
 /*
     Compiler specific settings.
@@ -381,7 +381,8 @@ typedef enum
     FMOD_OUTPUTTYPE_AUDIO3D,         /* PS4                  - Audio3D. */
     FMOD_OUTPUTTYPE_ATMOS,           /* Win                  - Dolby Atmos (WASAPI). */
     FMOD_OUTPUTTYPE_WEBAUDIO,        /* Web Browser          - JavaScript webaudio output.          (Default on JavaScript) */
-    FMOD_OUTPUTTYPE_NNAUDIO,         /* NX                   - NX nn::audio.                        (Default on NX)*/
+    FMOD_OUTPUTTYPE_NNAUDIO,         /* NX                   - NX nn::audio.                        (Default on NX) */
+    FMOD_OUTPUTTYPE_WINSONIC,        /* Win10 / XboxOne      - Windows Sonic. */
 
     FMOD_OUTPUTTYPE_MAX,             /* Maximum number of output types supported. */
     FMOD_OUTPUTTYPE_FORCEINT = 65536 /* Makes sure this enum is signed 32bit. */
@@ -561,16 +562,17 @@ typedef enum
     DSP::setChannelFormat
 ]
 */
-typedef enum
+typedef enum FMOD_SPEAKERMODE
 {
-    FMOD_SPEAKERMODE_DEFAULT,          /* Default speaker mode based on operating system/output mode.  Windows = control panel setting, Xbox = 5.1, PS3 = 7.1 etc. */
-    FMOD_SPEAKERMODE_RAW,              /* There is no specific speakermode.  Sound channels are mapped in order of input to output.  Use System::setSoftwareFormat to specify speaker count. See remarks for more information. */
-    FMOD_SPEAKERMODE_MONO,             /* The speakers are monaural. */
-    FMOD_SPEAKERMODE_STEREO,           /* The speakers are stereo. */
-    FMOD_SPEAKERMODE_QUAD,             /* 4 speaker setup.    This includes front left, front right, surround left, surround right.  */
-    FMOD_SPEAKERMODE_SURROUND,         /* 5 speaker setup.    This includes front left, front right, center, surround left, surround right. */
-    FMOD_SPEAKERMODE_5POINT1,          /* 5.1 speaker setup.  This includes front left, front right, center, surround left, surround right and an LFE speaker. */
-    FMOD_SPEAKERMODE_7POINT1,          /* 7.1 speaker setup.  This includes front left, front right, center, surround left, surround right, back left, back right and an LFE speaker. */
+    FMOD_SPEAKERMODE_DEFAULT,          /* Default speaker mode for the chosen output mode which will resolve after System::init. */
+    FMOD_SPEAKERMODE_RAW,              /* Assume there is no special mapping from a given channel to a speaker, channels map 1:1 in order. Use System::setSoftwareFormat to specify the speaker count. */
+    FMOD_SPEAKERMODE_MONO,             /*  1 speaker setup (monaural). */
+    FMOD_SPEAKERMODE_STEREO,           /*  2 speaker setup (stereo) front left, front right. */
+    FMOD_SPEAKERMODE_QUAD,             /*  4 speaker setup (4.0)    front left, front right, surround left, surround right. */
+    FMOD_SPEAKERMODE_SURROUND,         /*  5 speaker setup (5.0)    front left, front right, center, surround left, surround right. */
+    FMOD_SPEAKERMODE_5POINT1,          /*  6 speaker setup (5.1)    front left, front right, center, low frequency, surround left, surround right. */
+    FMOD_SPEAKERMODE_7POINT1,          /*  8 speaker setup (7.1)    front left, front right, center, low frequency, surround left, surround right, back left, back right. */
+    FMOD_SPEAKERMODE_7POINT1POINT4,    /* 12 speaker setup (7.1.4)  front left, front right, center, low frequency, surround left, surround right, back left, back right, top front left, top front right, top back left, top back right. */
     
     FMOD_SPEAKERMODE_MAX,              /* Maximum number of speaker modes supported. */
     FMOD_SPEAKERMODE_FORCEINT = 65536  /* Makes sure this enum is signed 32bit. */
@@ -600,6 +602,26 @@ typedef enum
 */
 #define FMOD_MAX_CHANNEL_WIDTH 32
 /* [DEFINE_END] */
+
+
+/*
+[DEFINE]
+[
+    [NAME]
+    FMOD_MAX_SYSTEMS
+
+    [DESCRIPTION]
+    The maximum number of FMOD::System objects allowed.
+
+    [REMARKS]
+
+    [SEE_ALSO]
+    System_Create
+]
+*/
+#define FMOD_MAX_SYSTEMS 8
+/* [DEFINE_END] */
+
 
 /*
 [DEFINE]
@@ -645,6 +667,10 @@ typedef enum
     FMOD_SPEAKER_SURROUND_RIGHT,    /* The surround right (usually to the side) speaker */
     FMOD_SPEAKER_BACK_LEFT,         /* The back left speaker */
     FMOD_SPEAKER_BACK_RIGHT,        /* The back right speaker */
+    FMOD_SPEAKER_TOP_FRONT_LEFT,    /* The top front left speaker */
+    FMOD_SPEAKER_TOP_FRONT_RIGHT,   /* The top front right speaker */
+    FMOD_SPEAKER_TOP_BACK_LEFT,     /* The top back left speaker */
+    FMOD_SPEAKER_TOP_BACK_RIGHT,    /* The top back right speaker */
 
     FMOD_SPEAKER_MAX,               /* Maximum number of speaker types supported. */
     FMOD_SPEAKER_FORCEINT = 65536   /* Makes sure this enum is signed 32bit. */
@@ -1374,7 +1400,6 @@ typedef struct FMOD_TAG
     List of time types that can be returned by Sound::getLength and used with Channel::setPosition or Channel::getPosition.
 
     [REMARKS]
-    Do not combine flags except FMOD_TIMEUNIT_BUFFERED.
 
     [SEE_ALSO]      
     Sound::getLength
@@ -1388,9 +1413,8 @@ typedef struct FMOD_TAG
 #define FMOD_TIMEUNIT_RAWBYTES          0x00000008  /* Raw file bytes of (compressed) sound data (does not include headers).  Only used by Sound::getLength and Channel::getPosition. */
 #define FMOD_TIMEUNIT_PCMFRACTION       0x00000010  /* Fractions of 1 PCM sample.  Unsigned int range 0 to 0xFFFFFFFF.  Used for sub-sample granularity for DSP purposes. */
 #define FMOD_TIMEUNIT_MODORDER          0x00000100  /* MOD/S3M/XM/IT.  Order in a sequenced module format.  Use Sound::getFormat to determine the PCM format being decoded to. */
-#define FMOD_TIMEUNIT_MODROW            0x00000200  /* MOD/S3M/XM/IT.  Current row in a sequenced module format.  Sound::getLength will return the number of rows in the currently playing or seeked to pattern. */
-#define FMOD_TIMEUNIT_MODPATTERN        0x00000400  /* MOD/S3M/XM/IT.  Current pattern in a sequenced module format.  Sound::getLength will return the number of patterns in the song and Channel::getPosition will return the currently playing pattern. */
-#define FMOD_TIMEUNIT_BUFFERED          0x10000000  /* Time value as seen by buffered stream.  This is always ahead of audible time, and is only used for processing. */
+#define FMOD_TIMEUNIT_MODROW            0x00000200  /* MOD/S3M/XM/IT.  Current row in a sequenced module format.  Cannot use with Channel::setPosition.  Sound::getLength will return the number of rows in the currently playing or seeked to pattern. */
+#define FMOD_TIMEUNIT_MODPATTERN        0x00000400  /* MOD/S3M/XM/IT.  Current pattern in a sequenced module format.  Cannot use with Channel::setPosition.  Sound::getLength will return the number of patterns in the song and Channel::getPosition will return the currently playing pattern. */
 /* [DEFINE_END] */
 
 /*
@@ -1499,7 +1523,7 @@ typedef struct FMOD_CREATESOUNDEXINFO
     unsigned int                   decodebuffersize;   /* [w]   Optional. Specify 0 to ignore. For streams.  This determines the size of the double buffer (in PCM samples) that a stream uses.  Use this for user created streams if you want to determine the size of the callback buffer passed to you.  Specify 0 to use FMOD's default size which is currently equivalent to 400ms of the sound format created/loaded. */
     int                            initialsubsound;    /* [w]   Optional. Specify 0 to ignore. In a multi-sample file format such as .FSB/.DLS, specify the initial subsound to seek to, only if FMOD_CREATESTREAM is used. */
     int                            numsubsounds;       /* [w]   Optional. Specify 0 to ignore or have no subsounds.  In a sound created with FMOD_OPENUSER, specify the number of subsounds that are accessable with Sound::getSubSound.  If not created with FMOD_OPENUSER, this will limit the number of subsounds loaded within a multi-subsound file.  If using FSB, then if FMOD_CREATESOUNDEXINFO::inclusionlist is used, this will shuffle subsounds down so that there are not any gaps.  It will mean that the indices of the sounds will be different. */
-    int                           *inclusionlist;      /* [w]   Optional. Specify 0 to ignore. In a multi-sample format such as .FSB/.DLS it may be desirable to specify only a subset of sounds to be loaded out of the whole file.  This is an array of subsound indices to load into memory when created. */
+    int                           *inclusionlist;      /* [w]   Optional. Specify 0 to ignore. In a multi-sample format such as .FSB/.DLS it may be desirable to specify only a subset of sounds to be loaded out of the whole file.  This is an array of subsound indices to load into memory when created. A single subsound index can be encoded in-place by setting inclusionlistnum to 0, setting the low bit of inclusionlist to 1 and OR the index into inclusionlist shifted left by 1 (optional advanced technique to avoid pointing to additional memory). */
     int                            inclusionlistnum;   /* [w]   Optional. Specify 0 to ignore. This is the number of integers contained within the inclusionlist array. */
     FMOD_SOUND_PCMREAD_CALLBACK    pcmreadcallback;    /* [w]   Optional. Specify 0 to ignore. Callback to 'piggyback' on FMOD's read functions and accept or even write PCM data while FMOD is opening the sound.  Used for user sounds created with FMOD_OPENUSER or for capturing decoded data as FMOD reads it. */
     FMOD_SOUND_PCMSETPOS_CALLBACK  pcmsetposcallback;  /* [w]   Optional. Specify 0 to ignore. Callback for when the user calls a seeking function such as Channel::setTime or Channel::setPosition within a multi-sample sound, and for when it is opened.*/

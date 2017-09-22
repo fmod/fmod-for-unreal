@@ -20,7 +20,7 @@ struct FFMODEventControlPreAnimatedToken : IMovieScenePreAnimatedToken
     }
     FFMODEventControlPreAnimatedToken& operator=(FFMODEventControlPreAnimatedToken&& RHS)
     {
-        Values = MoveTemp(RHS.Values);
+        Value = MoveTemp(RHS.Value);
         return *this;
     }
 #endif

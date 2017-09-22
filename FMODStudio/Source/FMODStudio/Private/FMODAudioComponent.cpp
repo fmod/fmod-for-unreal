@@ -2,8 +2,6 @@
 
 #include "FMODStudioPrivatePCH.h"
 #include "FMODAudioComponent.h"
-#include "FMODStudioModule.h"
-#include "FMODUtils.h"
 #include "FMODEvent.h"
 #include "FMODListener.h"
 #include "fmod_studio.hpp"
@@ -35,6 +33,8 @@ UFMODAudioComponent::UFMODAudioComponent(const FObjectInitializer& ObjectInitial
 
 	StudioInstance = nullptr;
 	ProgrammerSound = nullptr;
+	LowPass = nullptr;
+	LowPassParam = -1;
 
 	InteriorLastUpdateTime = 0.0;
 	SourceInteriorVolume = 0.0f;
@@ -292,34 +292,62 @@ void UFMODAudioComponent::ApplyVolumeLPF()
 	float CurLPF = FMath::Min(AmbientLPF, CurrentOcclusionFilterFrequency.GetValue());
 	if (CurLPF != LastLPF)
 	{
-		FMOD::ChannelGroup* ChanGroup = nullptr;
-		StudioInstance->getChannelGroup(&ChanGroup);
-		if (ChanGroup)
+		if (!LowPass)
 		{
-			int NumDSP = 0;
-			ChanGroup->getNumDSPs(&NumDSP);
-			for (int Index=0; Index<NumDSP; ++Index)
+			FMOD::ChannelGroup* ChanGroup = nullptr;
+			StudioInstance->getChannelGroup(&ChanGroup);
+			if (ChanGroup)
 			{
-				FMOD::DSP* ChanDSP = nullptr;
-				ChanGroup->getDSP(Index, &ChanDSP);
-				if (ChanDSP)
+				int NumDSP = 0;
+				ChanGroup->getNumDSPs(&NumDSP);
+				for (int Index=0; Index<NumDSP; ++Index)
 				{
-					FMOD_DSP_TYPE DSPType = FMOD_DSP_TYPE_UNKNOWN;
-					ChanDSP->getType(&DSPType);
-					if (DSPType == FMOD_DSP_TYPE_LOWPASS || DSPType == FMOD_DSP_TYPE_LOWPASS_SIMPLE)
+					FMOD::DSP* ChanDSP = nullptr;
+					ChanGroup->getDSP(Index, &ChanDSP);
+					if (ChanDSP)
 					{
-						ChanDSP->setParameterFloat(FMOD_DSP_LOWPASS_CUTOFF, CurLPF);
-						LastLPF = CurLPF; // Actually set it!
-						break;
-					}					
-					else if (DSPType == FMOD_DSP_TYPE_THREE_EQ)
-					{
-						ChanDSP->setParameterFloat(FMOD_DSP_THREE_EQ_LOWCROSSOVER, CurLPF);
-						LastLPF = CurLPF; // Actually set it!
-						break;
+						FMOD_DSP_TYPE DSPType = FMOD_DSP_TYPE_UNKNOWN;
+						ChanDSP->getType(&DSPType);
+						if (DSPType == FMOD_DSP_TYPE_LOWPASS)
+						{
+							LowPassParam = FMOD_DSP_LOWPASS_CUTOFF;
+							LowPass = ChanDSP;
+							break;
+						}
+						else if (DSPType == FMOD_DSP_TYPE_LOWPASS_SIMPLE)
+						{
+							LowPassParam = FMOD_DSP_LOWPASS_SIMPLE_CUTOFF;
+							LowPass = ChanDSP;
+							break;
+						}
+						else if (DSPType == FMOD_DSP_TYPE_THREE_EQ)
+						{
+							LowPassParam = FMOD_DSP_THREE_EQ_LOWCROSSOVER;
+							LowPass = ChanDSP;
+							break;
+						}
+						else if (DSPType == FMOD_DSP_TYPE_MULTIBAND_EQ)
+						{
+							int a_Filter = -1;
+							ChanDSP->getParameterInt(FMOD_DSP_MULTIBAND_EQ_A_FILTER, &a_Filter, nullptr, 0);
+							if (a_Filter == FMOD_DSP_MULTIBAND_EQ_FILTER_LOWPASS_12DB || 
+								a_Filter == FMOD_DSP_MULTIBAND_EQ_FILTER_LOWPASS_24DB || 
+								a_Filter == FMOD_DSP_MULTIBAND_EQ_FILTER_LOWPASS_48DB)
+							{
+								LowPassParam = FMOD_DSP_MULTIBAND_EQ_A_FREQUENCY;
+								LowPass = ChanDSP;
+								break;
+							}
+						}
 					}
 				}
 			}
+		}
+
+		if (LowPass)
+		{
+			LowPass->setParameterFloat(LowPassParam, CurLPF);
+			LastLPF = CurLPF; // Actually set it!
 		}
 	}
 }
@@ -356,12 +384,7 @@ void UFMODAudioComponent::OnUnregister()
 		Stop();
 	}
 
-	if (StudioInstance)
-	{
-		StudioInstance->setCallback(nullptr);
-		StudioInstance->release();
-		StudioInstance = nullptr;
-	}
+	Release();
 }
 
 void UFMODAudioComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
@@ -609,64 +632,66 @@ void UFMODAudioComponent::PlayInternal(EFMODSystemContext::Type Context)
 	if (EventDesc != nullptr)
 	{		
 		EventDesc->getLength(&EventLength);
-		FMOD_RESULT result = EventDesc->createInstance(&StudioInstance);
-		if (StudioInstance != nullptr)
+		if (StudioInstance == nullptr)
 		{
-			// Query the event for some extra info
-			FMOD_STUDIO_USER_PROPERTY UserProp = {0};
-			if (EventDesc->getUserProperty("Ambient", &UserProp) == FMOD_OK)
+			FMOD_RESULT result = EventDesc->createInstance(&StudioInstance);
+			if (result != FMOD_OK)
+				return;
+		}
+		// Query the event for some extra info
+		FMOD_STUDIO_USER_PROPERTY UserProp = {0};
+		if (EventDesc->getUserProperty("Ambient", &UserProp) == FMOD_OK)
+		{
+			if (UserProp.type == FMOD_STUDIO_USER_PROPERTY_TYPE_FLOAT) // All numbers are stored as float
 			{
-				if (UserProp.type == FMOD_STUDIO_USER_PROPERTY_TYPE_FLOAT) // All numbers are stored as float
-				{
-					bApplyAmbientVolumes = (UserProp.floatvalue != 0.0f);
-				}
+				bApplyAmbientVolumes = (UserProp.floatvalue != 0.0f);
 			}
-			if (EventDesc->getUserProperty("Occlusion", &UserProp) == FMOD_OK)
+		}
+		if (EventDesc->getUserProperty("Occlusion", &UserProp) == FMOD_OK)
+		{
+			if (UserProp.type == FMOD_STUDIO_USER_PROPERTY_TYPE_FLOAT) // All numbers are stored as float
 			{
-				if (UserProp.type == FMOD_STUDIO_USER_PROPERTY_TYPE_FLOAT) // All numbers are stored as float
-				{
-					bApplyOcclusionDirect = (UserProp.floatvalue != 0.0f);
-				}
+				bApplyOcclusionDirect = (UserProp.floatvalue != 0.0f);
 			}
-			FMOD_STUDIO_PARAMETER_DESCRIPTION paramDesc = {};
-			if (EventDesc->getParameter("Occlusion", &paramDesc) == FMOD_OK)
-			{
-				bApplyOcclusionParameter = true;
-			}
+		}
+		FMOD_STUDIO_PARAMETER_DESCRIPTION paramDesc = {};
+		if (EventDesc->getParameter("Occlusion", &paramDesc) == FMOD_OK)
+		{
+			bApplyOcclusionParameter = true;
+		}
 
 #if ENGINE_MINOR_VERSION >= 12
-			OnUpdateTransform(EUpdateTransformFlags::SkipPhysicsUpdate);
+		OnUpdateTransform(EUpdateTransformFlags::SkipPhysicsUpdate);
 #else
-			OnUpdateTransform(true);
+		OnUpdateTransform(true);
 #endif
-			// Set initial parameters
-			for (auto Kvp : ParameterCache)
+		// Set initial parameters
+		for (auto Kvp : ParameterCache)
+		{
+			FMOD_RESULT Result = StudioInstance->setParameterValue(TCHAR_TO_UTF8(*Kvp.Key.ToString()), Kvp.Value);
+			if (Result != FMOD_OK)
 			{
-				FMOD_RESULT Result = StudioInstance->setParameterValue(TCHAR_TO_UTF8(*Kvp.Key.ToString()), Kvp.Value);
+				UE_LOG(LogFMOD, Warning, TEXT("Failed to set initial parameter %s"), *Kvp.Key.ToString());
+			}
+		}
+		for (int i = 0; i<EFMODEventProperty::Count; ++i)
+		{
+			if (StoredProperties[i] != -1.0f)
+			{
+				FMOD_RESULT Result = StudioInstance->setProperty((FMOD_STUDIO_EVENT_PROPERTY)i, StoredProperties[i]);
 				if (Result != FMOD_OK)
 				{
-					UE_LOG(LogFMOD, Warning, TEXT("Failed to set initial parameter %s"), *Kvp.Key.ToString());
+					UE_LOG(LogFMOD, Warning, TEXT("Failed to set initial property %d"), i);
 				}
 			}
-			for (int i = 0; i<EFMODEventProperty::Count; ++i)
-			{
-				if (StoredProperties[i] != -1.0f)
-				{
-					FMOD_RESULT Result = StudioInstance->setProperty((FMOD_STUDIO_EVENT_PROPERTY)i, StoredProperties[i]);
-					if (Result != FMOD_OK)
-					{
-						UE_LOG(LogFMOD, Warning, TEXT("Failed to set initial property %d"), i);
-					}
-				}
-			}
-
-			verifyfmod(StudioInstance->setUserData(this));
-			verifyfmod(StudioInstance->setCallback(UFMODAudioComponent_EventCallback));
-			verifyfmod(StudioInstance->start());
-			UE_LOG(LogFMOD, Verbose, TEXT("Playing component %p"), this);
-			bIsActive = true;
-			SetComponentTickEnabled(true);
 		}
+
+		verifyfmod(StudioInstance->setUserData(this));
+		verifyfmod(StudioInstance->setCallback(UFMODAudioComponent_EventCallback));
+		verifyfmod(StudioInstance->start());
+		UE_LOG(LogFMOD, Verbose, TEXT("Playing component %p"), this);
+		bIsActive = true;
+		SetComponentTickEnabled(true);
 	}
 }
 
@@ -676,12 +701,20 @@ void UFMODAudioComponent::Stop()
 	if (StudioInstance)
 	{
 		StudioInstance->stop(FMOD_STUDIO_STOP_ALLOWFADEOUT);
+	}
+	InteriorLastUpdateTime = 0.0;
+    bIsActive = false;
+}
+
+void UFMODAudioComponent::Release()
+{
+	if (StudioInstance)
+	{
+		LowPass = nullptr;
 		StudioInstance->setCallback(nullptr);
 		StudioInstance->release();
 		StudioInstance = nullptr;
 	}
-	InteriorLastUpdateTime = 0.0;
-    bIsActive = false;
 }
 
 void UFMODAudioComponent::TriggerCue()
@@ -710,12 +743,7 @@ void UFMODAudioComponent::OnPlaybackCompleted()
 	bIsActive = false;
 	SetComponentTickEnabled(false);
 
-	if (StudioInstance)
-	{
-		StudioInstance->setCallback(nullptr);
-		StudioInstance->release();
-		StudioInstance = nullptr;
-	}
+	Release();
 
 	// Fire callback after we have cleaned up our instance
 	OnEventStopped.Broadcast();

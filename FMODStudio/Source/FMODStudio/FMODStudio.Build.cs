@@ -24,7 +24,6 @@ namespace UnrealBuildTool.Rules
 				new string[] {
 					"FMODStudio/Private",
 					"FMODStudio/Public/FMOD",
-					"FMODStudioOculus/Public",
 				}
 				);
 
@@ -98,6 +97,13 @@ namespace UnrealBuildTool.Rules
                 libPrefix = "lib";
                 bAddRuntimeDependencies = false;
             }
+            else if (Target.Platform.ToString() == "UWP64")
+            {
+                platformMidName = "_X64";
+                linkExtension = ".lib";
+                dllExtension = ".dll";
+                bAddDelayLoad = true;
+            }
             else
             {
                 switch (Target.Platform)
@@ -117,7 +123,6 @@ namespace UnrealBuildTool.Rules
                         linkExtension = dllExtension = ".dylib";
                         libPrefix = "lib";
                         bLinkFromBinaries = false;
-
                         break;
                     case UnrealTargetPlatform.XboxOne:
                         linkExtension = "_vc.lib";

@@ -7,6 +7,7 @@
 #include "Sound/SoundAttenuation.h"
 #include "AudioDevice.h"
 #include "FMODStudioModule.h"
+#include "FMODUtils.h"
 #include "FMODAudioComponent.generated.h"
 
 // Event property
@@ -63,6 +64,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_SixParams(FOnTimelineBeat, int32, Bar, int32,
 
 namespace FMOD
 {
+	class DSP;
 	class Sound;
 
 	namespace Studio
@@ -144,6 +146,9 @@ class FMODSTUDIO_API UFMODAudioComponent : public USceneComponent
 	/** Stop an audio component playing its sound cue, issue any delegates if needed */
 	UFUNCTION(BlueprintCallable, Category="Audio|FMOD|Components")
 	void Stop();
+
+	UFUNCTION(BlueprintCallable, Category = "Audio|FMOD|Components")
+	void Release();
 
 	/** Trigger a cue in an event */
 	UFUNCTION(BlueprintCallable, Category="Audio|FMOD|Components")
@@ -290,7 +295,9 @@ private:
 
 	// Direct assignment of programmer sound from other C++ code
 	FMOD::Sound* ProgrammerSound;
-	
+	FMOD::DSP* LowPass;
+	int LowPassParam;
+
 	int32 EventLength;
 };
 

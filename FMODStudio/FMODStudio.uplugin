@@ -2,8 +2,8 @@
     "FileVersion" : 3,
 	
 	"FriendlyName" : "FMOD Studio Integration",
-	"Version" : 10815,
-	"VersionName" : "1.08.15",
+	"Version" : 10906,
+	"VersionName" : "1.09.06",
 	"CreatedBy" : "Firelight Technologies",
 	"CreatedByURL" : "http://fmod.com",
 	"Description" : "FMOD Studio Integration.",
@@ -12,11 +12,6 @@
 	
 	"Modules" :
 	[
-		{
-			"Name" : "FMODStudioOculus",
-			"Type" : "Runtime",
-			"LoadingPhase" : "PreDefault"
-		},
 		{
 			"Name" : "FMODStudio",
 			"Type" : "Runtime",

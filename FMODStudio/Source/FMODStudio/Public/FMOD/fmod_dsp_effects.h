@@ -58,7 +58,7 @@ typedef enum
     FMOD_DSP_TYPE_THREE_EQ,           /* This unit is a three-band equalizer. */
     FMOD_DSP_TYPE_FFT,                /* This unit simply analyzes the signal and provides spectrum information back through getParameter. */
     FMOD_DSP_TYPE_LOUDNESS_METER,     /* This unit analyzes the loudness and true peak of the signal. */
-    FMOD_DSP_TYPE_ENVELOPEFOLLOWER,   /* This unit tracks the envelope of the input/sidechain signal. Format to be publicly disclosed soon. */
+    FMOD_DSP_TYPE_ENVELOPEFOLLOWER,   /* This unit tracks the envelope of the input/sidechain signal. Deprecated and will be removed in a future release. */
     FMOD_DSP_TYPE_CONVOLUTIONREVERB,  /* This unit implements convolution reverb. */
     FMOD_DSP_TYPE_CHANNELMIX,         /* This unit provides per signal channel gain, and output channel mapping to allow 1 multichannel signal made up of many groups of signals to map to a single output signal. */
     FMOD_DSP_TYPE_TRANSCEIVER,        /* This unit 'sends' and 'receives' from a selection of up to 32 different slots.  It is like a send/return but it uses global slots rather than returns as the destination.  It also has other features.  Multiple transceivers can receive from a single channel, or multiple transceivers can send to a single channel, or a combination of both. */
@@ -212,6 +212,26 @@ typedef enum
     FMOD_DSP_ECHO_DRYLEVEL,    /* (Type:float) - Original sound volume in dB.  -80.0 to 10.0.  Default = 0. */
     FMOD_DSP_ECHO_WETLEVEL     /* (Type:float) - Volume of echo signal to pass to output in dB.  -80.0 to 10.0.  Default = 0. */
 } FMOD_DSP_ECHO;
+
+
+/*
+[ENUM]
+[
+    [DESCRIPTION]
+    Parameter types for the FMOD_DSP_TYPE_FADER filter.
+
+    [REMARKS]
+
+    [SEE_ALSO]
+    DSP::setParameterFloat
+    DSP::getParameterFloat
+    FMOD_DSP_TYPE
+]
+*/
+typedef enum FMOD_DSP_FADER
+{
+    FMOD_DSP_FADER_GAIN,    /* (Type:float) - Signal gain in dB. -80.0 to 10.0. Default = 0.0. */
+} FMOD_DSP_FADER;
 
 
 /*
@@ -897,7 +917,8 @@ typedef enum
     FMOD_DSP_PAN_3D_PAN_BLEND,                  /* (Type:float) - 3D Pan Blend.              0.0 (fully 2D) to 1.0 (fully 3D).  Default = 0.0. */
     FMOD_DSP_PAN_LFE_UPMIX_ENABLED,             /* (Type:int)   - LFE Upmix Enabled.         Determines whether non-LFE source channels should mix to the LFE or leave it alone.  0 (off) to 1 (on).  Default = 0 (off). */
     FMOD_DSP_PAN_OVERALL_GAIN,                  /* (Type:data)  - Overall gain.              For information only, not set by user.  Data of type FMOD_DSP_PARAMETER_DATA_TYPE_OVERALLGAIN to provide to FMOD, to allow FMOD to know the DSP is scaling the signal for virtualization purposes. */
-    FMOD_DSP_PAN_SURROUND_SPEAKER_MODE          /* (Type:int)   - Surround speaker mode.     Target speaker mode for surround panning.  Default = FMOD_SPEAKERMODE_DEFAULT. */
+    FMOD_DSP_PAN_SURROUND_SPEAKER_MODE,         /* (Type:int)   - Surround speaker mode.     Target speaker mode for surround panning.  Default = FMOD_SPEAKERMODE_DEFAULT. */
+    FMOD_DSP_PAN_2D_HEIGHT_BLEND,               /* (Type:float) - 2D Height blend.           When the input or FMOD_DSP_PAN_SURROUND_SPEAKER_MODE has height speakers, control the blend between ground and height. -1.0 (push top speakers to ground), 0.0 (preserve top / ground separation), 1.0 (push ground speakers to top). Default = 0.0. */
 } FMOD_DSP_PAN;
 
 
@@ -1032,11 +1053,15 @@ typedef enum
 [ENUM]
 [  
     [DESCRIPTION]
+    Deprecated and will be removed in a future release.
+
     Parameter types for the FMOD_DSP_TYPE_ENVELOPEFOLLOWER unit.
     This is a simple envelope follower for tracking the signal level.<br>
 
     [REMARKS]
-    This unit does not affect the incoming signal
+    Deprecated and will be removed in a future release.
+
+    This unit does not affect the incoming signal.
     <br>
 
     [SEE_ALSO]
@@ -1074,7 +1099,7 @@ typedef enum
 */
 typedef enum
 {
-    FMOD_DSP_CONVOLUTION_REVERB_PARAM_IR,       /* (Type:data)  - [w]   16-bit reverb IR (short*) with an extra sample prepended to the start which specifies the number of channels. */
+    FMOD_DSP_CONVOLUTION_REVERB_PARAM_IR,       /* (Type:data)  - [w]   Array of signed 16-bit (short) PCM data to be used as reverb IR.  First member of the array should be a 16 bit value (short) which specifies the number of channels.  Array looks like [index 0=numchannels][index 1+ = raw 16 bit PCM data].  Data is copied internally so source can be freed. */
     FMOD_DSP_CONVOLUTION_REVERB_PARAM_WET,      /* (Type:float) - [r/w] Volume of echo signal to pass to output in dB.  -80.0 to 10.0.  Default = 0. */
     FMOD_DSP_CONVOLUTION_REVERB_PARAM_DRY,      /* (Type:float) - [r/w] Original sound volume in dB.  -80.0 to 10.0.  Default = 0. */
     FMOD_DSP_CONVOLUTION_REVERB_PARAM_LINKED    /* (Type:bool)  - [r/w] Linked - channels are mixed together before processing through the reverb.  Default = TRUE. */

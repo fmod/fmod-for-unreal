@@ -153,11 +153,11 @@ typedef FMOD_RESULT (F_CALL *FMOD_DSP_GETUSERDATA_FUNC)                   (FMOD_
 typedef FMOD_RESULT (F_CALL *FMOD_DSP_DFT_FFTREAL_FUNC)                   (FMOD_DSP_STATE *dsp_state, int size, const float *signal, FMOD_COMPLEX* dft, const float *window, int signalhop);
 typedef FMOD_RESULT (F_CALL *FMOD_DSP_DFT_IFFTREAL_FUNC)                  (FMOD_DSP_STATE *dsp_state, int size, const FMOD_COMPLEX *dft, float* signal, const float *window, int signalhop);
 
-typedef FMOD_RESULT (F_CALL *FMOD_DSP_PAN_SUMMONOMATRIX_FUNC)             (FMOD_DSP_STATE *dsp_state, int sourceSpeakerMode, float lowFrequencyGain, float overallGain, float *matrix);
-typedef FMOD_RESULT (F_CALL *FMOD_DSP_PAN_SUMSTEREOMATRIX_FUNC)           (FMOD_DSP_STATE *dsp_state, int sourceSpeakerMode, float pan, float lowFrequencyGain, float overallGain, int matrixHop, float *matrix);
-typedef FMOD_RESULT (F_CALL *FMOD_DSP_PAN_SUMSURROUNDMATRIX_FUNC)         (FMOD_DSP_STATE *dsp_state, int sourceSpeakerMode, int targetSpeakerMode, float direction, float extent, float rotation, float lowFrequencyGain, float overallGain, int matrixHop, float *matrix, FMOD_DSP_PAN_SURROUND_FLAGS flags);
-typedef FMOD_RESULT (F_CALL *FMOD_DSP_PAN_SUMMONOTOSURROUNDMATRIX_FUNC)   (FMOD_DSP_STATE *dsp_state, int targetSpeakerMode, float direction, float extent, float lowFrequencyGain, float overallGain, int matrixHop, float *matrix);
-typedef FMOD_RESULT (F_CALL *FMOD_DSP_PAN_SUMSTEREOTOSURROUNDMATRIX_FUNC) (FMOD_DSP_STATE *dsp_state, int targetSpeakerMode, float direction, float extent, float rotation, float lowFrequencyGain, float overallGain, int matrixHop, float *matrix);
+typedef FMOD_RESULT (F_CALL *FMOD_DSP_PAN_SUMMONOMATRIX_FUNC)             (FMOD_DSP_STATE *dsp_state, FMOD_SPEAKERMODE sourceSpeakerMode, float lowFrequencyGain, float overallGain, float *matrix);
+typedef FMOD_RESULT (F_CALL *FMOD_DSP_PAN_SUMSTEREOMATRIX_FUNC)           (FMOD_DSP_STATE *dsp_state, FMOD_SPEAKERMODE sourceSpeakerMode, float pan, float lowFrequencyGain, float overallGain, int matrixHop, float *matrix);
+typedef FMOD_RESULT (F_CALL *FMOD_DSP_PAN_SUMSURROUNDMATRIX_FUNC)         (FMOD_DSP_STATE *dsp_state, FMOD_SPEAKERMODE sourceSpeakerMode, FMOD_SPEAKERMODE targetSpeakerMode, float direction, float extent, float rotation, float lowFrequencyGain, float overallGain, int matrixHop, float *matrix, FMOD_DSP_PAN_SURROUND_FLAGS flags);
+typedef FMOD_RESULT (F_CALL *FMOD_DSP_PAN_SUMMONOTOSURROUNDMATRIX_FUNC)   (FMOD_DSP_STATE *dsp_state, FMOD_SPEAKERMODE targetSpeakerMode, float direction, float extent, float lowFrequencyGain, float overallGain, int matrixHop, float *matrix);
+typedef FMOD_RESULT (F_CALL *FMOD_DSP_PAN_SUMSTEREOTOSURROUNDMATRIX_FUNC) (FMOD_DSP_STATE *dsp_state, FMOD_SPEAKERMODE targetSpeakerMode, float direction, float extent, float rotation, float lowFrequencyGain, float overallGain, int matrixHop, float *matrix);
 typedef FMOD_RESULT (F_CALL *FMOD_DSP_PAN_GETROLLOFFGAIN_FUNC)            (FMOD_DSP_STATE *dsp_state, FMOD_DSP_PAN_3D_ROLLOFF_TYPE rolloff, float distance, float mindistance, float maxdistance, float *gain);
 
 
@@ -837,7 +837,7 @@ typedef struct FMOD_DSP_STATE_FUNCTIONS
 */
 struct FMOD_DSP_STATE
 {
-    FMOD_DSP                 *instance;            /* [r] Handle to the FMOD_DSP object the callback is associated with.  Not to be modified.  C++ users cast to FMOD::DSP to use.  */
+    void                     *instance;            /* [r] Internal instance pointer, should not be used or written to. */
     void                     *plugindata;          /* [w] Plugin writer created data the output author wants to attach to this object. */
     FMOD_CHANNELMASK          channelmask;         /* [r] Specifies which speakers the DSP effect is active on */
     FMOD_SPEAKERMODE          source_speakermode;  /* [r] Specifies which speaker mode the signal originated for information purposes, ie in case panning needs to be done differently. */

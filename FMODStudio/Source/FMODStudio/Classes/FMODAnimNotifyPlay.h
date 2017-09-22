@@ -20,7 +20,7 @@ public:
 
 	// If this sound should follow its owner
 	UPROPERTY(EditAnywhere, Category = "FMOD Anim Notify")
-	uint32 bFollow : 1;
+	uint32 bFollow:1;
 
 	// Socket or bone name to attach sound to
 	UPROPERTY(EditAnywhere, Category = "FMOD Anim Notify", meta = (EditCondition = "bFollow"))

@@ -13,7 +13,6 @@
 #include "FMODEvent.h"
 #include "FMODListener.h"
 #include "FMODSnapshotReverb.h"
-#include "FMODStudioOculusModule.h"
 #include "IPluginManager.h"
 
 #include "fmod_studio.hpp"
@@ -302,6 +301,10 @@ bool FFMODStudioModule::LoadPlugin(const TCHAR* ShortName)
 
 			UE_LOG(LogFMOD, Log, TEXT("Trying to load plugin file at location: %s"), *PluginPath);
 
+#if PLATFORM_UWP
+			FPaths::MakePathRelativeTo(PluginPath, *(FPaths::RootDir() + TEXT("/")));
+#endif
+
 			unsigned int Handle = 0;
 			PluginLoadResult = LowLevelSystem->loadPlugin(TCHAR_TO_UTF8(*PluginPath), &Handle, 0);
 			if (PluginLoadResult == FMOD_OK)
@@ -357,6 +360,8 @@ FString FFMODStudioModule::GetDllPath(const TCHAR* ShortName, bool bExplicitPath
 	#else
 		return FString::Printf(TEXT("%s/Win32/%s.dll"), *BaseLibPath, ShortName);
 	#endif
+#elif PLATFORM_UWP
+		return FString::Printf(TEXT("%s/UWP64/%s.dll"), *BaseLibPath, ShortName);
 #else
 	UE_LOG(LogFMOD, Error, TEXT("Unsupported platform for dynamic libs"));
 	return "";
@@ -391,6 +396,8 @@ bool FFMODStudioModule::LoadLibraries()
 
 #if PLATFORM_WINDOWS && PLATFORM_64BITS
 	ConfigName += TEXT("64");
+#elif PLATFORM_UWP
+	ConfigName += TEXT("_X64");
 #endif
 
 	FString LowLevelName = FString(TEXT("fmod")) + ConfigName;
@@ -946,12 +953,6 @@ void FFMODStudioModule::SetInPIE(bool bInPIE, bool simulating)
 		UE_LOG(LogFMOD, Log, TEXT("Creating runtime Studio System"));
 		ListenerCount = 1;
 		CreateStudioSystem(EFMODSystemContext::Runtime);
-
-		UE_LOG(LogFMOD, Log, TEXT("Triggering Initialized on other modules"));
-		if (IFMODStudioOculusModule::IsAvailable())
-		{
-			IFMODStudioOculusModule::Get().OnInitialize();
-		}
 
 		UE_LOG(LogFMOD, Log, TEXT("Loading Banks"));
 		LoadBanks(EFMODSystemContext::Runtime);

@@ -376,7 +376,18 @@ void FFMODStudioEditorModule::AddFileMenuExtension(FMenuBuilder& MenuBuilder)
 	MenuBuilder.EndSection();
 }
 
-unsigned int GetDLLVersion()
+int DLLVersionToInt(unsigned int FullVersion, unsigned int offset)
+{
+	return (((((FullVersion) >> ((offset)+0)) & 0xF) * 1) +
+			((((FullVersion) >> ((offset)+4)) & 0xF) * 10));
+}
+void VersionToArray(unsigned int FullVersion, unsigned int* outVersion)
+{
+	outVersion[0] = DLLVersionToInt(FullVersion, 16);
+	outVersion[1] = DLLVersionToInt(FullVersion,  8);
+	outVersion[2] = DLLVersionToInt(FullVersion,  0);
+}
+void GetDLLVersion(unsigned int* outVersion)
 {
 	// Just grab it from the audition context which is always valid
 	unsigned int DLLVersion = 0;
@@ -389,21 +400,19 @@ unsigned int GetDLLVersion()
 			LowLevelSystem->getVersion(&DLLVersion);
 		}
 	}
-	return DLLVersion;
+	return VersionToArray(DLLVersion, outVersion);
 }
-unsigned int StripPatch(unsigned int FullVersion)
+FString VersionToString(unsigned int* FullVersion)
 {
-	return FullVersion & ~0xFF;
-}
-FString VersionToString(unsigned int FullVersion)
-{
-	return FString::Printf(TEXT("%x.%02x.%02x"), (FullVersion>>16), (FullVersion>>8) & 0xFF, FullVersion & 0xFF);
+	return FString::Printf(TEXT("%d.%02d.%02d"), FullVersion[0], FullVersion[1], FullVersion[2]);
 }
 
 void FFMODStudioEditorModule::ShowVersion()
 {
-	unsigned int HeaderVersion = FMOD_VERSION;
-	unsigned int DLLVersion = GetDLLVersion();
+	unsigned int HeaderVersion[3];
+	unsigned int DLLVersion[3];
+	VersionToArray(FMOD_VERSION, HeaderVersion);
+	GetDLLVersion(DLLVersion);
 
 	FText VersionMessage = FText::Format(
 		LOCTEXT("FMODStudio_About", "FMOD Studio\n\nBuilt Version: {0}\nDLL Version: {1}\n\nCopyright \u00A9 Firelight Technologies Pty Ltd.\n\nSee LICENSE.TXT for additional license information."),
@@ -449,9 +458,11 @@ void FFMODStudioEditorModule::ValidateFMOD()
 			return;
 		}
 	}
-	unsigned int HeaderVersion = FMOD_VERSION;
-	unsigned int DLLVersion = GetDLLVersion();
-	unsigned int StudioVersion = 0;
+	unsigned int HeaderVersion[3];
+	unsigned int DLLVersion[3];
+	VersionToArray(FMOD_VERSION, HeaderVersion);
+	GetDLLVersion(DLLVersion);
+	unsigned int StudioVersion[3];
 	if (Connected)
 	{
 		FString StudioVersionString;
@@ -467,15 +478,14 @@ void FFMODStudioEditorModule::ValidateFMOD()
 				VersionParts[0].RightChop(8).ParseIntoArray(VersionFields, TEXT("."));
 				if (VersionFields.Num() == 3)
 				{
-					int Super = FCString::Atoi(*VersionFields[0]);
-					int Major = FCString::Atoi(*VersionFields[1]);
-					int Minor = FCString::Atoi(*VersionFields[2]);
-					StudioVersion = (Super << 16) | (Major << 8) | Minor;
+					StudioVersion[0] = FCString::Atoi(*VersionFields[0]);
+					StudioVersion[1] = FCString::Atoi(*VersionFields[1]);
+					StudioVersion[2] = FCString::Atoi(*VersionFields[2]);
 				}
 			}
 		}
 	}
-	if (StripPatch(HeaderVersion) != StripPatch(DLLVersion))
+	if (HeaderVersion[0] != DLLVersion[0] || HeaderVersion[1] != DLLVersion[1])
 	{
 		FText VersionMessage = FText::Format(
 			LOCTEXT("SetStudioBuildStudio_Status", "The FMOD DLL version is different to the version the integration was built against.  This may cause problems running the game.\nBuilt Version: {0}\nDLL Version: {1}\n"),
@@ -484,10 +494,10 @@ void FFMODStudioEditorModule::ValidateFMOD()
 		FMessageDialog::Open(EAppMsgType::Ok, VersionMessage);
 		ProblemsFound++;
 	}
-	if (StudioVersion > DLLVersion)
+	if (StudioVersion[0] != DLLVersion[0] || StudioVersion[1] != DLLVersion[1])
 	{
 		FText VersionMessage = FText::Format(
-			LOCTEXT("SetStudioBuildStudio_Version", "The Studio tool is newer than the version the integration was built against.  The integration may not be able to load the banks that the tool builds.\n\nBuilt Version: {0}\nDLL Version: {1}\nStudio Version: {2}\n\nWe recommend using the Studio tool that matches the integration.\n\nDo you want to continue with the validation?"),
+			LOCTEXT("SetStudioBuildStudio_Version", "The Studio tool is different to the version the integration was built against.  The integration may not be able to load the banks that the tool builds.\n\nBuilt Version: {0}\nDLL Version: {1}\nStudio Version: {2}\n\nWe recommend using the Studio tool that matches the integration.\n\nDo you want to continue with the validation?"),
 				FText::FromString(VersionToString(HeaderVersion)),
 				FText::FromString(VersionToString(DLLVersion)),
 				FText::FromString(VersionToString(StudioVersion)));
@@ -513,7 +523,7 @@ void FFMODStudioEditorModule::ValidateFMOD()
 		// File path was added in FMOD Studio 1.07.00
 		FString StudioProjectPath;
 		FString StudioProjectDir;
-		if (StudioVersion >= 0x00010700)
+		if (StudioVersion[0] >= 1 && StudioVersion[1] >= 7)
 		{
 			StudioLink.Execute(TEXT("studio.project.filePath"), StudioProjectPath);
 			if (StudioProjectPath.IsEmpty() || StudioProjectPath == TEXT("undefined"))
