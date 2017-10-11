@@ -15,6 +15,7 @@
 
 #if WITH_EDITOR
 #include "AssetRegistryModule.h"
+#include "UObject/CoreRedirects.h"
 #endif
 
 FFMODAssetTable::FFMODAssetTable()
@@ -112,6 +113,14 @@ void FFMODAssetTable::Refresh()
 	{
 		UE_LOG(LogFMOD, Warning, TEXT("Failed to load strings bank: %s"), *StringPath);
 	}
+
+#if WITH_EDITOR
+	{
+		static const auto ConfigFile = FPaths::SourceConfigDir() / TEXT("FMODEvents.ini");
+		GConfig->Flush(false, ConfigFile);
+		FCoreRedirects::ReadRedirectsFromIni(ConfigFile);
+	}
+#endif
 }
 
 void FFMODAssetTable::AddAsset(const FGuid& AssetGuid, const FString& AssetFullName)
@@ -271,4 +280,37 @@ void FFMODAssetTable::AddAsset(const FGuid& AssetGuid, const FString& AssetFullN
 	ExistingNameAsset = AssetNameObject;
 	ExistingGuidAsset = AssetNameObject;
 	ExistingFullNameLookupAsset = AssetNameObject;
+
+#if WITH_EDITOR
+	if (AssetClass == UFMODEvent::StaticClass())
+	{
+		static const auto ConfigFile = FPaths::SourceConfigDir() / TEXT("FMODEvents.ini");
+		auto Redirects = GConfig->GetSectionPrivate(TEXT("CoreRedirects"), true, false, ConfigFile);
+
+		bool bDirtyConfig = false;
+		FString OldEventPath;
+
+		if (GConfig->GetString(TEXT("Events"), *AssetGuid.ToString(), OldEventPath, ConfigFile))
+		{
+			if (OldEventPath != AssetPackagePath)
+			{
+				// Renamed event!
+				bDirtyConfig = true;
+
+				auto RedirectValue = FString::Printf(TEXT("(OldName=\"%s\",NewName=\"%s\")"), *OldEventPath, *AssetPackagePath);
+				Redirects->Add(TEXT("PackageRedirects"), *RedirectValue);
+			}
+		}
+		else
+		{
+			// New event
+			bDirtyConfig = true;
+		}
+
+		if (bDirtyConfig)
+		{
+			GConfig->SetString(TEXT("Events"), *AssetGuid.ToString(), *AssetPackagePath, ConfigFile);
+		}
+	}
+#endif
 }
