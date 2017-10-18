@@ -28,8 +28,16 @@ void FFMODAudioComponentVisualizer::DrawVisualization(const UActorComponent* Com
 
 					float MinDistance = 0.0f;
 					float MaxDistance = 0.0f;
-					EventDesc->getMinimumDistance(&MinDistance);
-					EventDesc->getMaximumDistance(&MaxDistance);
+					if (AudioComp->AttenuationDetails.bOverrideAttenuation)
+					{
+						MinDistance = AudioComp->AttenuationDetails.MinimumDistance;
+						MaxDistance = AudioComp->AttenuationDetails.MaximumDistance;
+					}
+					else
+					{
+						EventDesc->getMinimumDistance(&MinDistance);
+						EventDesc->getMaximumDistance(&MaxDistance);
+					}
 					MinDistance = FMODUtils::DistanceToUEScale(MinDistance);
 					MaxDistance = FMODUtils::DistanceToUEScale(MaxDistance);
 

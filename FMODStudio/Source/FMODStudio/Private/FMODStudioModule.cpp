@@ -370,13 +370,7 @@ FString FFMODStudioModule::GetDllPath(const TCHAR* ShortName, bool bExplicitPath
 
 bool FFMODStudioModule::LoadLibraries()
 {
-#if ENGINE_MINOR_VERSION > 14
-	#if PLATFORM_SWITCH
-		return true; // Nothing to do
-	#endif
-#endif
-
-#if PLATFORM_IOS || PLATFORM_ANDROID || PLATFORM_LINUX || PLATFORM_MAC
+#if PLATFORM_IOS || PLATFORM_ANDROID || PLATFORM_LINUX || PLATFORM_MAC || PLATFORM_SWITCH
 	return true; // Nothing to do on those platforms
 #elif PLATFORM_HTML5
 	UE_LOG(LogFMOD, Error, TEXT("FMOD Studio not supported on HTML5"));
@@ -567,14 +561,12 @@ void FFMODStudioModule::CreateStudioSystem(EFMODSystemContext::Type Type)
 		advSettings.vol0virtualvol = Settings.Vol0VirtualLevel;
 		InitFlags |= FMOD_INIT_VOL0_BECOMES_VIRTUAL;
 	}
-#if PLATFORM_IOS || PLATFORM_ANDROID
+#if PLATFORM_IOS || PLATFORM_ANDROID || PLATFORM_SWITCH
 	advSettings.maxFADPCMCodecs = Settings.RealChannelCount;
 #elif PLATFORM_PS4
 	advSettings.maxAT9Codecs = Settings.RealChannelCount;
 #elif PLATFORM_XBOXONE
 	advSettings.maxXMACodecs = Settings.RealChannelCount;
-#elif ENGINE_MINOR_VERSION > 14 && PLATFORM_SWITCH
-	advSettings.maxFADPCMCodecs = Settings.RealChannelCount;
 #else
 	advSettings.maxVorbisCodecs = Settings.RealChannelCount;
 #endif
@@ -671,18 +663,10 @@ void FFMODStudioModule::UpdateViewportPosition()
 	{
 		for (FConstPlayerControllerIterator Iterator = ViewportWorld->GetPlayerControllerIterator(); Iterator; ++Iterator)
 		{
-#if ENGINE_MINOR_VERSION > 14
 			APlayerController* PlayerController = Iterator->Get();
-#else
-			APlayerController* PlayerController = *Iterator;
-#endif
 			if (PlayerController)
 			{
-#if ENGINE_MINOR_VERSION > 14
 				ULocalPlayer* LocalPlayer = PlayerController->GetLocalPlayer();
-#else
-				ULocalPlayer* LocalPlayer = Cast<ULocalPlayer>(PlayerController->Player);
-#endif
 				if (LocalPlayer)
 				{
 					FVector Location;
@@ -810,27 +794,17 @@ void FFMODStudioModule::FinishSetListenerPosition(int NumListeners, float DeltaS
 	for (int i = 0; i < ListenerCount; ++i)
 	{
 		AAudioVolume* CandidateVolume = Listeners[i].Volume;
-#if ENGINE_MINOR_VERSION >= 13
+		
 		if (BestVolume == nullptr || (CandidateVolume != nullptr && CandidateVolume->GetPriority() > BestVolume->GetPriority()))
-#else
-		if (BestVolume == nullptr || (CandidateVolume != nullptr && CandidateVolume->Priority > BestVolume->Priority))
-#endif
 		{
 			BestVolume = CandidateVolume;
 		}
 	}
 	UFMODSnapshotReverb* NewSnapshot = nullptr;
-#if ENGINE_MINOR_VERSION >= 13
+	
 	if (BestVolume && BestVolume->GetReverbSettings().bApplyReverb)
-#else
-	if (BestVolume && BestVolume->Settings.bApplyReverb)
-#endif
 	{
-#if ENGINE_MINOR_VERSION >= 13
 		NewSnapshot = Cast<UFMODSnapshotReverb>(BestVolume->GetReverbSettings().ReverbEffect);
-#else
-		NewSnapshot = Cast<UFMODSnapshotReverb>(BestVolume->Settings.ReverbEffect);
-#endif
 	}
 
 	if (NewSnapshot != nullptr)
@@ -875,11 +849,7 @@ void FFMODStudioModule::FinishSetListenerPosition(int NumListeners, float DeltaS
 		// Fade up
 		if (ReverbSnapshots[SnapshotEntryIndex].FadeIntensityEnd == 0.0f)
 		{
-#if ENGINE_MINOR_VERSION >= 13
 			ReverbSnapshots[SnapshotEntryIndex].FadeTo(BestVolume->GetReverbSettings().Volume, BestVolume->GetReverbSettings().FadeTime);
-#else
-			ReverbSnapshots[SnapshotEntryIndex].FadeTo(BestVolume->Settings.Volume, BestVolume->Settings.FadeTime);
-#endif
 		}
 	}
 	// Fade out all other entries

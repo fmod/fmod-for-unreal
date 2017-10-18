@@ -82,11 +82,7 @@ inline bool IsWorldAudible(UWorld* World, bool AllowInEditor)
 		if (World->bAllowAudioPlayback && World->GetNetMode() != NM_DedicatedServer)
 		{
 			EWorldType::Type previewEnum;
-#if ENGINE_MINOR_VERSION > 13
 			previewEnum = EWorldType::EditorPreview;
-#else
-			previewEnum = EWorldType::Preview;
-#endif
 			if (World->IsGameWorld() || World->WorldType == previewEnum || (AllowInEditor && World->WorldType == EWorldType::Editor))
 			{
 				return true;

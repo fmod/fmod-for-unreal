@@ -12,7 +12,7 @@
 
 #include "FMODEventEditor.h"
 #include "FMODAudioComponentVisualizer.h"
-#include "FMODAmbientSoundDetails.h"
+#include "FMODAudioComponentDetails.h"
 #include "Sequencer/FMODEventControlTrackEditor.h"
 #include "Sequencer/FMODEventParameterTrackEditor.h"
 
@@ -269,17 +269,12 @@ void FFMODStudioEditorModule::StartupModule()
 
     // Register with the sequencer module that we provide auto-key handlers.
     ISequencerModule& SequencerModule = FModuleManager::Get().LoadModuleChecked<ISequencerModule>("Sequencer");
-#if ENGINE_MINOR_VERSION > 15
     FMODControlTrackEditorCreateTrackEditorHandle = SequencerModule.RegisterTrackEditor(FOnCreateTrackEditor::CreateStatic(&FFMODEventControlTrackEditor::CreateTrackEditor));
     FMODParamTrackEditorCreateTrackEditorHandle = SequencerModule.RegisterTrackEditor(FOnCreateTrackEditor::CreateStatic(&FFMODEventParameterTrackEditor::CreateTrackEditor));
-#else
-    FMODControlTrackEditorCreateTrackEditorHandle = SequencerModule.RegisterTrackEditor_Handle(FOnCreateTrackEditor::CreateStatic(&FFMODEventControlTrackEditor::CreateTrackEditor));
-    FMODParamTrackEditorCreateTrackEditorHandle = SequencerModule.RegisterTrackEditor_Handle(FOnCreateTrackEditor::CreateStatic(&FFMODEventParameterTrackEditor::CreateTrackEditor));
-#endif
 	// Register the details customizations
 	{
 		FPropertyEditorModule& PropertyModule = FModuleManager::LoadModuleChecked<FPropertyEditorModule>("PropertyEditor");
-		PropertyModule.RegisterCustomClassLayout("FMODAmbientSound", FOnGetDetailCustomizationInstance::CreateStatic(&FFMODAmbientSoundDetails::MakeInstance));
+		PropertyModule.RegisterCustomClassLayout("FMODAudioComponent", FOnGetDetailCustomizationInstance::CreateStatic(&FFMODAudioComponentDetails::MakeInstance));
 		PropertyModule.NotifyCustomizationModuleChanged();
 	}
 
@@ -905,11 +900,7 @@ void FFMODStudioEditorModule::ViewportDraw(UCanvas* Canvas, APlayerController*)
 		UWorld* World = GCurrentLevelEditingViewportClient->GetWorld();
 		const FVector& ViewLocation = GCurrentLevelEditingViewportClient->GetViewLocation();
 
-#if ENGINE_MINOR_VERSION >= 14
 		FMatrix CameraToWorld = View->ViewMatrices.GetViewMatrix().InverseFast();
-#else
-		FMatrix CameraToWorld = View->ViewMatrices.ViewMatrix.InverseFast();
-#endif
 		FVector ProjUp = CameraToWorld.TransformVector(FVector(0, 1000, 0));
 		FVector ProjRight = CameraToWorld.TransformVector(FVector(1000, 0, 0));
 
@@ -980,13 +971,8 @@ void FFMODStudioEditorModule::ShutdownModule()
     ISequencerModule* SequencerModule = FModuleManager::GetModulePtr<ISequencerModule>("Sequencer");
     if (SequencerModule != nullptr)
     {
-#if ENGINE_MINOR_VERSION > 15
         SequencerModule->UnRegisterTrackEditor(FMODControlTrackEditorCreateTrackEditorHandle);
         SequencerModule->UnRegisterTrackEditor(FMODParamTrackEditorCreateTrackEditorHandle);
-#else
-        SequencerModule->UnRegisterTrackEditor_Handle(FMODControlTrackEditorCreateTrackEditorHandle);
-        SequencerModule->UnRegisterTrackEditor_Handle(FMODParamTrackEditorCreateTrackEditorHandle);
-#endif
     }
     IFMODStudioModule::Get().BanksReloadedEvent().Remove(HandleBanksReloadedDelegateHandle);
 }

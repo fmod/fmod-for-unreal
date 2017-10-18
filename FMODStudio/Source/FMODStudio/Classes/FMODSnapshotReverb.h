@@ -24,11 +24,9 @@ class FMODSTUDIO_API UFMODSnapshotReverb : public UReverbEffect
 	/** Force this to be an asset */
 	virtual bool IsAsset() const override { return bShowAsAsset; }
 
-#if ENGINE_MINOR_VERSION > 14
-	#if WITH_EDITORONLY_DATA
+#if WITH_EDITORONLY_DATA
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
-	#endif // EDITORONLY_DATA
-#endif // ENGINE_MINOR_VERSION
+#endif // EDITORONLY_DATA
 };
 
 

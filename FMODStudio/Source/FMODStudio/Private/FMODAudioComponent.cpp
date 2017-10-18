@@ -2,6 +2,8 @@
 
 #include "FMODStudioPrivatePCH.h"
 #include "FMODAudioComponent.h"
+#include "FMODStudioModule.h"
+#include "FMODUtils.h"
 #include "FMODEvent.h"
 #include "FMODListener.h"
 #include "fmod_studio.hpp"
@@ -16,9 +18,7 @@ UFMODAudioComponent::UFMODAudioComponent(const FObjectInitializer& ObjectInitial
 	bEnableTimelineCallbacks = false; // Default OFF for efficiency
 	bStopWhenOwnerDestroyed = true;
 	bNeverNeedsRenderUpdate = true;
-#if ENGINE_MINOR_VERSION >= 11
 	bWantsOnUpdateTransform = true;
-#endif
 #if WITH_EDITORONLY_DATA
 	bVisualizeComponent = true;
 #endif
@@ -73,6 +73,9 @@ void UFMODAudioComponent::OnRegister()
 {
 	Super::OnRegister();
 
+	if (!bDefaultParameterValuesCached)
+		CacheDefaultParameterValues();
+	
 	UpdateSpriteTexture();
 }
 
@@ -93,7 +96,7 @@ void UFMODAudioComponent::UpdateSpriteTexture()
 #endif
 
 #if WITH_EDITOR
-void UFMODAudioComponent::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
+void UFMODAudioComponent::PostEditChangeProperty(FPropertyChangedEvent& e)
 {
 	if (IsPlaying())
 	{
@@ -101,29 +104,25 @@ void UFMODAudioComponent::PostEditChangeProperty(FPropertyChangedEvent& Property
 		Play();
 	}
 
+	FName PropertyName = (e.Property != NULL) ? e.Property->GetFName() : NAME_None;
+	if (PropertyName == GET_MEMBER_NAME_CHECKED(UFMODAudioComponent, Event) || 
+		(PropertyName == GET_MEMBER_NAME_CHECKED(UFMODAudioComponent, ParameterCache) && ParameterCache.Num() == 0))
+	{
+		ParameterCache.Empty();
+		bDefaultParameterValuesCached = false;
+	}
+
 #if WITH_EDITORONLY_DATA
 	UpdateSpriteTexture();
 #endif
 
-	Super::PostEditChangeProperty(PropertyChangedEvent);
+	Super::PostEditChangeProperty(e);
 }
 #endif // WITH_EDITOR
 
-#if ENGINE_MINOR_VERSION >= 12
 void UFMODAudioComponent::OnUpdateTransform(EUpdateTransformFlags UpdateTransformFlags, ETeleportType Teleport)
-#elif ENGINE_MINOR_VERSION >= 9
-void UFMODAudioComponent::OnUpdateTransform(bool bSkipPhysicsMove, ETeleportType Teleport)
-#else
-void UFMODAudioComponent::OnUpdateTransform(bool bSkipPhysicsMove)
-#endif
 {
-#if ENGINE_MINOR_VERSION >= 12
 	Super::OnUpdateTransform(UpdateTransformFlags, Teleport);
-#elif ENGINE_MINOR_VERSION >= 9
-	Super::OnUpdateTransform(bSkipPhysicsMove, Teleport);
-#else
-	Super::OnUpdateTransform(bSkipPhysicsMove);
-#endif
 	if (StudioInstance)
 	{
 		FMOD_3D_ATTRIBUTES attr = {{0}};
@@ -214,30 +213,22 @@ void UFMODAudioComponent::UpdateAttenuation()
 {
 	if (!GetOwner()) return; // May not have owner when previewing animations
 
-#if ENGINE_MINOR_VERSION > 14
-	const FSoundAttenuationSettings* AttenuationSettingsPtr = nullptr;
-#else
-	const FAttenuationSettings* AttenuationSettingsPtr = nullptr;
-#endif
-
-	if (bOverrideAttenuation)
-	{
-		AttenuationSettingsPtr = &AttenuationOverrides;
-	}
-	else if (AttenuationSettings)
-	{
-		AttenuationSettingsPtr = &AttenuationSettings->Attenuation;
-	}
-	if (!AttenuationSettingsPtr)
+	if (!AttenuationDetails.bOverrideAttenuation && !OcclusionDetails.bEnableOcclusion)
 	{
 		return;
 	}
 
+	if (AttenuationDetails.bOverrideAttenuation)
+	{
+		SetProperty(EFMODEventProperty::MinimumDistance, AttenuationDetails.MinimumDistance);
+		SetProperty(EFMODEventProperty::MaximumDistance, AttenuationDetails.MaximumDistance);
+	}
+
 	// Use occlusion part of settings
-	if (AttenuationSettingsPtr->bEnableOcclusion && (bApplyOcclusionDirect || bApplyOcclusionParameter))
+	if (OcclusionDetails.bEnableOcclusion && (bApplyOcclusionDirect || bApplyOcclusionParameter))
 	{
 		static FName NAME_SoundOcclusion = FName(TEXT("SoundOcclusion"));
-		FCollisionQueryParams Params(NAME_SoundOcclusion, AttenuationSettingsPtr->bUseComplexCollisionForOcclusion, GetOwner());
+		FCollisionQueryParams Params(NAME_SoundOcclusion, OcclusionDetails.bUseComplexCollisionForOcclusion, GetOwner());
 
 		const FVector& Location = GetOwner()->GetTransform().GetTranslation();
 		const FFMODListener& Listener = IFMODStudioModule::Get().GetNearestListener(Location);
@@ -247,17 +238,17 @@ void UFMODAudioComponent::UpdateAttenuation()
 		// Apply directly as gain and LPF
 		if (bApplyOcclusionDirect)
 		{
-			float InterpolationTime = bHasCheckedOcclusion ? AttenuationSettingsPtr->OcclusionInterpolationTime : 0.0f;
+			float InterpolationTime = bHasCheckedOcclusion ? OcclusionDetails.OcclusionInterpolationTime : 0.0f;
 			if (bIsOccluded)
 			{
-				if (CurrentOcclusionFilterFrequency.GetTargetValue() > AttenuationSettingsPtr->OcclusionLowPassFilterFrequency)
+				if (CurrentOcclusionFilterFrequency.GetTargetValue() > OcclusionDetails.OcclusionLowPassFilterFrequency)
 				{
-					CurrentOcclusionFilterFrequency.Set(AttenuationSettingsPtr->OcclusionLowPassFilterFrequency, InterpolationTime);
+					CurrentOcclusionFilterFrequency.Set(OcclusionDetails.OcclusionLowPassFilterFrequency, InterpolationTime);
 				}
 
-				if (CurrentOcclusionVolumeAttenuation.GetTargetValue() > AttenuationSettingsPtr->OcclusionVolumeAttenuation)
+				if (CurrentOcclusionVolumeAttenuation.GetTargetValue() > OcclusionDetails.OcclusionVolumeAttenuation)
 				{
-					CurrentOcclusionVolumeAttenuation.Set(AttenuationSettingsPtr->OcclusionVolumeAttenuation, InterpolationTime);
+					CurrentOcclusionVolumeAttenuation.Set(OcclusionDetails.OcclusionVolumeAttenuation, InterpolationTime);
 				}
 			}
 			else
@@ -366,7 +357,6 @@ void UFMODAudioComponent::CacheDefaultParameterValues()
             }
         }
     }
-
     bDefaultParameterValuesCached = true;
 }
 
@@ -434,10 +424,8 @@ void UFMODAudioComponent::SetEvent(UFMODEvent* NewEvent)
 
 	if (Event != NewEvent)
     {
+        ReleaseEventCache();
         Event = NewEvent;
-        
-        ParameterCache.Empty();
-        bDefaultParameterValuesCached = false;
     }
 
 	if (bPlay)
@@ -660,11 +648,7 @@ void UFMODAudioComponent::PlayInternal(EFMODSystemContext::Type Context)
 			bApplyOcclusionParameter = true;
 		}
 
-#if ENGINE_MINOR_VERSION >= 12
 		OnUpdateTransform(EUpdateTransformFlags::SkipPhysicsUpdate);
-#else
-		OnUpdateTransform(true);
-#endif
 		// Set initial parameters
 		for (auto Kvp : ParameterCache)
 		{
@@ -708,6 +692,13 @@ void UFMODAudioComponent::Stop()
 
 void UFMODAudioComponent::Release()
 {
+	ReleaseEventCache();
+}
+
+void UFMODAudioComponent::ReleaseEventCache()
+{
+	ParameterCache.Empty();
+	bDefaultParameterValuesCached = false;
 	if (StudioInstance)
 	{
 		LowPass = nullptr;
@@ -759,7 +750,6 @@ bool UFMODAudioComponent::IsPlaying( void )
 {
 	return bIsActive;
 }
-
 
 void UFMODAudioComponent::SetVolume(float Volume)
 {
@@ -822,6 +812,21 @@ void UFMODAudioComponent::SetProperty(EFMODEventProperty::Type Property, float V
 		}
 	}
 	StoredProperties[Property] = Value;
+}
+
+float UFMODAudioComponent::GetProperty(EFMODEventProperty::Type Property)
+{
+	verify(Property < EFMODEventProperty::Count);
+	float outValue = 0;
+	if (Event)
+	{
+		FMOD_RESULT Result =  StudioInstance->getProperty((FMOD_STUDIO_EVENT_PROPERTY)Property, &outValue);
+		if (Result != FMOD_OK)
+		{
+			UE_LOG(LogFMOD, Warning, TEXT("Failed to get property %d"), (int)Property);
+		}
+	}
+	return StoredProperties[Property] = outValue;
 }
 
 int32 UFMODAudioComponent::GetLength() const

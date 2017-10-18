@@ -55,6 +55,68 @@ struct FTimelineBeatProperties
 	int32 TimeSignatureLower;
 };
 
+USTRUCT(BlueprintType)
+struct FFMODAttenuationDetails
+{
+	GENERATED_USTRUCT_BODY()
+
+	/** Should we use Attenuation set in Studio or be able to modify in Editor. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="FMOD|Attenuation")
+	uint32 bOverrideAttenuation : 1;
+
+	/** Override the event's 3D minimum distance. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="FMOD|Attenuation", meta = (ClampMin = "0.0", UIMin = "0.0", EditCondition = "bOverrideAttenuation"))
+	float MinimumDistance;
+
+	/** Override the event's 3D maximum distance. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="FMOD|Attenuation", meta = (ClampMin = "0.0", UIMin = "0.0", EditCondition = "bOverrideAttenuation"))
+	float MaximumDistance;
+
+	FFMODAttenuationDetails()
+		: MinimumDistance(1.0f)
+		, MaximumDistance(10.0f)
+	{}
+};
+
+USTRUCT(BlueprintType)
+struct FFMODOcclusionDetails
+{
+	GENERATED_USTRUCT_BODY()
+
+	/** Enable Occlusion Settings. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="FMOD|Occlusion")
+	bool bEnableOcclusion;
+
+	/* Which trace channel to use for audio occlusion checks. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="FMOD|Occlusion", meta=(EditCondition="bEnableOcclusion"))
+	TEnumAsByte<enum ECollisionChannel> OcclusionTraceChannel;
+
+	/** The low pass filter frequency (in hertz) to apply if the sound playing in this audio component is occluded. This will override the frequency set in LowPassFilterFrequency. A frequency of 0.0 is the device sample rate and will bypass the filter. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="FMOD|Occlusion", meta=(ClampMin="0.0", UIMin="0.0", EditCondition="bEnableOcclusion"))
+	float OcclusionLowPassFilterFrequency;
+
+	/** The amount of volume attenuation to apply to sounds which are occluded. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="FMOD|Occlusion", meta=(ClampMin = "0.0", UIMin = "0.0", ClampMax = "1.0", UIMax = "1.0", EditCondition = "bEnableOcclusion"))
+	float OcclusionVolumeAttenuation;
+
+	/** The amount of time in seconds to interpolate to the target OcclusionLowPassFilterFrequency when a sound is occluded. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="FMOD|Occlusion", meta=(ClampMin = "0.0", UIMin = "0.0", EditCondition = "bEnableOcclusion"))
+	float OcclusionInterpolationTime;
+
+	/** Whether or not to enable complex geometry occlusion checks. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="FMOD|Occlusion", meta=(EditCondition = "bEnableOcclusion"))
+	bool bUseComplexCollisionForOcclusion;
+
+	FFMODOcclusionDetails()
+		: bEnableOcclusion(false)
+		, OcclusionTraceChannel(ECC_Visibility)
+		, OcclusionLowPassFilterFrequency(20000.0f)
+		, OcclusionVolumeAttenuation(1.0f)
+		, OcclusionInterpolationTime(0.1f)
+		, bUseComplexCollisionForOcclusion(false)
+	{}
+};
+
 /** called when an event stops, either because it played to completion or because a Stop() call turned it off early */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnEventStopped);
 /** called when we reach a named marker on the timeline */
@@ -86,19 +148,24 @@ class FMODSTUDIO_API UFMODAudioComponent : public USceneComponent
 	GENERATED_UCLASS_BODY()
 
 	/** The event asset to use for this sound */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category=Sound)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category=FMODAudio)
 	TAssetPtr<class UFMODEvent> Event;
 
 	/** Event parameter cache */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, SimpleDisplay, Category = FMODAudio)
 	TMap<FName, float> ParameterCache;
     bool bDefaultParameterValuesCached;
 
-	/** Stored properties to apply next time we create an instance */
-	float StoredProperties[EFMODEventProperty::Count];
+	/** Sound name used for programmer sound.  Will look up the name in any loaded audio table. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = FMODAudio)
+	FString ProgrammerSoundName;
 
 	/** Enable timeline callbacks for this sound, so that OnTimelineMarker and OnTimelineBeat can be used */
-	UPROPERTY(EditAnywhere, Category=Callbacks)
-	uint32 bEnableTimelineCallbacks:1;
+	UPROPERTY(EditAnywhere, Category = FMODAudio)
+	uint32 bEnableTimelineCallbacks : 1;
+
+	/** Stored properties to apply next time we create an instance */
+	float StoredProperties[EFMODEventProperty::Count];
 
 	/** Auto destroy this component on completion */
 	UPROPERTY()
@@ -116,10 +183,6 @@ class FMODSTUDIO_API UFMODAudioComponent : public USceneComponent
 
 	/** Whether we apply gain and low-pass based on occlusion onto a parameter. */
 	uint32 bApplyOcclusionParameter:1;
-
-	/** Should the Attenuation Settings asset be used or should the properties set directly on the component be used for attenuation properties (FMOD only uses the Occlusion part)*/
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category=Attenuation)
-	uint32 bOverrideAttenuation:1;
 
 	/** Whether we have applied the occlusion at least once. */
 	uint32 bHasCheckedOcclusion:1;
@@ -147,7 +210,7 @@ class FMODSTUDIO_API UFMODAudioComponent : public USceneComponent
 	UFUNCTION(BlueprintCallable, Category="Audio|FMOD|Components")
 	void Stop();
 
-	UFUNCTION(BlueprintCallable, Category = "Audio|FMOD|Components")
+	UFUNCTION(BlueprintCallable, Category="Audio|FMOD|Components")
 	void Release();
 
 	/** Trigger a cue in an event */
@@ -182,8 +245,12 @@ class FMODSTUDIO_API UFMODAudioComponent : public USceneComponent
 	UFUNCTION(BlueprintCallable, Category = "Audio|FMOD|Components")
 	void SetProperty(EFMODEventProperty::Type Property, float Value);
 
+	/** Get a property from the event */
+	UFUNCTION(BlueprintCallable, Category="Audio|FMOD|Components")
+	float GetProperty(EFMODEventProperty::Type Property);
+
 	/** Get the event length in milliseconds */
-	UFUNCTION(BlueprintCallable, Category = "Audio|FMOD|Components")
+	UFUNCTION(BlueprintCallable, Category="Audio|FMOD|Components")
 	int32 GetLength() const;
 
 	/** Set the timeline position in milliseconds  */
@@ -200,11 +267,6 @@ class FMODSTUDIO_API UFMODAudioComponent : public USceneComponent
 	/** Update gain and low-pass based on interior volumes */
 	void UpdateInteriorVolumes();
 
-
-	/** Sound name used for programmer sound.  Will look up the name in any loaded audio table. */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category=Sound)
-	FString ProgrammerSoundName;
-
 	/** Set the sound name to use for programmer sound.  Will look up the name in any loaded audio table. */
 	UFUNCTION(BlueprintCallable, Category="Audio|FMOD|Components")
 	void SetProgrammerSoundName(FString Value);
@@ -212,13 +274,13 @@ class FMODSTUDIO_API UFMODAudioComponent : public USceneComponent
 	/** Set a programmer sound to use for this audio component.  Lifetime of sound must exceed that of the audio component. */
 	void SetProgrammerSound(FMOD::Sound* Sound);
 
-	/** If bOverrideSettings is false, the asset to use to determine attenuation properties for sounds generated by this component (FMOD only uses the Occlusion part) */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category=Attenuation, meta=(EditCondition="!bOverrideAttenuation"))
-	class USoundAttenuation* AttenuationSettings;
+	/** FMOD Custom Attenuation Details */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category= FMODAudio)
+	struct FFMODAttenuationDetails AttenuationDetails;
 
-	/** If bOverrideSettings is true, the attenuation properties to use for sounds generated by this component (FMOD only uses the Occlusion part) */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category=Attenuation, meta=(EditCondition="bOverrideAttenuation"))
-	struct FSoundAttenuationSettings AttenuationOverrides;
+	/** FMOD Custom Attenuation Details */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = FMODAudio)
+	struct FFMODOcclusionDetails OcclusionDetails;
 
 	/** Update attenuation if we have it set */
 	void UpdateAttenuation();
@@ -244,7 +306,7 @@ public:
 
 	// Begin UObject interface.
 #if WITH_EDITOR
-	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
+	virtual void PostEditChangeProperty(FPropertyChangedEvent& e) override;
 #endif // WITH_EDITOR
 	virtual void PostLoad() override;
 	virtual FString GetDetailedInfoInternal() const override;
@@ -252,13 +314,7 @@ public:
 	// Begin USceneComponent Interface
 	virtual void Activate(bool bReset=false) override;
 	virtual void Deactivate() override;
-#if ENGINE_MINOR_VERSION >= 12
 	virtual void OnUpdateTransform(EUpdateTransformFlags UpdateTransformFlags, ETeleportType Teleport = ETeleportType::None) override;
-#elif ENGINE_MINOR_VERSION >= 9
-	virtual void OnUpdateTransform(bool bSkipPhysicsMove, ETeleportType Teleport = ETeleportType::None) override;
-#else
-	virtual void OnUpdateTransform(bool bSkipPhysicsMove) override;
-#endif
 	// End USceneComponent Interface
 
 private:
@@ -274,6 +330,8 @@ private:
 #if WITH_EDITORONLY_DATA
 	void UpdateSpriteTexture();
 #endif
+
+	void ReleaseEventCache();
 	
 	// Settings for ambient volume effects
 	double InteriorLastUpdateTime; 

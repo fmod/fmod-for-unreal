@@ -202,11 +202,7 @@ void FFMODAssetTable::AddAsset(const FGuid& AssetGuid, const FString& AssetFullN
 		UPackage* NewPackage = CreatePackage(NULL, *AssetPackagePath);
 		if (NewPackage)
 		{
-#if ENGINE_MINOR_VERSION >= 10
 			NewPackage->SetPackageFlags(PKG_CompiledIn);
-#else
-			NewPackage->PackageFlags |= PKG_CompiledIn;
-#endif
 
 			AssetNameObject = NewObject<UFMODAsset>(NewPackage, AssetClass, FName(*AssetShortName), RF_Standalone | RF_Public /* | RF_Transient */);
 			AssetNameObject->AssetGuid = AssetGuid;
@@ -234,11 +230,7 @@ void FFMODAssetTable::AddAsset(const FGuid& AssetGuid, const FString& AssetFullN
 			UPackage* ReverbPackage = CreatePackage(NULL, *ReverbAssetPackagePath);
 			if (ReverbPackage)
 			{
-#if ENGINE_MINOR_VERSION >= 10
 				ReverbPackage->SetPackageFlags(PKG_CompiledIn);
-#else
-				ReverbPackage->PackageFlags |= PKG_CompiledIn;
-#endif
 				UFMODSnapshotReverb* AssetReverb = NewObject<UFMODSnapshotReverb>(ReverbPackage, UFMODSnapshotReverb::StaticClass(), FName(*AssetShortName), RF_Standalone | RF_Public /* | RF_Transient */);
 				AssetReverb->AssetGuid = AssetGuid;
 				AssetReverb->bShowAsAsset = true;

@@ -8,11 +8,9 @@ UFMODSnapshotReverb::UFMODSnapshotReverb(const FObjectInitializer& ObjectInitial
 {
 }
 
-#if ENGINE_MINOR_VERSION > 14
 #if WITH_EDITORONLY_DATA
 void UFMODSnapshotReverb::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
 {
 
 }
 #endif // EDITORONLY_DATA
-#endif //ENGINE_MINOR_VERSION
