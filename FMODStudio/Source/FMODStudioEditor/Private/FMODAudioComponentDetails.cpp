@@ -17,7 +17,7 @@ TSharedRef<IDetailCustomization> FFMODAudioComponentDetails::MakeInstance()
 
 void FFMODAudioComponentDetails::CustomizeDetails(IDetailLayoutBuilder& DetailBuilder)
 {
-	const TArray< TWeakObjectPtr<UObject> >& SelectedObjects = DetailBuilder.GetDetailsView().GetSelectedObjects();
+	const TArray< TWeakObjectPtr<UObject> >& SelectedObjects = DetailBuilder.GetSelectedObjects();
 
 	for (int32 ObjectIndex = 0; !AudioComponent.IsValid() && ObjectIndex < SelectedObjects.Num(); ++ObjectIndex)
 	{
