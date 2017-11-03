@@ -4,6 +4,7 @@
 
 #include "UnrealString.h"
 #include "FMODAudioComponent.h"
+#include "Kismet/BlueprintFunctionLibrary.h"
 #include "FMODBlueprintStatics.generated.h"
 
 class UFMODAudioComponent;
