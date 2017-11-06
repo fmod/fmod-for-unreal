@@ -351,7 +351,7 @@ void UFMODAudioComponent::CacheDefaultParameterValues()
         Event->GetParameterDescriptions(ParameterDescriptions);
         for (const FMOD_STUDIO_PARAMETER_DESCRIPTION& ParameterDescription : ParameterDescriptions)
         {
-            if (!ParameterCache.Find(ParameterDescription.name))
+            if (!ParameterCache.Find(ParameterDescription.name) && (ParameterDescription.type == FMOD_STUDIO_PARAMETER_GAME_CONTROLLED))
             {
                 ParameterCache.Add(ParameterDescription.name, ParameterDescription.defaultvalue);
             }
@@ -692,13 +692,18 @@ void UFMODAudioComponent::Stop()
 
 void UFMODAudioComponent::Release()
 {
-	ReleaseEventCache();
+	ReleaseEventInstance();
 }
 
 void UFMODAudioComponent::ReleaseEventCache()
 {
 	ParameterCache.Empty();
 	bDefaultParameterValuesCached = false;
+	ReleaseEventInstance();
+}
+
+void UFMODAudioComponent::ReleaseEventInstance()
+{
 	if (StudioInstance)
 	{
 		LowPass = nullptr;

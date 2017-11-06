@@ -98,8 +98,8 @@ typedef enum FMOD_STUDIO_LOADING_STATE
 */
 typedef enum FMOD_STUDIO_LOAD_MEMORY_MODE
 {
-    FMOD_STUDIO_LOAD_MEMORY,                    /* When passed to Studio::System::loadBankMemory, FMOD duplicates the memory into its own buffers. Your buffer can be freed after Studio::System::loadBankMemory returns. */
-    FMOD_STUDIO_LOAD_MEMORY_POINT,              /* This differs from FMOD_STUDIO_LOAD_MEMORY in that FMOD uses the memory as is, without duplicating the memory into its own buffers. Cannot not be freed after load, only after calling Studio::Bank::unload. */
+    FMOD_STUDIO_LOAD_MEMORY,                    /* Duplicates the memory into its own buffers, memory can be freed after Studio::System::loadBankMemory returns. */
+    FMOD_STUDIO_LOAD_MEMORY_POINT,              /* Copies the memory pointer without duplicating the memory into its own buffers, memory can be freed after receiving a FMOD_STUDIO_SYSTEM_CALLBACK_BANK_UNLOAD callback. */
 
     FMOD_STUDIO_LOAD_MEMORY_FORCEINT = 65536    /* Makes sure this enum is signed 32bit. */
 } FMOD_STUDIO_LOAD_MEMORY_MODE;

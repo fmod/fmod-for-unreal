@@ -332,6 +332,7 @@ private:
 #endif
 
 	void ReleaseEventCache();
+	void ReleaseEventInstance();
 	
 	// Settings for ambient volume effects
 	double InteriorLastUpdateTime; 

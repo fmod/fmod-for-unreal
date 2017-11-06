@@ -15,7 +15,7 @@
     0xaaaabbcc -> aaaa = major version number.  bb = minor version number.  cc = development version number.
 */
 
-#define FMOD_VERSION    0x00011000
+#define FMOD_VERSION    0x00011001
 
 /*
     Compiler specific settings.
@@ -207,8 +207,8 @@ typedef enum
     Structure describing a point in 3D space.
 
     [REMARKS]
-    FMOD uses a left handed co-ordinate system by default.<br>
-    To use a right handed co-ordinate system specify FMOD_INIT_3D_RIGHTHANDED from FMOD_INITFLAGS in System::init.
+    FMOD uses a left handed coordinate system by default.<br>
+    To use a right handed coordinate system specify FMOD_INIT_3D_RIGHTHANDED from FMOD_INITFLAGS in System::init.
 
     [SEE_ALSO]      
     System::set3DListenerAttributes
@@ -233,9 +233,9 @@ typedef enum
 */
 typedef struct
 {
-    float x;        /* X co-ordinate in 3D space. */
-    float y;        /* Y co-ordinate in 3D space. */
-    float z;        /* Z co-ordinate in 3D space. */
+    float x;        /* X coordinate in 3D space. */
+    float y;        /* Y coordinate in 3D space. */
+    float z;        /* Z coordinate in 3D space. */
 } FMOD_VECTOR;
 
 
@@ -246,6 +246,7 @@ typedef struct
     Structure describing a position, velocity and orientation.
 
     [REMARKS]
+    Attributes should use your chosen coordinate system, see [3D sounds](overview/3dsound.html) for more information.
 
     [SEE_ALSO]
     FMOD_VECTOR
@@ -818,7 +819,7 @@ typedef struct FMOD_PLUGINLIST
 #define FMOD_INIT_NORMAL                     0x00000000 /* Initialize normally */
 #define FMOD_INIT_STREAM_FROM_UPDATE         0x00000001 /* No stream thread is created internally.  Streams are driven from System::update.  Mainly used with non-realtime outputs. */
 #define FMOD_INIT_MIX_FROM_UPDATE            0x00000002 /* No mixer thread is created internally. Mixing is driven from System::update. Only applies to polling based output modes such as FMOD_OUTPUTTYPE_NOSOUND, FMOD_OUTPUTTYPE_WAVWRITER, FMOD_OUTPUTTYPE_DSOUND, FMOD_OUTPUTTYPE_WINMM,FMOD_OUTPUTTYPE_XAUDIO. */
-#define FMOD_INIT_3D_RIGHTHANDED             0x00000004 /* FMOD will treat +X as right, +Y as up and +Z as backwards (towards you). */
+#define FMOD_INIT_3D_RIGHTHANDED             0x00000004 /* 3D calculations will be performed in right-handed coordinates. */
 #define FMOD_INIT_CHANNEL_LOWPASS            0x00000100 /* All FMOD_3D based voices will add a software lowpass filter effect into the DSP chain which is automatically used when Channel::set3DOcclusion is used or the geometry API.   This also causes sounds to sound duller when the sound goes behind the listener, as a fake HRTF style effect.  Use System::setAdvancedSettings to disable or adjust cutoff frequency for this feature. */
 #define FMOD_INIT_CHANNEL_DISTANCEFILTER     0x00000200 /* All FMOD_3D based voices will add a software lowpass and highpass filter effect into the DSP chain which will act as a distance-automated bandpass filter. Use System::setAdvancedSettings to adjust the center frequency. */
 #define FMOD_INIT_PROFILE_ENABLE             0x00010000 /* Enable TCP/IP based host which allows FMOD Designer or FMOD Profiler to connect to it, and view memory, CPU and the DSP network graph in real-time. */
