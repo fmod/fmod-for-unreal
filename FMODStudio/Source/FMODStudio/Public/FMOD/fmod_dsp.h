@@ -401,6 +401,7 @@ typedef struct FMOD_DSP_PARAMETER_DESC_DATA
     FMOD_DSP_PARAMETER_DESC_INT
     FMOD_DSP_PARAMETER_DESC_BOOL
     FMOD_DSP_PARAMETER_DESC_DATA
+    FMOD_DSP_PARAMETER_DATA_TYPE
 ]
 */
 typedef struct FMOD_DSP_PARAMETER_DESC
@@ -434,6 +435,8 @@ typedef struct FMOD_DSP_PARAMETER_DESC
     FMOD_DSP_PARAMETER_3DATTRIBUTES
     FMOD_DSP_PARAMETER_3DATTRIBUTES_MULTI
     FMOD_DSP_PARAMETER_SIDECHAIN
+    DSP::getParameterData
+    DSP::setParameterData
 ]
 */
 typedef enum
@@ -483,7 +486,9 @@ typedef struct FMOD_DSP_PARAMETER_OVERALLGAIN
     The FMOD::Studio::System will set this parameter automatically if an FMOD::Studio::EventInstance position
     changes, however if using the low level FMOD::System you must set this DSP parameter explicitly.
 
-    FMOD will convert passed in co-ordinates to left-handed for the plugin if the System was initialized with the FMOD_INIT_3D_RIGHTHANDED flag.
+    Attributes must use a coordinate system with the positive Y axis being up and the positive X axis being
+    right. FMOD will convert passed in coordinates to left-handed for the plugin if the System was initialized
+    with the FMOD_INIT_3D_RIGHTHANDED flag.
 
     Members marked with [r] mean the variable is modified by FMOD and is for reading purposes only.  Do not change this value.<br>
     Members marked with [w] mean the variable can be written to.  The user can set the value.<br>
@@ -512,7 +517,9 @@ typedef struct FMOD_DSP_PARAMETER_3DATTRIBUTES
     The FMOD::Studio::System will set this parameter automatically if an FMOD::Studio::EventInstance position
     changes, however if using the low level FMOD::System you must set this DSP parameter explicitly.
 
-    FMOD will convert passed in co-ordinates to left-handed for the plugin if the System was initialized with the FMOD_INIT_3D_RIGHTHANDED flag.
+    Attributes must use a coordinate system with the positive Y axis being up and the positive X axis being
+    right. FMOD will convert passed in coordinates to left-handed for the plugin if the System was initialized
+    with the FMOD_INIT_3D_RIGHTHANDED flag.
 
     Members marked with [r] mean the variable is modified by FMOD and is for reading purposes only.  Do not change this value.<br>
     Members marked with [w] mean the variable can be written to.  The user can set the value.<br>
@@ -811,7 +818,7 @@ typedef struct FMOD_DSP_STATE_FUNCTIONS
     FMOD_DSP_STATE_PAN_FUNCTIONS       *pan;                    /* [r] Struct containing panning helper functions for spatialization plugins. */
     FMOD_DSP_GETSPEAKERMODE_FUNC        getspeakermode;         /* [r] Function to query the system speaker modes.  One is the mixer's default speaker mode, the other is the output mode the system is downmixing or upmixing to.*/
     FMOD_DSP_GETCLOCK_FUNC              getclock;               /* [r] Function to get the clock of the current DSP, as well as the subset of the input buffer that contains the signal. */
-    FMOD_DSP_GETLISTENERATTRIBUTES_FUNC getlistenerattributes;  /* [r] Callback for getting the absolute listener attributes set via the API (returned as left-handed co-ordinates). */
+    FMOD_DSP_GETLISTENERATTRIBUTES_FUNC getlistenerattributes;  /* [r] Callback for getting the absolute listener attributes set via the API (returned as left-handed coordinates). */
     FMOD_DSP_LOG_FUNC                   log;                    /* [r] Function to write to the FMOD logging system. */
     FMOD_DSP_GETUSERDATA_FUNC           getuserdata;            /* [r] Function to get the user data attached to this DSP. See FMOD_DSP_DESCRIPTION::userdata. */
 } FMOD_DSP_STATE_FUNCTIONS;

@@ -486,7 +486,7 @@ typedef enum
     Parameter types for the FMOD_DSP_TYPE_CHORUS filter.
 
     [REMARKS]
-    Chorous is an effect where the sound is more 'spacious' due to 1 to 3 versions of the sound being played along side the original signal but with the pitch of each copy modulating on a sine wave.<br>
+    Chorus is an effect where the sound is more 'spacious' due to 1 to 3 versions of the sound being played along side the original signal but with the pitch of each copy modulating on a sine wave.<br>
 
     [SEE_ALSO]
     DSP::setParameterFloat

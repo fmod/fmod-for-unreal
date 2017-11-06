@@ -300,6 +300,21 @@ void UFMODBlueprintStatics::BusSetMute(class UFMODBus* Bus, bool bMute)
 	}
 }
 
+void UFMODBlueprintStatics::BusStopAllEvents(UFMODBus * Bus, EFMOD_STUDIO_STOP_MODE stopMode)
+{
+	FMOD::Studio::System* StudioSystem = IFMODStudioModule::Get().GetStudioSystem(EFMODSystemContext::Runtime);
+	if (StudioSystem != nullptr && Bus != nullptr)
+	{
+		FMOD::Studio::ID guid = FMODUtils::ConvertGuid(Bus->AssetGuid);
+		FMOD::Studio::Bus* bus = nullptr;
+		FMOD_RESULT result = StudioSystem->getBusByID(&guid, &bus);
+		if (result == FMOD_OK && bus != nullptr)
+		{
+			bus->stopAllEvents((FMOD_STUDIO_STOP_MODE)stopMode);
+		}
+	}
+}
+
 void UFMODBlueprintStatics::VCASetVolume(class UFMODVCA* Vca, float Volume)
 {
 	FMOD::Studio::System* StudioSystem = IFMODStudioModule::Get().GetStudioSystem(EFMODSystemContext::Runtime);

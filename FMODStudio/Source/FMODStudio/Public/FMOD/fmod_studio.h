@@ -138,6 +138,7 @@ FMOD_RESULT F_API FMOD_Studio_EventInstance_GetParameterValue(FMOD_STUDIO_EVENTI
 FMOD_RESULT F_API FMOD_Studio_EventInstance_SetParameterValue(FMOD_STUDIO_EVENTINSTANCE *eventinstance, const char *name, float value);
 FMOD_RESULT F_API FMOD_Studio_EventInstance_GetParameterValueByIndex(FMOD_STUDIO_EVENTINSTANCE *eventinstance, int index, float *value, float *finalvalue);
 FMOD_RESULT F_API FMOD_Studio_EventInstance_SetParameterValueByIndex(FMOD_STUDIO_EVENTINSTANCE *eventinstance, int index, float value);
+FMOD_RESULT F_API FMOD_Studio_EventInstance_SetParameterValuesByIndices(FMOD_STUDIO_EVENTINSTANCE *eventinstance, int *indices, float *values, int count);
 FMOD_RESULT F_API FMOD_Studio_EventInstance_TriggerCue(FMOD_STUDIO_EVENTINSTANCE *eventinstance);
 FMOD_RESULT F_API FMOD_Studio_EventInstance_SetCallback(FMOD_STUDIO_EVENTINSTANCE *eventinstance, FMOD_STUDIO_EVENT_CALLBACK callback, FMOD_STUDIO_EVENT_CALLBACK_TYPE callbackmask);
 FMOD_RESULT F_API FMOD_Studio_EventInstance_GetUserData(FMOD_STUDIO_EVENTINSTANCE *eventinstance, void **userdata);

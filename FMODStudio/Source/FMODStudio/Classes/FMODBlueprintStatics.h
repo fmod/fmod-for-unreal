@@ -29,6 +29,13 @@ struct FFMODEventInstance
 	FMOD::Studio::EventInstance* Instance;
 };
 
+UENUM(BlueprintType)
+enum EFMOD_STUDIO_STOP_MODE
+{
+	ALLOWFADEOUT,
+	IMMEDIATE
+};
+
 UCLASS()
 class FMODSTUDIO_API UFMODBlueprintStatics : public UBlueprintFunctionLibrary
 {
@@ -144,6 +151,13 @@ class FMODSTUDIO_API UFMODBlueprintStatics : public UBlueprintFunctionLibrary
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Audio|FMOD|Bus", meta = (UnsafeDuringActorConstruction = "true"))
 	static void BusSetMute(class UFMODBus* Bus, bool bMute);
+
+	/** Stops all EventInstances routed into the bus
+	 * @param Bus - bus to use
+	 * @param stopMode - desired stop mode
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Audio|FMOD|Bus", meta = (UnsafeDuringActorConstruction = "true"))
+	static void BusStopAllEvents(class UFMODBus* Bus, EFMOD_STUDIO_STOP_MODE stopMode);
 
 	/** Set volume on a VCA
 	 * @param Vca - VCA to use

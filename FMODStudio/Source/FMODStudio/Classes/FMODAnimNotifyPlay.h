@@ -26,7 +26,7 @@ public:
 	UPROPERTY(EditAnywhere, Category = "FMOD Anim Notify", meta = (EditCondition = "bFollow"))
 	FString AttachName;
 
-	// Sount to Play
+	// Sound to Play
 	UPROPERTY(EditAnywhere, Category = "FMOD Anim Notify", BlueprintReadWrite)
 	TAssetPtr<class UFMODEvent> Event;
 };

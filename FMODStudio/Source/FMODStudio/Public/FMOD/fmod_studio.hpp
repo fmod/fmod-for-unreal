@@ -213,6 +213,7 @@ namespace Studio
 
         FMOD_RESULT F_API getParameterValueByIndex(int index, float *value, float *finalvalue = 0);
         FMOD_RESULT F_API setParameterValueByIndex(int index, float value);
+        FMOD_RESULT F_API setParameterValuesByIndices(int *indices, float *values, int count);
 
         // Deprecated - please use getParameterValue, setParameterValue, getParameterValueByIndex and setParameterValueByIndex instead
         FMOD_RESULT F_API getParameter(const char *name, ParameterInstance **parameter) const;
