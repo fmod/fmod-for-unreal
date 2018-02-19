@@ -29,19 +29,19 @@ struct FCustomPoolSizes
     GENERATED_USTRUCT_BODY()
 
     /** Default = 0 (Disabled) units in bytes*/
-    UPROPERTY(config, EditAnywhere, meta = (ClampMin = "0"))
+    UPROPERTY(config, EditAnywhere, Category = InitSettings, meta = (ClampMin = "0"))
     int32 Desktop;
     /** Default = 0 (Disabled) units in bytes*/
-    UPROPERTY(config, EditAnywhere, meta = (ClampMin = "0"))
+    UPROPERTY(config, EditAnywhere, Category = InitSettings, meta = (ClampMin = "0"))
     int32 Mobile;
     /** Default = 0 (Disabled) units in bytes*/
-    UPROPERTY(config, EditAnywhere, meta = (ClampMin = "0"))
+    UPROPERTY(config, EditAnywhere, Category = InitSettings, meta = (ClampMin = "0"))
     int32 PS4;
     /** Default = 0 (Disabled) units in bytes*/
-    UPROPERTY(config, EditAnywhere, meta = (ClampMin = "0"))
+    UPROPERTY(config, EditAnywhere, Category = InitSettings, meta = (ClampMin = "0"))
     int32 Switch;
     /** Default = 0 (Disabled) units in bytes*/
-    UPROPERTY(config, EditAnywhere, meta = (ClampMin = "0"))
+    UPROPERTY(config, EditAnywhere, Category = InitSettings, meta = (ClampMin = "0"))
     int32 XboxOne;
 
     FCustomPoolSizes() :

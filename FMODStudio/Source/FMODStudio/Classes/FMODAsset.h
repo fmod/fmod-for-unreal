@@ -3,7 +3,7 @@
 #pragma once
 
 #include "Guid.h"
-#include "FMODStudioPrivatePCH.h"
+#include "CoreMinimal.h"
 #include "FMODAsset.generated.h"
 
 /**
