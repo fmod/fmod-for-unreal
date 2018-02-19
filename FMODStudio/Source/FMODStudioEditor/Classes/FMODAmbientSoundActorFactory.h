@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "ActorFactories/ActorFactory.h"
 #include "FMODAmbientSoundActorFactory.generated.h"
 
 /** FMOD Ambient Sound Actor Factory.

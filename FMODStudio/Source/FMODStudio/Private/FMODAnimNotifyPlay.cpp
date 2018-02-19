@@ -1,7 +1,7 @@
 
-#include "FMODStudioPrivatePCH.h"
 #include "FMODAnimNotifyPlay.h"
 #include "FMODBlueprintStatics.h"
+#include "Components/SkeletalMeshComponent.h"
 #include "Kismet/KismetSystemLibrary.h"
 
 

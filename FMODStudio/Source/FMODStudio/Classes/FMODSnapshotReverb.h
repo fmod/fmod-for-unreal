@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "FMODAsset.h"
 #include "Sound/ReverbEffect.h"
 #include "FMODSnapshotReverb.generated.h"
 

@@ -1,12 +1,15 @@
 // Copyright (c), Firelight Technologies Pty, Ltd. 2012-2017.
 
-#include "FMODStudioPrivatePCH.h"
 #include "FMODAudioComponent.h"
 #include "FMODStudioModule.h"
 #include "FMODUtils.h"
 #include "FMODEvent.h"
 #include "FMODListener.h"
 #include "fmod_studio.hpp"
+#include "App.h"
+#include "Paths.h"
+#include "ScopeLock.h"
+#include "FMODStudioPrivatePCH.h"
 
 UFMODAudioComponent::UFMODAudioComponent(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
@@ -129,6 +132,7 @@ void UFMODAudioComponent::OnUpdateTransform(EUpdateTransformFlags UpdateTransfor
 		attr.position = FMODUtils::ConvertWorldVector(GetComponentTransform().GetLocation());
 		attr.up = FMODUtils::ConvertUnitVector(GetComponentTransform().GetUnitAxis(EAxis::Z));
 		attr.forward = FMODUtils::ConvertUnitVector(GetComponentTransform().GetUnitAxis(EAxis::X));
+        attr.velocity = FMODUtils::ConvertWorldVector(GetOwner()->GetVelocity());
 
 		StudioInstance->set3DAttributes(&attr);
 
@@ -530,7 +534,7 @@ void UFMODAudioComponent::EventCallbackCreateProgrammerSound(FMOD_STUDIO_PROGRAM
 			FString SoundPath = SoundName;
 			if (FPaths::IsRelative(SoundPath))
 			{
-				SoundPath = FPaths::GameContentDir() / SoundPath;
+				SoundPath = FPaths::ProjectContentDir() / SoundPath;
 			}
 
 			FMOD::Sound* Sound = nullptr;

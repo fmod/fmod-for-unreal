@@ -1,8 +1,13 @@
 // Copyright (c), Firelight Technologies Pty, Ltd. 2012-2015.
 
-#include "FMODStudioPrivatePCH.h"
 #include "FMODFileCallbacks.h"
 #include "FMODUtils.h"
+#include "FileManager.h"
+#include "GenericPlatformProcess.h"
+#include "Runnable.h"
+#include "RunnableThread.h"
+#include "ScopeLock.h"
+#include "FMODStudioPrivatePCH.h"
 
 FMOD_RESULT F_CALLBACK FMODLogCallback(FMOD_DEBUG_FLAGS flags, const char *file, int line, const char *func, const char *message)
 {
@@ -24,7 +29,8 @@ FMOD_RESULT F_CALLBACK FMODLogCallback(FMOD_DEBUG_FLAGS flags, const char *file,
 				if (Message.FindLastChar('\'', EndIndex) && EndIndex != INDEX_NONE && StartIndex + Len < EndIndex)
 				{
 					FString PluginName = Message.Mid(StartIndex + Len, EndIndex - StartIndex - Len);
-					IFMODStudioModule::Get().AddRequiredPlugin(PluginName);
+
+					FModuleManager::GetModuleChecked<IFMODStudioModule>("FMODStudio").AddRequiredPlugin(PluginName);
 				}
 			}
 		}

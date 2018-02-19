@@ -2,6 +2,12 @@
 
 #pragma once
 
+#include "GenericPlatform.h"
+#include "Object.h"
+#include "Vector.h"
+
+struct FInteriorSettings;
+
 /** Struct encapsulating settings for interior areas. */
 struct FFMODInteriorSettings
 {

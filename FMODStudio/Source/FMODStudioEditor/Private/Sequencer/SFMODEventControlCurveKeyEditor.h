@@ -2,6 +2,10 @@
 
 #pragma once
 
+class ISequencer;
+class UMovieSceneSection;
+struct FIntegralCurve;
+
 /** A widget for editing a curve representing enum keys. */
 class SFMODEventControlCurveKeyEditor : public SCompoundWidget
 {

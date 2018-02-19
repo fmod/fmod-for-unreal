@@ -10,8 +10,8 @@ namespace UnrealBuildTool.Rules
         public FMODStudioEditor(TargetInfo Target)
     #endif
         {
-            bEnforceIWYU = false;
-            PCHUsage = PCHUsageMode.UseSharedPCHs;
+            PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
+            PrivatePCHHeaderFile = "Private/FMODStudioEditorPrivatePCH.h";
 			
 			bFasterWithoutUnity = true;
 

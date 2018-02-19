@@ -1,10 +1,8 @@
 // Copyright (c), Firelight Technologies Pty, Ltd. 2012-2017.
 
-#include "FMODStudioPrivatePCH.h"
-
+#include "FMODStudioModule.h"
 #include "Async.h"
 #include "FMODSettings.h"
-#include "FMODStudioModule.h"
 #include "FMODAudioComponent.h"
 #include "FMODBlueprintStatics.h"
 #include "FMODAssetTable.h"
@@ -16,8 +14,18 @@
 #include "FMODSnapshotReverb.h"
 #include "IPluginManager.h"
 
+#include "App.h"
+#include "CommandLine.h"
+#include "CoreDelegates.h"
+#include "Engine/Engine.h"
+#include "Engine/GameViewportClient.h"
+#include "GameFramework/PlayerController.h"
+#include "Ticker.h"
+#include "Paths.h"
+
 #include "fmod_studio.hpp"
 #include "fmod_errors.h"
+#include "FMODStudioPrivatePCH.h"
 
 #if PLATFORM_PS4
 #include "FMODPlatformLoadDll_PS4.h"
@@ -116,10 +124,11 @@ public:
 		bUseSound(true),
 		bListenerMoved(true),
 		bAllowLiveUpdate(true),
+		bBanksLoaded(false),
 		LowLevelLibHandle(nullptr),
 		StudioLibHandle(nullptr),
-		bBanksLoaded(false),
-		bMixerPaused(false)
+		bMixerPaused(false),
+		MemPool(nullptr)
 	{
 		for (int i = 0; i < EFMODSystemContext::Max; ++i)
 		{
@@ -267,6 +276,9 @@ public:
 
 	/** True if the mixer has been paused by application deactivation */
 	bool bMixerPaused;
+
+	/** You can also supply a pool of memory for FMOD to work with and it will do so with no extra calls to malloc or free. */
+	void* MemPool;
 };
 
 IMPLEMENT_MODULE(FFMODStudioModule, FMODStudio)
@@ -428,7 +440,29 @@ void FFMODStudioModule::StartupModule()
 	if (LoadLibraries())
 	{
 		verifyfmod(FMOD::Debug_Initialize(FMOD_DEBUG_LEVEL_WARNING, FMOD_DEBUG_MODE_CALLBACK, FMODLogCallback));
-		verifyfmod(FMOD::Memory_Initialize(0, 0, FMODMemoryAlloc, FMODMemoryRealloc, FMODMemoryFree));
+
+        const UFMODSettings& Settings = *GetDefault<UFMODSettings>();
+#if PLATFORM_IOS || PLATFORM_ANDROID
+        int size = Settings.MemoryPoolSizes.Mobile;
+#elif PLATFORM_PS4
+        int size = Settings.MemoryPoolSizes.PS4;
+#elif PLATFORM_XBOXONE
+        int size = Settings.MemoryPoolSizes.XboxOne;
+#elif PLATFORM_SWITCH
+        int size = Settings.MemoryPoolSizes.Switch;
+#else
+        int size = Settings.MemoryPoolSizes.Desktop;
+#endif
+        if (!GIsEditor && size > 0)
+        {
+            MemPool = FMemory::Malloc(size);
+            verifyfmod(FMOD::Memory_Initialize(MemPool, size, nullptr, nullptr, nullptr));
+        }
+        else
+        {
+            verifyfmod(FMOD::Memory_Initialize(0, 0, FMODMemoryAlloc, FMODMemoryRealloc, FMODMemoryFree));
+        }
+
 		verifyfmod(FMODPlatformSystemSetup());
 
 		AcquireFMODFileSystem();
@@ -999,6 +1033,9 @@ void FFMODStudioModule::ShutdownModule()
     DestroyStudioSystem(EFMODSystemContext::Editor);
 
 	ReleaseFMODFileSystem();
+
+	if (MemPool)
+		FMemory::Free(MemPool);
 
 	if (GIsEditor)
 	{

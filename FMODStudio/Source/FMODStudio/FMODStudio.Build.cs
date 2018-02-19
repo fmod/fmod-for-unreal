@@ -10,8 +10,8 @@ namespace UnrealBuildTool.Rules
         public FMODStudio(TargetInfo Target)
     #endif
         {
-            bEnforceIWYU = false;
-            PCHUsage = PCHUsageMode.UseSharedPCHs;
+            PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
+            PrivatePCHHeaderFile = "Private/FMODStudioPrivatePCH.h";
 			
 			bFasterWithoutUnity = true;
 
@@ -45,7 +45,7 @@ namespace UnrealBuildTool.Rules
                 }
 				);
 
-			if (UEBuildConfiguration.bBuildEditor == true)
+			if (Target.bBuildEditor == true)
 			{
 				PrivateDependencyModuleNames.Add("AssetRegistry");
 				PrivateDependencyModuleNames.Add("UnrealEd");
@@ -216,7 +216,7 @@ namespace UnrealBuildTool.Rules
 
 			if (copyThirdPartyPath.Length != 0)
 			{
-				string destPath = System.IO.Path.Combine(UEBuildConfiguration.UEThirdPartyBinariesDirectory, copyThirdPartyPath);
+				string destPath = System.IO.Path.Combine(Target.UEThirdPartyBinariesDirectory, copyThirdPartyPath);
 				System.IO.Directory.CreateDirectory(destPath);
 
 				string fmodDllDest = System.IO.Path.Combine(destPath, fmodDllName);
@@ -239,14 +239,14 @@ namespace UnrealBuildTool.Rules
 			if (Target.Platform == UnrealTargetPlatform.Android)
 			{
 				string APLName = System.String.Format("FMODStudio{0}_APL.xml", configName);
-				string RelAPLPath = Utils.MakePathRelativeTo(System.IO.Path.Combine(ModuleDirectory, APLName), BuildConfiguration.RelativeEnginePath);
+				string RelAPLPath = Utils.MakePathRelativeTo(System.IO.Path.Combine(ModuleDirectory, APLName), Target.RelativeEnginePath);
 				System.Console.WriteLine("Adding {0}", RelAPLPath);
 				AdditionalPropertiesForReceipt.Add(new ReceiptProperty("AndroidPlugin", RelAPLPath));
 				foreach (string PluginName in System.IO.Directory.GetFiles(BasePath))
 				{
 					if (PluginName.EndsWith("_APL.xml", System.StringComparison.OrdinalIgnoreCase))
 					{
-						string RelPluginPath = Utils.MakePathRelativeTo(PluginName, BuildConfiguration.RelativeEnginePath);
+						string RelPluginPath = Utils.MakePathRelativeTo(PluginName, Target.RelativeEnginePath);
 						System.Console.WriteLine("Adding {0}", RelPluginPath);
 						AdditionalPropertiesForReceipt.Add(new ReceiptProperty("AndroidPlugin", RelPluginPath));
 					}

@@ -2,6 +2,10 @@
 
 #pragma once
 
+#include "UnrealString.h"
+#include "DateTime.h"
+#include "Delegate.h"
+
 class FFMODBankUpdateNotifier
 {
 public:

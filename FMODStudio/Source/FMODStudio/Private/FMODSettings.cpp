@@ -1,7 +1,9 @@
 // Copyright (c), Firelight Technologies Pty, Ltd. 2012-2017.
 
-#include "FMODStudioPrivatePCH.h"
 #include "FMODSettings.h"
+#include "Engine/Engine.h"
+#include "FileManager.h"
+#include "Paths.h"
 
 //////////////////////////////////////////////////////////////////////////
 // UPaperRuntimeSettings
@@ -33,7 +35,7 @@ FString UFMODSettings::GetFullBankPath() const
 	FString FullPath = BankOutputDirectory.Path;
 	if (FPaths::IsRelative(FullPath))
 	{
-		FullPath = FPaths::GameContentDir() / FullPath;
+		FullPath = FPaths::ProjectContentDir() / FullPath;
 	}
 
 	if (ForcePlatformName == TEXT("."))

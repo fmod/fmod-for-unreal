@@ -2,6 +2,8 @@
 
 #pragma once
 
+#include "Guid.h"
+#include "FMODStudioPrivatePCH.h"
 #include "FMODAsset.generated.h"
 
 /**

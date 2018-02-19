@@ -1,7 +1,5 @@
 // Copyright (c), Firelight Technologies Pty, Ltd. 2012-2017.
 
-#include "FMODStudioEditorPrivatePCH.h"
-
 #include "FMODStudioEditorModule.h"
 #include "FMODStudioModule.h"
 #include "FMODStudioStyle.h"
@@ -105,7 +103,7 @@ public:
 			UE_LOG(LogFMOD, Log, TEXT("Received studio message: %s"), *BackMessage);
 			if (BackMessage.StartsWith(TEXT("out(): ")))
 			{
-				OutMessage = BackMessage.Mid(7).TrimTrailing();
+				OutMessage = BackMessage.Mid(7).TrimEnd();
 				break;
 			}
 			else
@@ -507,7 +505,7 @@ void FFMODStudioEditorModule::ValidateFMOD()
 	FString FullBankPath = Settings.BankOutputDirectory.Path;
 	if (FPaths::IsRelative(FullBankPath))
 	{
-		FullBankPath = FPaths::GameContentDir() / FullBankPath;
+		FullBankPath = FPaths::ProjectContentDir() / FullBankPath;
 	}
 	FString PlatformBankPath = Settings.GetFullBankPath();
 	FullBankPath = FPaths::ConvertRelativePathToFull(FullBankPath);
@@ -563,7 +561,7 @@ void FFMODStudioEditorModule::ValidateFMOD()
 			// Extra logic - if we have put the studio project inside the game project, then make it relative
 			if (!StudioProjectDir.IsEmpty())
 			{
-				FString GameBaseDir = FPaths::ConvertRelativePathToFull(FPaths::GameDir());
+				FString GameBaseDir = FPaths::ConvertRelativePathToFull(FPaths::ProjectDir());
 				FString BankPathFromGameProject = FullBankPath;
 				FString StudioProjectFromGameProject = StudioProjectDir;
 				if (FPaths::MakePathRelativeTo(BankPathFromGameProject, *GameBaseDir) && !BankPathFromGameProject.Contains(TEXT("..")) &&

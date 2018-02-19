@@ -2,7 +2,12 @@
 
 #pragma once
 
+#include "Class.h"
+#include "Engine/EngineTypes.h"
+#include "GenericPlatform.h"
 #include "FMODSettings.generated.h"
+
+class Paths;
 
 UENUM()
 namespace EFMODSpeakerMode
@@ -18,6 +23,35 @@ namespace EFMODSpeakerMode
 	};
 }
 
+USTRUCT()
+struct FCustomPoolSizes
+{
+    GENERATED_USTRUCT_BODY()
+
+    /** Default = 0 (Disabled) units in bytes*/
+    UPROPERTY(config, EditAnywhere, meta = (ClampMin = "0"))
+    int32 Desktop;
+    /** Default = 0 (Disabled) units in bytes*/
+    UPROPERTY(config, EditAnywhere, meta = (ClampMin = "0"))
+    int32 Mobile;
+    /** Default = 0 (Disabled) units in bytes*/
+    UPROPERTY(config, EditAnywhere, meta = (ClampMin = "0"))
+    int32 PS4;
+    /** Default = 0 (Disabled) units in bytes*/
+    UPROPERTY(config, EditAnywhere, meta = (ClampMin = "0"))
+    int32 Switch;
+    /** Default = 0 (Disabled) units in bytes*/
+    UPROPERTY(config, EditAnywhere, meta = (ClampMin = "0"))
+    int32 XboxOne;
+
+    FCustomPoolSizes() :
+        Desktop(0),
+        Mobile(0),
+        PS4(0),
+        Switch(0),
+        XboxOne(0)
+    {}
+};
 
 UCLASS(config = Engine, defaultconfig)
 class FMODSTUDIO_API UFMODSettings : public UObject
@@ -120,6 +154,13 @@ public:
 	 */
 	UPROPERTY(config, EditAnywhere, Category = InitSettings)
 	bool bLockAllBuses;
+
+    /** 
+     * Use specified memory pool size for platform, units in bytes. Disabled by default.
+     * FMOD may become unstable if the limit is exceeded!
+     */
+    UPROPERTY(config, EditAnywhere, Category = InitSettings)
+    FCustomPoolSizes MemoryPoolSizes;
 
 	/**
 	 * Live update port to use, or 0 for default.

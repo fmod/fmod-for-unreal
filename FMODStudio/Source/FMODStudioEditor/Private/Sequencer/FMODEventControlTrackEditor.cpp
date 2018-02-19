@@ -1,11 +1,11 @@
 // Copyright (c), Firelight Technologies Pty, Ltd. 2012-2017.
 
-#include "FMODStudioEditorPrivatePCH.h"
 #include "FMODEventControlTrackEditor.h"
 #include "Sequencer/FMODEventControlSection.h"
 #include "Sequencer/FMODEventControlTrack.h"
 #include "MovieScene.h"
 #include "MovieSceneSection.h"
+#include "MovieSceneTrackEditor.h"
 #include "ISequencerSection.h"
 #include "MovieSceneTrack.h"
 #include "ISectionLayoutBuilder.h"

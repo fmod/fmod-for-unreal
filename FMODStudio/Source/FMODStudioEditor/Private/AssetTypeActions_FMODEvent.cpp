@@ -1,8 +1,7 @@
 // Copyright (c), Firelight Technologies Pty, Ltd. 2012-2017.
 
-#include "FMODStudioEditorPrivatePCH.h"
-#include "AssetTypeActions_Base.h"
 #include "AssetTypeActions_FMODEvent.h"
+#include "AssetTypeActions_Base.h"
 #include "FMODEventEditor.h"
 #include "FMODEvent.h"
 #include "FMODUtils.h"

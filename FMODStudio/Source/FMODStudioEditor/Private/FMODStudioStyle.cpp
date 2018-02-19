@@ -1,6 +1,5 @@
 // Copyright (c), Firelight Technologies Pty, Ltd. 2012-2017.
 
-#include "FMODStudioEditorPrivatePCH.h"
 #include "FMODStudioStyle.h"
 #include "SlateStyle.h"
 #include "EditorStyle.h"

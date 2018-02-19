@@ -1,6 +1,5 @@
 // Copyright (c), Firelight Technologies Pty, Ltd. 2012-2017.
 
-#include "FMODStudioPrivatePCH.h"
 #include "FMODEventControlSectionTemplate.h"
 #include "FMODAmbientSound.h"
 #include "FMODAudioComponent.h"

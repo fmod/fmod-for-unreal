@@ -1,6 +1,5 @@
 // Copyright (c), Firelight Technologies Pty, Ltd. 2012-2017.
 
-#include "FMODStudioEditorPrivatePCH.h"
 #include "FMODAudioComponentDetails.h"
 #include "Toolkits/AssetEditorManager.h"
 #include "FMODAmbientSound.h"
@@ -17,7 +16,7 @@ TSharedRef<IDetailCustomization> FFMODAudioComponentDetails::MakeInstance()
 
 void FFMODAudioComponentDetails::CustomizeDetails(IDetailLayoutBuilder& DetailBuilder)
 {
-	const TArray< TWeakObjectPtr<UObject> >& SelectedObjects = DetailBuilder.GetDetailsView().GetSelectedObjects();
+	const TArray< TWeakObjectPtr<UObject> >& SelectedObjects = DetailBuilder.GetSelectedObjects();
 
 	for (int32 ObjectIndex = 0; !AudioComponent.IsValid() && ObjectIndex < SelectedObjects.Num(); ++ObjectIndex)
 	{

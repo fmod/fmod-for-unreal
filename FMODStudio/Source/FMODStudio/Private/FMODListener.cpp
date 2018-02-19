@@ -1,7 +1,8 @@
 // Copyright (c), Firelight Technologies Pty, Ltd. 2012-2017.
 
-#include "FMODStudioPrivatePCH.h"
 #include "FMODListener.h"
+#include "App.h"
+#include "Sound/AudioVolume.h"
 
 float FFMODListener::Interpolate( const double EndTime )
 {

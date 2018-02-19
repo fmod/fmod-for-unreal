@@ -2,6 +2,8 @@
 
 #pragma once
 
+class FMovieSceneTrackEditor;
+
 /** FMOD Event control track */
 class FFMODEventControlTrackEditor : public FMovieSceneTrackEditor
 {

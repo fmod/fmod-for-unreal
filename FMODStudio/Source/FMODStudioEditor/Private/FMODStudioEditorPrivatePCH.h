@@ -19,6 +19,3 @@
 #include "Runtime/MovieScene/Public/MovieSceneSection.h"
 #include "Editor/UnrealEd/Public/ScopedTransaction.h"
 #include "Editor/UnrealEd/Public/UnrealEd.h"
-
-DECLARE_LOG_CATEGORY_EXTERN(LogFMOD, Log, All);
-
