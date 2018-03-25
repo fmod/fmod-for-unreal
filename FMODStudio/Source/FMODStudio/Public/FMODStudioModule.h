@@ -55,7 +55,7 @@ public:
 	 */
 	static inline IFMODStudioModule& Get()
 	{
-		return FModuleManager::GetModuleChecked< IFMODStudioModule >( "FMODStudio" );
+		return FModuleManager::LoadModuleChecked< IFMODStudioModule >( "FMODStudio" );
 	}
 
 	/**
