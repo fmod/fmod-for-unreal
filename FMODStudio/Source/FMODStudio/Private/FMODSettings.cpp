@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2017.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2018.
 
 #include "FMODSettings.h"
 #include "Engine/Engine.h"
@@ -25,7 +25,8 @@ UFMODSettings::UFMODSettings(const FObjectInitializer& ObjectInitializer)
 	DSPBufferLength = 0;
 	DSPBufferCount = 0;
 	StudioUpdatePeriod = 0;
-	LiveUpdatePort = 0;
+	LiveUpdatePort = 9264;
+	EditorLiveUpdatePort = 9265;
 	bMatchHardwareSampleRate = true;
 	bLockAllBuses = false;
 }

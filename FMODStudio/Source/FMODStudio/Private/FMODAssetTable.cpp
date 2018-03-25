@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2017.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2018.
 
 #include "FMODAssetTable.h"
 #include "FMODEvent.h"
@@ -10,6 +10,7 @@
 #include "FMODUtils.h"
 #include "FMODSettings.h"
 #include "FMODFileCallbacks.h"
+#include "FMODStudioPrivatePCH.h"
 #include "fmod_studio.hpp"
 #include "UObject/Package.h"
 

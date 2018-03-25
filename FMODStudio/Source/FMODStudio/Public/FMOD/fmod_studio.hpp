@@ -1,6 +1,6 @@
 /*
     fmod_studio.hpp - FMOD Studio API
-    Copyright (c), Firelight Technologies Pty, Ltd. 2017.
+    Copyright (c), Firelight Technologies Pty, Ltd. 2018.
 
     This header defines the C++ API. If you are programming in C use fmod_studio.h.
 */
@@ -135,8 +135,8 @@ namespace Studio
 
         FMOD_RESULT F_API isSnapshot(bool *snapshot) const;
         FMOD_RESULT F_API isOneshot(bool *oneshot) const;
-        FMOD_RESULT F_API isStream(bool *isStream) const;
-        FMOD_RESULT F_API is3D(bool *is3D) const;
+        FMOD_RESULT F_API isStream(bool *stream) const;
+        FMOD_RESULT F_API is3D(bool *is3d) const;
         FMOD_RESULT F_API hasCue(bool *cue) const;
 
         // Playback control

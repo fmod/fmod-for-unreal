@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2017.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2018.
 
 #include "FMODStudioModule.h"
 #include "Async.h"
@@ -524,17 +524,20 @@ void FFMODStudioModule::CreateStudioSystem(EFMODSystemContext::Type Type)
 	FMOD_SPEAKERMODE OutputMode = ConvertSpeakerMode(Settings.OutputFormat);
 	FMOD_STUDIO_INITFLAGS StudioInitFlags = FMOD_STUDIO_INIT_NORMAL;
 	FMOD_INITFLAGS InitFlags = FMOD_INIT_NORMAL;
-	if (Type == EFMODSystemContext::Auditioning || Type == EFMODSystemContext::Editor)
-	{
-		StudioInitFlags |= FMOD_STUDIO_INIT_ALLOW_MISSING_PLUGINS;
-	}
-	else if (Type == EFMODSystemContext::Runtime && Settings.bEnableLiveUpdate && bAllowLiveUpdate)
-	{
+
 #if (defined(FMODSTUDIO_LINK_DEBUG) ||  defined(FMODSTUDIO_LINK_LOGGING))
-		UE_LOG(LogFMOD, Verbose, TEXT("Enabling live update"));
-		StudioInitFlags |= FMOD_STUDIO_INIT_LIVEUPDATE;
+    bool liveUpdateEnabledForType = ((Type == EFMODSystemContext::Auditioning) && Settings.bEnableEditorLiveUpdate) ||
+                                    ((Type == EFMODSystemContext::Runtime) && Settings.bEnableLiveUpdate);
+    if (liveUpdateEnabledForType && bAllowLiveUpdate)
+    {
+        UE_LOG(LogFMOD, Verbose, TEXT("Enabling live update"));
+        StudioInitFlags |= FMOD_STUDIO_INIT_LIVEUPDATE;
+    }
 #endif
-	}
+    if (Type == EFMODSystemContext::Auditioning || Type == EFMODSystemContext::Editor)
+    {
+        StudioInitFlags |= FMOD_STUDIO_INIT_ALLOW_MISSING_PLUGINS;
+    }
 
 	verifyfmod(FMOD::Studio::System::create(&StudioSystem[Type]));
 	FMOD::System* lowLevelSystem = nullptr;
@@ -611,7 +614,14 @@ void FFMODStudioModule::CreateStudioSystem(EFMODSystemContext::Type Type)
 #else
 	advSettings.maxVorbisCodecs = Settings.RealChannelCount;
 #endif
-	advSettings.profilePort = Settings.LiveUpdatePort;
+    if (Type == EFMODSystemContext::Runtime)
+    {
+        advSettings.profilePort = Settings.LiveUpdatePort;
+    }
+    else if (Type == EFMODSystemContext::Auditioning)
+    {
+        advSettings.profilePort = Settings.EditorLiveUpdatePort;
+    }
 	advSettings.randomSeed = FMath::Rand();
 	verifyfmod(lowLevelSystem->setAdvancedSettings(&advSettings));
 
@@ -814,13 +824,11 @@ void FFMODStudioModule::SetListenerPosition(int ListenerIndex, UWorld* World, co
 void FFMODStudioModule::FinishSetListenerPosition(int NumListeners, float DeltaSeconds)
 {
 	FMOD::Studio::System* System = IFMODStudioModule::Get().GetStudioSystem(EFMODSystemContext::Runtime);
-	if (!System)
+	if (!System || NumListeners < 1)
 	{
 		return;
 	}
 
-	// Shrink number of listeners if we have less than our current count
-	NumListeners = FMath::Max(NumListeners, 1);
 	if (System && NumListeners < ListenerCount)
 	{
 		ListenerCount = NumListeners;

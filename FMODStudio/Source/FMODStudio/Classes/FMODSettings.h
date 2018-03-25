@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2017.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2018.
 
 #pragma once
 
@@ -77,6 +77,12 @@ public:
 	 */
 	UPROPERTY(config, EditAnywhere, Category = Basic)
 	bool bEnableLiveUpdate;
+
+    /**
+    * Enable live update in Editor for Auditioning. *Requires Restart*
+    */
+    UPROPERTY(Config, EditAnywhere, Category = Basic)
+    bool bEnableEditorLiveUpdate;
 
 	/**
 	 * Path to find your studio bank output directory, relative to Content directory.
@@ -165,8 +171,14 @@ public:
 	/**
 	 * Live update port to use, or 0 for default.
 	 */
-	UPROPERTY(config, EditAnywhere, Category = Advanced)
+	UPROPERTY(config, EditAnywhere, Category = Advanced, meta = (EditCondition = "bEnableLiveUpdate"))
 	int32 LiveUpdatePort;
+
+    /**
+    * Live update port to use while in editor for auditioning. *Requires Restart*
+    */
+    UPROPERTY(config, EditAnywhere, Category = Advanced, meta = (EditCondition = "bEnableEditorLiveUpdate"))
+    int32 EditorLiveUpdatePort;
 
 	/**
 	 * Extra plugin files to load.  

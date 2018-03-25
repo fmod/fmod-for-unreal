@@ -1,6 +1,6 @@
 /*
     fmod_studio_common.h
-    Copyright (c), Firelight Technologies Pty, Ltd. 2017.
+    Copyright (c), Firelight Technologies Pty, Ltd. 2018.
 
     This header defines common enumerations, structs and callbacks that are shared between the C and C++ interfaces.
 */

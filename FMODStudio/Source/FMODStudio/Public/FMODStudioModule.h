@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2017.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2018.
 
 #pragma once
 
@@ -55,7 +55,7 @@ public:
 	 */
 	static inline IFMODStudioModule& Get()
 	{
-		return FModuleManager::LoadModuleChecked< IFMODStudioModule >( "FMODStudio" );
+		return FModuleManager::GetModuleChecked< IFMODStudioModule >( "FMODStudio" );
 	}
 
 	/**
