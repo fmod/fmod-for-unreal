@@ -8,7 +8,6 @@
 #include "Runtime/Engine/Classes/Curves/NameCurve.h"
 #include "Runtime/Engine/Classes/Curves/RichCurve.h"
 #include "Runtime/MovieScene/Public/MovieScene.h"
-#include "Runtime/MovieScene/Public/MovieSceneSequenceInstance.h"
 #include "Runtime/MovieScene/Public/KeyParams.h"
 #include "Runtime/Slate/Public/SlateBasics.h"
 

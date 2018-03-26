@@ -9,20 +9,8 @@ struct FFMODEventControlPreAnimatedToken : IMovieScenePreAnimatedToken
 {
     FFMODEventControlPreAnimatedToken() {}
 
-#if PLATFORM_COMPILER_HAS_DEFAULTED_FUNCTIONS
     FFMODEventControlPreAnimatedToken(FFMODEventControlPreAnimatedToken&&) = default;
     FFMODEventControlPreAnimatedToken& operator=(FFMODEventControlPreAnimatedToken&&) = default;
-#else
-    FFMODEventControlPreAnimatedToken(FFMODEventControlPreAnimatedToken&& RHS)
-    {
-        *this = MoveTemp(RHS);
-    }
-    FFMODEventControlPreAnimatedToken& operator=(FFMODEventControlPreAnimatedToken&& RHS)
-    {
-        Value = MoveTemp(RHS.Value);
-        return *this;
-    }
-#endif
 
     virtual void RestoreState(UObject& Object, IMovieScenePlayer& Player) override
     {

@@ -31,6 +31,8 @@
 #include "FMODPlatformLoadDll_PS4.h"
 #elif PLATFORM_XBOXONE
 #include "FMODPlatformLoadDll_XBoxOne.h"
+#elif PLATFORM_SWITCH
+#include "FMODPlatformLoadDll_Switch.h"
 #else
 #include "FMODPlatformLoadDll_Generic.h"
 #endif

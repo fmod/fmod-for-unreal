@@ -11,20 +11,8 @@ struct FFMODEventParameterPreAnimatedToken : IMovieScenePreAnimatedToken
 {
     FFMODEventParameterPreAnimatedToken() {}
 
-#if PLATFORM_COMPILER_HAS_DEFAULTED_FUNCTIONS
     FFMODEventParameterPreAnimatedToken(FFMODEventParameterPreAnimatedToken&&) = default;
     FFMODEventParameterPreAnimatedToken& operator=(FFMODEventParameterPreAnimatedToken&&) = default;
-#else
-    FFMODEventParameterPreAnimatedToken(FFMODEventParameterPreAnimatedToken&& RHS)
-    {
-        *this = MoveTemp(RHS);
-    }
-    FFMODEventParameterPreAnimatedToken& operator=(FFMODEventParameterPreAnimatedToken&& RHS)
-    {
-        Values = MoveTemp(RHS.Values);
-        return *this;
-    }
-#endif
 
     virtual void RestoreState(UObject& Object, IMovieScenePlayer& Player) override
     {
@@ -66,20 +54,8 @@ struct FFMODEventParameterExecutionToken : IMovieSceneExecutionToken
 {
     FFMODEventParameterExecutionToken() = default;
 
-#if PLATFORM_COMPILER_HAS_DEFAULTED_FUNCTIONS
     FFMODEventParameterExecutionToken(FFMODEventParameterExecutionToken&&) = default;
     FFMODEventParameterExecutionToken& operator=(FFMODEventParameterExecutionToken&&) = default;
-#else
-    FFMODEventParameterExecutionToken(FFMODEventParameterExecutionToken&& RHS)
-        : Values(MoveTemp(RHS.Values))
-    {
-    }
-    FFMODEventParameterExecutionToken& operator=(FFMODEventParameterExecutionToken&& RHS)
-    {
-        Values = MoveTemp(RHS.Values);
-        return *this;
-    }
-#endif
 
     virtual void Execute(const FMovieSceneContext& Context, const FMovieSceneEvaluationOperand& Operand, FPersistentEvaluationData& PersistentData, IMovieScenePlayer& Player)
     {

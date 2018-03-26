@@ -62,12 +62,12 @@ namespace UnrealBuildTool.Rules
 			if (Target.Configuration != UnrealTargetConfiguration.Shipping)
 			{
 				configName = "L";
-				Definitions.Add("FMODSTUDIO_LINK_LOGGING=1");
+				PublicDefinitions.Add("FMODSTUDIO_LINK_LOGGING=1");
 			}
 			else
 			{
 				configName = "";
-				Definitions.Add("FMODSTUDIO_LINK_RELEASE=1");
+				PublicDefinitions.Add("FMODSTUDIO_LINK_RELEASE=1");
 			}
 
 			string platformName = Target.Platform.ToString();
@@ -204,13 +204,13 @@ namespace UnrealBuildTool.Rules
 
 			if (bAddRuntimeDependencies)
 			{
-				RuntimeDependencies.Add(new RuntimeDependency(fmodDllPath));
-				RuntimeDependencies.Add(new RuntimeDependency(fmodStudioDllPath));
+				RuntimeDependencies.Add(fmodDllPath);
+				RuntimeDependencies.Add(fmodStudioDllPath);
 				foreach (string plugin in plugins)
 				{
 					string pluginPath = System.IO.Path.Combine(BasePath, plugin + dllExtension);
 					System.Console.WriteLine("Adding reference to FMOD plugin: " + pluginPath);
-					RuntimeDependencies.Add(new RuntimeDependency(pluginPath));
+					RuntimeDependencies.Add(pluginPath);
 				}
 			}
 
@@ -241,14 +241,14 @@ namespace UnrealBuildTool.Rules
 				string APLName = System.String.Format("FMODStudio{0}_APL.xml", configName);
 				string RelAPLPath = Utils.MakePathRelativeTo(System.IO.Path.Combine(ModuleDirectory, APLName), Target.RelativeEnginePath);
 				System.Console.WriteLine("Adding {0}", RelAPLPath);
-				AdditionalPropertiesForReceipt.Add(new ReceiptProperty("AndroidPlugin", RelAPLPath));
+				AdditionalPropertiesForReceipt.Add("AndroidPlugin", RelAPLPath);
 				foreach (string PluginName in System.IO.Directory.GetFiles(BasePath))
 				{
 					if (PluginName.EndsWith("_APL.xml", System.StringComparison.OrdinalIgnoreCase))
 					{
 						string RelPluginPath = Utils.MakePathRelativeTo(PluginName, Target.RelativeEnginePath);
 						System.Console.WriteLine("Adding {0}", RelPluginPath);
-						AdditionalPropertiesForReceipt.Add(new ReceiptProperty("AndroidPlugin", RelPluginPath));
+						AdditionalPropertiesForReceipt.Add("AndroidPlugin", RelPluginPath);
 					}
 				}
 			}
