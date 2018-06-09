@@ -200,12 +200,16 @@ void FFMODAssetTable::AddAsset(const FGuid& AssetGuid, const FString& AssetFullN
 	{
 		UE_LOG(LogFMOD, Log, TEXT("Constructing asset: %s"), *AssetPackagePath);
 
+		EObjectFlags NewObjectFlags = RF_Standalone | RF_Public /*| RF_Transient */;
+		if (IsRunningDedicatedServer())
+			NewObjectFlags |= RF_MarkAsRootSet;
+
 		UPackage* NewPackage = CreatePackage(NULL, *AssetPackagePath);
 		if (NewPackage)
 		{
 			NewPackage->SetPackageFlags(PKG_CompiledIn);
 
-			AssetNameObject = NewObject<UFMODAsset>(NewPackage, AssetClass, FName(*AssetShortName), RF_Standalone | RF_Public /* | RF_Transient */);
+			AssetNameObject = NewObject<UFMODAsset>(NewPackage, AssetClass, FName(*AssetShortName), NewObjectFlags);
 			AssetNameObject->AssetGuid = AssetGuid;
 			AssetNameObject->bShowAsAsset = true;
 
@@ -232,7 +236,8 @@ void FFMODAssetTable::AddAsset(const FGuid& AssetGuid, const FString& AssetFullN
 			if (ReverbPackage)
 			{
 				ReverbPackage->SetPackageFlags(PKG_CompiledIn);
-				UFMODSnapshotReverb* AssetReverb = NewObject<UFMODSnapshotReverb>(ReverbPackage, UFMODSnapshotReverb::StaticClass(), FName(*AssetShortName), RF_Standalone | RF_Public /* | RF_Transient */);
+
+				UFMODSnapshotReverb* AssetReverb = NewObject<UFMODSnapshotReverb>(ReverbPackage, UFMODSnapshotReverb::StaticClass(), FName(*AssetShortName), NewObjectFlags);
 				AssetReverb->AssetGuid = AssetGuid;
 				AssetReverb->bShowAsAsset = true;
 
@@ -241,7 +246,6 @@ void FFMODAssetTable::AddAsset(const FGuid& AssetGuid, const FString& AssetFullN
 				AssetRegistryModule.Get().AddPath(*ReverbFolderPath);
 				FAssetRegistryModule::AssetCreated(AssetReverb);
 #endif
-
 			}
 		}
 	}
