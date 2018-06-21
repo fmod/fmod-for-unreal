@@ -142,7 +142,7 @@ struct FMOD_STUDIO_TIMELINE_BEAT_PROPERTIES;
 /**
  * Plays FMOD Studio events.
  */
-UCLASS(ClassGroup = (Audio, Common), hidecategories = (Object, ActorComponent, Physics, Rendering, Mobility, LOD), ShowCategories = Trigger, meta = (BlueprintSpawnableComponent))
+UCLASS(Blueprintable, ClassGroup = (Audio, Common), hidecategories = (Object, ActorComponent, Physics, Rendering, Mobility, LOD), ShowCategories = Trigger, meta = (BlueprintSpawnableComponent))
 class FMODSTUDIO_API UFMODAudioComponent : public USceneComponent
 {
 	GENERATED_UCLASS_BODY()
