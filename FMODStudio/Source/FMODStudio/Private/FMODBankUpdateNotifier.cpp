@@ -2,7 +2,7 @@
 
 #include "FMODBankUpdateNotifier.h"
 #include "FMODSettings.h"
-#include "FileManager.h"
+#include "HAL/FileManager.h"
 
 #include "FMODStudioPrivatePCH.h"
 

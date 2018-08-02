@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include "ModuleManager.h"
+#include "Modules/ModuleManager.h"
 
 namespace FMOD
 {
@@ -150,7 +150,7 @@ public:
 	virtual bool UseSound() = 0;
 
 	/** Attempts to load a plugin by name */
-	virtual bool LoadPlugin(const TCHAR* ShortName) = 0;
+	virtual bool LoadPlugin(EFMODSystemContext::Type Context, const TCHAR* ShortName) = 0;
 
 	/** Log a FMOD error */
 	virtual void LogError(int result, const char* function) = 0;

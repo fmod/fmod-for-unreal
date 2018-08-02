@@ -6,10 +6,14 @@
 #include "FMODEvent.h"
 #include "FMODListener.h"
 #include "fmod_studio.hpp"
-#include "App.h"
-#include "Paths.h"
-#include "ScopeLock.h"
+#include "Misc/App.h"
+#include "Misc/Paths.h"
+#include "Misc/ScopeLock.h"
 #include "FMODStudioPrivatePCH.h"
+#include "Components/BillboardComponent.h"
+#if WITH_EDITORONLY_DATA
+#include "Engine/Texture2D.h"
+#endif
 
 UFMODAudioComponent::UFMODAudioComponent(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
@@ -33,6 +37,7 @@ UFMODAudioComponent::UFMODAudioComponent(const FObjectInitializer& ObjectInitial
 
 	PrimaryComponentTick.bCanEverTick = true;
 	PrimaryComponentTick.TickGroup = TG_PrePhysics;
+    PrimaryComponentTick.bStartWithTickEnabled = false;
 
 	StudioInstance = nullptr;
 	ProgrammerSound = nullptr;
@@ -449,6 +454,7 @@ void UFMODAudioComponent::Activate(bool bReset)
 	{
 		Play();
 	}
+	Super::Activate(true);
 }
 
 void UFMODAudioComponent::Deactivate()
@@ -457,6 +463,7 @@ void UFMODAudioComponent::Deactivate()
 	{
 		Stop();
 	}
+	Super::Deactivate();
 }
 
 FMOD_RESULT F_CALLBACK UFMODAudioComponent_EventCallback(FMOD_STUDIO_EVENT_CALLBACK_TYPE type, FMOD_STUDIO_EVENTINSTANCE *event, void *parameters)
@@ -527,6 +534,7 @@ void UFMODAudioComponent::EventCallbackCreateProgrammerSound(FMOD_STUDIO_PROGRAM
 		FMOD::System* LowLevelSystem = nullptr;
 		System->getLowLevelSystem(&LowLevelSystem);
 		FString SoundName = ProgrammerSoundNameCopy.Len() ? ProgrammerSoundNameCopy : UTF8_TO_TCHAR(props->name);
+        FMOD_MODE SoundMode = FMOD_LOOP_NORMAL | FMOD_CREATECOMPRESSEDSAMPLE | FMOD_NONBLOCKING;
 
 		if (SoundName.Contains(TEXT(".")))
 		{
@@ -538,7 +546,7 @@ void UFMODAudioComponent::EventCallbackCreateProgrammerSound(FMOD_STUDIO_PROGRAM
 			}
 
 			FMOD::Sound* Sound = nullptr;
-			if (LowLevelSystem->createSound(TCHAR_TO_UTF8(*SoundPath), FMOD_DEFAULT, nullptr, &Sound) == FMOD_OK)
+			if (LowLevelSystem->createSound(TCHAR_TO_UTF8(*SoundPath), SoundMode, nullptr, &Sound) == FMOD_OK)
 			{
 				UE_LOG(LogFMOD, Verbose, TEXT("Creating programmer sound from file '%s'"), *SoundPath);
 				props->sound = (FMOD_SOUND*)Sound;
@@ -557,7 +565,7 @@ void UFMODAudioComponent::EventCallbackCreateProgrammerSound(FMOD_STUDIO_PROGRAM
 			if (Result == FMOD_OK)
 			{
 				FMOD::Sound* Sound = nullptr;
-				Result = LowLevelSystem->createSound(SoundInfo.name_or_data, SoundInfo.mode, &SoundInfo.exinfo, &Sound);
+				Result = LowLevelSystem->createSound(SoundInfo.name_or_data, SoundMode | SoundInfo.mode, &SoundInfo.exinfo, &Sound);
 				if (Result == FMOD_OK)
 				{
 					UE_LOG(LogFMOD, Verbose, TEXT("Creating programmer sound using audio entry '%s'"), *SoundName);
@@ -691,7 +699,6 @@ void UFMODAudioComponent::Stop()
 		StudioInstance->stop(FMOD_STUDIO_STOP_ALLOWFADEOUT);
 	}
 	InteriorLastUpdateTime = 0.0;
-    bIsActive = false;
 }
 
 void UFMODAudioComponent::Release()

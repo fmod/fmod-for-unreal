@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include "Guid.h"
+#include "Misc/Guid.h"
 #include "CoreMinimal.h"
 #include "FMODAsset.generated.h"
 
@@ -21,6 +21,8 @@ class FMODSTUDIO_API UFMODAsset : public UObject
 	/** Whether to show in the content window */
 	UPROPERTY()
 	bool bShowAsAsset;
+
+    FString FileName;
 
 	/** Force this to be an asset */
 	virtual bool IsAsset() const override { return bShowAsAsset; }

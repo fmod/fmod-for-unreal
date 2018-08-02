@@ -2,8 +2,9 @@
 
 #pragma once
 
-#include "PropertyEditing.h"
+//#include "PropertyEditing.h"
 #include "PropertyCustomizationHelpers.h"
+#include "PropertyEditor/Public/IDetailCustomization.h"
 
 class FFMODAudioComponentDetails : public IDetailCustomization
 {

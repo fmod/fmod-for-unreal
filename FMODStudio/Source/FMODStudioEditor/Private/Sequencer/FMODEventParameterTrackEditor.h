@@ -1,8 +1,18 @@
 // Taken from ParticleParameterTrackEditor
 
 #pragma once
-#include "Editor/Sequencer/Public/MovieSceneTrackEditor.h"
+#include "CoreMinimal.h"
+#include "Misc/Guid.h"
+#include "Templates/SubclassOf.h"
+#include "Widgets/SWidget.h"
+#include "ISequencer.h"
+#include "MovieSceneTrack.h"
+#include "ISequencerSection.h"
+#include "Framework/Commands/UIAction.h"
+#include "ISequencerTrackEditor.h"
+#include "MovieSceneTrackEditor.h"
 
+class FMenuBuilder;
 class UFMODEventParameterTrack;
 class UFMODAudioComponent;
 struct FMOD_STUDIO_PARAMETER_DESCRIPTION;

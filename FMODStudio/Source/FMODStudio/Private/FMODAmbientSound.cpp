@@ -2,9 +2,9 @@
 
 #include "FMODAmbientSound.h"
 #include "FMODEvent.h"
-#include "MessageLog.h"
-#include "UObjectToken.h"
-#include "MapErrors.h"
+#include "Logging/MessageLog.h"
+#include "Misc/UObjectToken.h"
+#include "Misc/MapErrors.h"
 
 #define LOCTEXT_NAMESPACE "FMODAmbientSound"
 

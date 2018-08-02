@@ -6,6 +6,9 @@
 #include "FMODStudioModule.h"
 #include "FMODEvent.h"
 #include "fmod_studio.hpp"
+#include "Widgets/Input/SButton.h"
+#include "PropertyEditor/Public/DetailLayoutBuilder.h"
+#include "PropertyEditor/Public/DetailCategoryBuilder.h"
 
 #define LOCTEXT_NAMESPACE "FMODStudio"
 
@@ -103,6 +106,10 @@ FReply FFMODAudioComponentDetails::OnPlaySoundClicked()
 			FMOD::Studio::EventInstance* Instance = IFMODStudioModule::Get().CreateAuditioningInstance(Event);
 			if (Instance)
 			{
+				for (auto param : AudioComponent->ParameterCache)
+				{
+					Instance->setParameterValue(TCHAR_TO_UTF8(*param.Key.ToString()), param.Value);
+				}
 				Instance->start();
 			}
 		}

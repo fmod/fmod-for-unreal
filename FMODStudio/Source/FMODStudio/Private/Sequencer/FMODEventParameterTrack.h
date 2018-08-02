@@ -2,7 +2,9 @@
 
 #pragma once
 
-#include "FMODEventParameterSection.h"
+#include "CoreMinimal.h"
+#include "UObject/ObjectMacros.h"
+#include "Sections/MovieSceneParameterSection.h"
 #include "MovieSceneNameableTrack.h"
 #include "FMODEventParameterTrack.generated.h"
 
@@ -24,22 +26,20 @@ public:
     virtual void AddSection(UMovieSceneSection& Section) override;
     virtual void RemoveSection(UMovieSceneSection& Section) override;
     virtual bool IsEmpty() const override;
-    virtual TRange<float> GetSectionBoundaries() const override;
     virtual const TArray<UMovieSceneSection*>& GetAllSections() const override;
+    // End UMovieSceneTrack interface
 
 #if WITH_EDITORONLY_DATA
     virtual FText GetDefaultDisplayName() const override;
 #endif
-    // End UMovieSceneTrack interface
 
 public:
-    /** Adds an event parameter key to the track. */
-    void FMODSTUDIO_API AddParameterKey(FName ParameterName, float Position, float Value);
 
-    /** Gets the animated values for this track. */
-    void Eval(float Position, TArray<FFMODEventParameterNameAndValue>& OutValues) const;
+    /** Adds a (scalar) event parameter key to the track. */
+    void FMODSTUDIO_API AddParameterKey(FName ParameterName, FFrameNumber Time, float Value);
 
 private:
+
     /** The sections owned by this track. */
     UPROPERTY()
     TArray<UMovieSceneSection*> Sections;

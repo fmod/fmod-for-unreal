@@ -1,8 +1,9 @@
 // Copyright (c), Firelight Technologies Pty, Ltd. 2012-2018.
 
 #include "FMODStudioStyle.h"
-#include "SlateStyle.h"
-#include "EditorStyle.h"
+#include "EditorStyle/Public/Interfaces/IEditorStyleModule.h"
+//#include "EditorStyle/Public/EditorStyleSet.h"
+#include "Modules/ModuleManager.h"
 
 #define IMAGE_BRUSH(RelativePath, ...) FSlateImageBrush(Style.RootToContentDir(RelativePath, TEXT(".png")), __VA_ARGS__)
 #define BOX_BRUSH(RelativePath, ...) FSlateBoxBrush(Style.RootToContentDir(RelativePath, TEXT(".png")), __VA_ARGS__)

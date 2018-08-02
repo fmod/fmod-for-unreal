@@ -2,9 +2,10 @@
 
 #include "FMODAmbientSoundActorFactory.h"
 #include "FMODStudioEditorPrivatePCH.h"
-#include "AssetData.h"
 #include "FMODAmbientSound.h"
 #include "FMODEvent.h"
+#include "AssetRegistry/Public/AssetData.h"
+#include "Editor/EditorEngine.h"
 
 UFMODAmbientSoundActorFactory::UFMODAmbientSoundActorFactory(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)

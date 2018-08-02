@@ -16,9 +16,10 @@ struct FFMODEventControlSectionTemplate : public FMovieSceneEvalTemplate
     FFMODEventControlSectionTemplate() {}
     FFMODEventControlSectionTemplate(const UFMODEventControlSection& Section);
 
-private:
     UPROPERTY()
-    FIntegralCurve ControlCurve;
+    FFMODEventControlChannel ControlKeys;
+
+private:
 
     virtual UScriptStruct& GetScriptStructImpl() const override { return *StaticStruct(); }
     virtual void Evaluate(const FMovieSceneEvaluationOperand& Operand, const FMovieSceneContext& Context, const FPersistentEvaluationData& PersistentData, FMovieSceneExecutionTokens& ExecutionTokens) const override;

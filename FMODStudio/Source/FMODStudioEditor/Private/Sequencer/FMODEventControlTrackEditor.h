@@ -2,7 +2,18 @@
 
 #pragma once
 
-class FMovieSceneTrackEditor;
+#include "CoreMinimal.h"
+#include "Misc/Guid.h"
+#include "Templates/SubclassOf.h"
+#include "Curves/KeyHandle.h"
+#include "ISequencer.h"
+#include "MovieSceneTrack.h"
+#include "ISequencerSection.h"
+#include "ISequencerTrackEditor.h"
+#include "MovieSceneTrackEditor.h"
+
+class FMenuBuilder;
+class FSequencerSectionPainter;
 
 /** FMOD Event control track */
 class FFMODEventControlTrackEditor : public FMovieSceneTrackEditor
@@ -23,7 +34,7 @@ public:
 private:
 
     /** Delegate for AnimatablePropertyChanged in AddKey. */
-    virtual FKeyPropertyResult AddKeyInternal(float KeyTime, UObject* Object);
+    virtual FKeyPropertyResult AddKeyInternal(FFrameNumber KeyTime, UObject* Object);
 };
 
 
@@ -33,16 +44,13 @@ class FFMODEventControlSection
     , public TSharedFromThis<FFMODEventControlSection>
 {
 public:
+
     FFMODEventControlSection(UMovieSceneSection& InSection, TSharedRef<ISequencer> InOwningSequencer);
 
     // Begin ISequencerSection interface
     virtual UMovieSceneSection* GetSectionObject() override;
-    virtual FText GetSectionTitle() const override { return FText::GetEmpty(); }
     virtual float GetSectionHeight() const override;
-    virtual void GenerateSectionLayout(class ISectionLayoutBuilder& LayoutBuilder) const override;
     virtual int32 OnPaintSection(FSequencerSectionPainter& InPainter) const override;
-    virtual const FSlateBrush* GetKeyBrush(FKeyHandle KeyHandle) const override;
-    virtual FVector2D GetKeyBrushOrigin(FKeyHandle KeyHandle) const override;
     virtual bool SectionIsResizable() const override { return false; }
     // End ISequencerSection interface
 
@@ -52,10 +60,4 @@ private:
 
     /** The sequencer that owns this section */
     TWeakPtr<ISequencer> OwningSequencerPtr;
-
-    /** The UEnum for the EFMODEventControlKey enum */
-    const UEnum* ControlKeyEnum;
-
-    const FSlateBrush* LeftKeyBrush;
-    const FSlateBrush* RightKeyBrush;
 };

@@ -11,7 +11,7 @@ UCLASS(AutoExpandCategories=Audio, ClassGroup=Sounds, hidecategories(Collision, 
 class FMODSTUDIO_API AFMODAmbientSound : public AActor
 {
 	GENERATED_UCLASS_BODY()
-
+public:
 	/** The Audio component for this actor */
 	UPROPERTY(Category=Sound, VisibleAnywhere, BlueprintReadOnly,meta=(ExposeFunctionCategories="Sound"))
 	UFMODAudioComponent* AudioComponent;

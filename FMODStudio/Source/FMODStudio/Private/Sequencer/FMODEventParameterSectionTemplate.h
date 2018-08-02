@@ -4,22 +4,20 @@
 
 #include "CoreMinimal.h"
 #include "UObject/ObjectMacros.h"
-#include "Evaluation/MovieSceneEvalTemplate.h"
-#include "FMODEventParameterSection.h"
+#include "Evaluation/MovieSceneParameterTemplate.h"
 #include "FMODEventParameterSectionTemplate.generated.h"
 
+class UFMODEventParameterTrack;
+
 USTRUCT()
-struct FFMODEventParameterSectionTemplate : public FMovieSceneEvalTemplate
+struct FFMODEventParameterSectionTemplate : public FMovieSceneParameterSectionTemplate
 {
     GENERATED_BODY()
 
     FFMODEventParameterSectionTemplate() {}
-    FFMODEventParameterSectionTemplate(const UFMODEventParameterSection& Section);
+    FFMODEventParameterSectionTemplate(const UMovieSceneParameterSection& Section, const UFMODEventParameterTrack& Track);
 
 private:
-    /** The scalar parameter names and their associated curves. */
-    UPROPERTY()
-    TArray<FFMODEventParameterNameAndCurve> Parameters;
 
     virtual UScriptStruct& GetScriptStructImpl() const override { return *StaticStruct(); }
     virtual void Evaluate(const FMovieSceneEvaluationOperand& Operand, const FMovieSceneContext& Context, const FPersistentEvaluationData& PersistentData, FMovieSceneExecutionTokens& ExecutionTokens) const override;

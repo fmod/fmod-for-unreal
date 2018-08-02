@@ -17,20 +17,15 @@ namespace UnrealBuildTool.Rules
 
 			PublicIncludePaths.AddRange(
 				new string[] {
-				}
-				);
+                }
+                );
 
 			PrivateIncludePaths.AddRange(
 				new string[] {
 					"FMODStudioEditor/Private",
 					"FMODStudio/Private",
-                    "Editor/MovieSceneTools/Private",
-                    "Editor/MovieSceneTools/Private/CurveKeyEditors",
-                    "Editor/MovieSceneTools/Private/TrackEditors",
-                    "Editor/MovieSceneTools/Private/TrackEditors/PropertyTrackEditors",
-                    "Editor/MovieSceneTools/Private/TrackEditorThumbnail",
-                    "Editor/MovieSceneTools/Private/Sections"
-				}
+                    "FMODStudio/Public/FMOD",
+                }
                 );
 
 			PublicDependencyModuleNames.AddRange(
@@ -63,12 +58,6 @@ namespace UnrealBuildTool.Rules
                     "MovieScene",
                     "MovieSceneTracks",
                     "MovieSceneTools"
-                }
-                );
-
-			DynamicallyLoadedModuleNames.AddRange(
-				new string[]
-				{
                 }
                 );
 		}
