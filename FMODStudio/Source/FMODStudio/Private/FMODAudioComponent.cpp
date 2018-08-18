@@ -162,7 +162,7 @@ void UFMODAudioComponent::UpdateInteriorVolumes()
 	const FVector& Location = GetOwner()->GetTransform().GetTranslation();
 	AAudioVolume* AudioVolume = GetWorld()->GetAudioSettings(Location, NULL, Ambient);
 
-	const FFMODListener& Listener = IFMODStudioModule::Get().GetNearestListener(Location);
+	const FFMODListener& Listener = GetModule().GetNearestListener(Location);
 	if( InteriorLastUpdateTime < Listener.InteriorStartTime )
 	{
 		SourceInteriorVolume = CurrentInteriorVolume;
@@ -240,7 +240,7 @@ void UFMODAudioComponent::UpdateAttenuation()
 		FCollisionQueryParams Params(NAME_SoundOcclusion, OcclusionDetails.bUseComplexCollisionForOcclusion, GetOwner());
 
 		const FVector& Location = GetOwner()->GetTransform().GetTranslation();
-		const FFMODListener& Listener = IFMODStudioModule::Get().GetNearestListener(Location);
+		const FFMODListener& Listener = GetModule().GetNearestListener(Location);
 
 		bool bIsOccluded = GWorld->LineTraceTestByChannel(Location, Listener.Transform.GetLocation(), ECC_Visibility, Params);
 
@@ -392,7 +392,7 @@ void UFMODAudioComponent::TickComponent(float DeltaTime, enum ELevelTick TickTyp
 	
 	if (bIsActive)
 	{
-		if (IFMODStudioModule::Get().HasListenerMoved())
+		if (GetModule().HasListenerMoved())
 		{
 			UpdateInteriorVolumes();
 			UpdateAttenuation();
@@ -530,7 +530,7 @@ void UFMODAudioComponent::EventCallbackCreateProgrammerSound(FMOD_STUDIO_PROGRAM
 	}
 	else if (ProgrammerSoundNameCopy.Len() || strlen(props->name) != 0)
 	{
-		FMOD::Studio::System* System = IFMODStudioModule::Get().GetStudioSystem(EFMODSystemContext::Runtime);
+		FMOD::Studio::System* System = GetModule().GetStudioSystem(EFMODSystemContext::Runtime);
 		FMOD::System* LowLevelSystem = nullptr;
 		System->getLowLevelSystem(&LowLevelSystem);
 		FString SoundName = ProgrammerSoundNameCopy.Len() ? ProgrammerSoundNameCopy : UTF8_TO_TCHAR(props->name);
@@ -628,7 +628,7 @@ void UFMODAudioComponent::PlayInternal(EFMODSystemContext::Type Context)
 	UE_LOG(LogFMOD, Verbose, TEXT("UFMODAudioComponent %p Play"), this);
 	
 	// Only play events in PIE/game, not when placing them in the editor
-	FMOD::Studio::EventDescription* EventDesc = IFMODStudioModule::Get().GetEventDescription(Event.Get(), Context);
+	FMOD::Studio::EventDescription* EventDesc = GetModule().GetEventDescription(Event.Get(), Context);
 	if (EventDesc != nullptr)
 	{		
 		EventDesc->getLength(&EventLength);
