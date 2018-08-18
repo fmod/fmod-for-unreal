@@ -32,6 +32,7 @@ UFMODAudioComponent::UFMODAudioComponent(const FObjectInitializer& ObjectInitial
     bDefaultParameterValuesCached = false;
 
 	PrimaryComponentTick.bCanEverTick = true;
+	PrimaryComponentTick.bStartWithTickEnabled = false;
 	PrimaryComponentTick.TickGroup = TG_PrePhysics;
 
 	StudioInstance = nullptr;
