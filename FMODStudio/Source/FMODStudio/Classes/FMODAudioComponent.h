@@ -334,6 +334,16 @@ private:
 	void ReleaseEventCache();
 	void ReleaseEventInstance();
 	
+	IFMODStudioModule& GetModule()
+	{
+		if (Module == nullptr)
+		{
+			Module = &FModuleManager::LoadModuleChecked<IFMODStudioModule>("FMODStudio");
+		}
+
+		return *Module;
+	}
+
 	// Settings for ambient volume effects
 	double InteriorLastUpdateTime; 
 	float SourceInteriorVolume;
@@ -358,6 +368,8 @@ private:
 	int LowPassParam;
 
 	int32 EventLength;
+
+	IFMODStudioModule* Module = nullptr;
 };
 
 
