@@ -3,7 +3,7 @@
 #pragma once
 
 #include "ModuleManager.h"
-
+DECLARE_LOG_CATEGORY_EXTERN(LogFMOD, Log, All);
 /**
  * The public interface to this module
  */
