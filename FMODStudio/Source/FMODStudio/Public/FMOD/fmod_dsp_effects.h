@@ -230,7 +230,8 @@ typedef enum
 */
 typedef enum FMOD_DSP_FADER
 {
-    FMOD_DSP_FADER_GAIN,    /* (Type:float) - Signal gain in dB. -80.0 to 10.0. Default = 0.0. */
+    FMOD_DSP_FADER_GAIN,            /* (Type:float) - Signal gain in dB. -80.0 to 10.0. Default = 0.0. */
+    FMOD_DSP_FADER_OVERALL_GAIN,    /* (Type:data)  - Overall gain. For information only, not set by user. Data of type FMOD_DSP_PARAMETER_DATA_TYPE_OVERALLGAIN to provide to FMOD, to allow FMOD to know the DSP is scaling the signal for virtualization purposes. */
 } FMOD_DSP_FADER;
 
 

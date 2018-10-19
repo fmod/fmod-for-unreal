@@ -17,13 +17,6 @@ UFMODEventControlTrack::UFMODEventControlTrack(const FObjectInitializer& ObjectI
 #endif
 }
 
-
-FMovieSceneEvalTemplatePtr UFMODEventControlTrack::CreateTemplateForSection(const UMovieSceneSection& InSection) const
-{
-    return FFMODEventControlSectionTemplate(*CastChecked<UFMODEventControlSection>(&InSection));
-}
-
-
 const TArray<UMovieSceneSection*>& UFMODEventControlTrack::GetAllSections() const
 {
     return ControlSections;
@@ -59,25 +52,11 @@ bool UFMODEventControlTrack::IsEmpty() const
     return ControlSections.Num() == 0;
 }
 
-
-TRange<float> UFMODEventControlTrack::GetSectionBoundaries() const
-{
-    TArray< TRange<float> > Bounds;
-    for (int32 i = 0; i < ControlSections.Num(); ++i)
-    {
-        Bounds.Add(ControlSections[i]->GetRange());
-    }
-    return TRange<float>::Hull(Bounds);
-}
-
-
-void UFMODEventControlTrack::AddNewSection(float SectionTime)
+void UFMODEventControlTrack::AddNewSection(FFrameNumber SectionTime)
 {
     if (MovieSceneHelpers::FindSectionAtTime(ControlSections, SectionTime) == nullptr)
     {
         UFMODEventControlSection* NewSection = Cast<UFMODEventControlSection>(CreateNewSection());
-        NewSection->SetStartTime(SectionTime);
-        NewSection->SetEndTime(SectionTime);
         ControlSections.Add(NewSection);
     }
 }

@@ -6,10 +6,14 @@
 #include "FMODEvent.h"
 #include "FMODListener.h"
 #include "fmod_studio.hpp"
-#include "App.h"
-#include "Paths.h"
-#include "ScopeLock.h"
+#include "Misc/App.h"
+#include "Misc/Paths.h"
+#include "Misc/ScopeLock.h"
 #include "FMODStudioPrivatePCH.h"
+#include "Components/BillboardComponent.h"
+#if WITH_EDITORONLY_DATA
+#include "Engine/Texture2D.h"
+#endif
 
 UFMODAudioComponent::UFMODAudioComponent(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
@@ -33,6 +37,7 @@ UFMODAudioComponent::UFMODAudioComponent(const FObjectInitializer& ObjectInitial
 
 	PrimaryComponentTick.bCanEverTick = true;
 	PrimaryComponentTick.TickGroup = TG_PrePhysics;
+    PrimaryComponentTick.bStartWithTickEnabled = false;
 
 	StudioInstance = nullptr;
 	ProgrammerSound = nullptr;
@@ -157,7 +162,7 @@ void UFMODAudioComponent::UpdateInteriorVolumes()
 	const FVector& Location = GetOwner()->GetTransform().GetTranslation();
 	AAudioVolume* AudioVolume = GetWorld()->GetAudioSettings(Location, NULL, Ambient);
 
-	const FFMODListener& Listener = IFMODStudioModule::Get().GetNearestListener(Location);
+	const FFMODListener& Listener = GetModule().GetNearestListener(Location);
 	if( InteriorLastUpdateTime < Listener.InteriorStartTime )
 	{
 		SourceInteriorVolume = CurrentInteriorVolume;
@@ -235,7 +240,7 @@ void UFMODAudioComponent::UpdateAttenuation()
 		FCollisionQueryParams Params(NAME_SoundOcclusion, OcclusionDetails.bUseComplexCollisionForOcclusion, GetOwner());
 
 		const FVector& Location = GetOwner()->GetTransform().GetTranslation();
-		const FFMODListener& Listener = IFMODStudioModule::Get().GetNearestListener(Location);
+		const FFMODListener& Listener = GetModule().GetNearestListener(Location);
 
 		bool bIsOccluded = GWorld->LineTraceTestByChannel(Location, Listener.Transform.GetLocation(), ECC_Visibility, Params);
 
@@ -387,7 +392,7 @@ void UFMODAudioComponent::TickComponent(float DeltaTime, enum ELevelTick TickTyp
 	
 	if (bIsActive)
 	{
-		if (IFMODStudioModule::Get().HasListenerMoved())
+		if (GetModule().HasListenerMoved())
 		{
 			UpdateInteriorVolumes();
 			UpdateAttenuation();
@@ -449,6 +454,7 @@ void UFMODAudioComponent::Activate(bool bReset)
 	{
 		Play();
 	}
+	Super::Activate(true);
 }
 
 void UFMODAudioComponent::Deactivate()
@@ -457,6 +463,7 @@ void UFMODAudioComponent::Deactivate()
 	{
 		Stop();
 	}
+	Super::Deactivate();
 }
 
 FMOD_RESULT F_CALLBACK UFMODAudioComponent_EventCallback(FMOD_STUDIO_EVENT_CALLBACK_TYPE type, FMOD_STUDIO_EVENTINSTANCE *event, void *parameters)
@@ -523,10 +530,11 @@ void UFMODAudioComponent::EventCallbackCreateProgrammerSound(FMOD_STUDIO_PROGRAM
 	}
 	else if (ProgrammerSoundNameCopy.Len() || strlen(props->name) != 0)
 	{
-		FMOD::Studio::System* System = IFMODStudioModule::Get().GetStudioSystem(EFMODSystemContext::Runtime);
+		FMOD::Studio::System* System = GetModule().GetStudioSystem(EFMODSystemContext::Runtime);
 		FMOD::System* LowLevelSystem = nullptr;
 		System->getLowLevelSystem(&LowLevelSystem);
 		FString SoundName = ProgrammerSoundNameCopy.Len() ? ProgrammerSoundNameCopy : UTF8_TO_TCHAR(props->name);
+        FMOD_MODE SoundMode = FMOD_LOOP_NORMAL | FMOD_CREATECOMPRESSEDSAMPLE | FMOD_NONBLOCKING;
 
 		if (SoundName.Contains(TEXT(".")))
 		{
@@ -538,7 +546,7 @@ void UFMODAudioComponent::EventCallbackCreateProgrammerSound(FMOD_STUDIO_PROGRAM
 			}
 
 			FMOD::Sound* Sound = nullptr;
-			if (LowLevelSystem->createSound(TCHAR_TO_UTF8(*SoundPath), FMOD_DEFAULT, nullptr, &Sound) == FMOD_OK)
+			if (LowLevelSystem->createSound(TCHAR_TO_UTF8(*SoundPath), SoundMode, nullptr, &Sound) == FMOD_OK)
 			{
 				UE_LOG(LogFMOD, Verbose, TEXT("Creating programmer sound from file '%s'"), *SoundPath);
 				props->sound = (FMOD_SOUND*)Sound;
@@ -557,7 +565,7 @@ void UFMODAudioComponent::EventCallbackCreateProgrammerSound(FMOD_STUDIO_PROGRAM
 			if (Result == FMOD_OK)
 			{
 				FMOD::Sound* Sound = nullptr;
-				Result = LowLevelSystem->createSound(SoundInfo.name_or_data, SoundInfo.mode, &SoundInfo.exinfo, &Sound);
+				Result = LowLevelSystem->createSound(SoundInfo.name_or_data, SoundMode | SoundInfo.mode, &SoundInfo.exinfo, &Sound);
 				if (Result == FMOD_OK)
 				{
 					UE_LOG(LogFMOD, Verbose, TEXT("Creating programmer sound using audio entry '%s'"), *SoundName);
@@ -620,7 +628,7 @@ void UFMODAudioComponent::PlayInternal(EFMODSystemContext::Type Context)
 	UE_LOG(LogFMOD, Verbose, TEXT("UFMODAudioComponent %p Play"), this);
 	
 	// Only play events in PIE/game, not when placing them in the editor
-	FMOD::Studio::EventDescription* EventDesc = IFMODStudioModule::Get().GetEventDescription(Event.Get(), Context);
+	FMOD::Studio::EventDescription* EventDesc = GetModule().GetEventDescription(Event.Get(), Context);
 	if (EventDesc != nullptr)
 	{		
 		EventDesc->getLength(&EventLength);
@@ -691,7 +699,6 @@ void UFMODAudioComponent::Stop()
 		StudioInstance->stop(FMOD_STUDIO_STOP_ALLOWFADEOUT);
 	}
 	InteriorLastUpdateTime = 0.0;
-    bIsActive = false;
 }
 
 void UFMODAudioComponent::Release()

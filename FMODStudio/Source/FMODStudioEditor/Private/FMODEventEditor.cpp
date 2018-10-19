@@ -5,9 +5,10 @@
 #include "FMODStudioModule.h"
 #include "FMODUtils.h"
 #include "SFMODEventEditorPanel.h"
-#include "SDockTab.h"
+#include "Widgets/Docking/SDockTab.h"
 //#include "WorkspaceMenuStructureModule.h"
 #include "fmod_studio.hpp"
+#include "UnrealEd/Public/Editor.h"
 
 #define LOCTEXT_NAMESPACE "FMODEventEditor"
 

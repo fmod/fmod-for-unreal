@@ -3,10 +3,11 @@
 #include "FMODEventParameterTrackEditor.h"
 #include "FMODAmbientSound.h"
 #include "FMODEvent.h"
-#include "FMODParameterSection.h"
 #include "FMODStudioModule.h"
+#include "Framework/MultiBox/MultiBoxBuilder.h"
 #include "Sequencer/FMODEventParameterTrack.h"
-#include "Sequencer/FMODEventParameterSection.h"
+#include "Sections/MovieSceneParameterSection.h"
+#include "Sequencer/FMODParameterSection.h"
 #include "SequencerUtilities.h"
 #include "fmod_studio.hpp"
 
@@ -28,9 +29,9 @@ TSharedRef<ISequencerTrackEditor> FFMODEventParameterTrackEditor::CreateTrackEdi
 
 TSharedRef<ISequencerSection> FFMODEventParameterTrackEditor::MakeSectionInterface(UMovieSceneSection& SectionObject, UMovieSceneTrack& Track, FGuid ObjectBinding)
 {
-    UFMODEventParameterSection* ParameterSection = Cast<UFMODEventParameterSection>(&SectionObject);
+    UMovieSceneParameterSection* ParameterSection = Cast<UMovieSceneParameterSection>(&SectionObject);
     checkf(ParameterSection != nullptr, TEXT("Unsupported section type."));
-    return MakeShareable(new FFMODParameterSection(*ParameterSection, FText::FromName(ParameterSection->GetFName())));
+    return MakeShareable(new FFMODParameterSection(*ParameterSection));
 }
 
 
@@ -133,30 +134,30 @@ void FFMODEventParameterTrackEditor::AddEventParameterTrack(FGuid ObjectBinding)
 void FFMODEventParameterTrackEditor::AddParameter(FGuid ObjectBinding, UFMODEventParameterTrack* EventParameterTrack, FName ParameterName)
 {
     UMovieSceneSequence* MovieSceneSequence = GetMovieSceneSequence();
-    float KeyTime = GetTimeForKey();
+    FFrameNumber KeyTime = GetTimeForKey();
 
-	for (TWeakObjectPtr<> Object : GetSequencer()->FindObjectsInCurrentSequence(ObjectBinding))
-	{
-		AFMODAmbientSound* Sound = Cast<AFMODAmbientSound>(Object.Get());
-		UFMODAudioComponent* AudioComponent = nullptr;
+    for (TWeakObjectPtr<> Object : GetSequencer()->FindObjectsInCurrentSequence(ObjectBinding))
+    {
+        AFMODAmbientSound* Sound = Cast<AFMODAmbientSound>(Object.Get());
+        UFMODAudioComponent* AudioComponent = nullptr;
 
-		if (Sound != nullptr)
-		{
-			AudioComponent = Sound->AudioComponent;
-		}
-		else
-		{
-			AudioComponent = Cast<UFMODAudioComponent>(Object.Get());
-		}
+        if (Sound != nullptr)
+        {
+            AudioComponent = Sound->AudioComponent;
+        }
+        else
+        {
+            AudioComponent = Cast<UFMODAudioComponent>(Object.Get());
+        }
 
-		if (AudioComponent != nullptr)
-		{
-			float Value = AudioComponent->GetParameter(ParameterName);
-			const FScopedTransaction Transaction(LOCTEXT("AddEventParameter", "Add event parameter"));
-			EventParameterTrack->Modify();
-			EventParameterTrack->AddParameterKey(ParameterName, KeyTime, Value);
-		}
-	}
+        if (AudioComponent != nullptr)
+        {
+            float Value = AudioComponent->GetParameter(ParameterName);
+            const FScopedTransaction Transaction(LOCTEXT("AddEventParameter", "Add event parameter"));
+            EventParameterTrack->Modify();
+            EventParameterTrack->AddParameterKey(ParameterName, KeyTime, Value);
+        }
+    }
     GetSequencer()->NotifyMovieSceneDataChanged(EMovieSceneDataChangeType::MovieSceneStructureItemAdded);
 }
 

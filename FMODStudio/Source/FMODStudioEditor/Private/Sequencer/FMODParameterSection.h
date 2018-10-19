@@ -2,21 +2,20 @@
 
 #pragma once
 
-#include "PropertySection.h"
+#include "ISequencerSection.h"
 
 class UMovieSceneSection;
 
 /** A movie scene section for Event parameters. */
 class FFMODParameterSection
-    : public FPropertySection
+    : public FSequencerSection
 {
 public:
-    FFMODParameterSection(UMovieSceneSection& InSectionObject, const FText& SectionName)
-        : FPropertySection(InSectionObject, SectionName)
+    FFMODParameterSection(UMovieSceneSection& InSectionObject)
+        : FSequencerSection(InSectionObject)
     { }
 
     // Begin ISequencerSection interface
-    virtual void GenerateSectionLayout(class ISectionLayoutBuilder& LayoutBuilder) const override;
     virtual bool RequestDeleteKeyArea(const TArray<FName>& KeyAreaNamePath) override;
     // End ISequencerSection interface
 };

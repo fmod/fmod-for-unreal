@@ -37,7 +37,7 @@ void FFMODAssetTable::Create()
 	FMOD::System* lowLevelSystem = nullptr;
 	verifyfmod(StudioSystem->getLowLevelSystem(&lowLevelSystem));
 	verifyfmod(lowLevelSystem->setOutput(FMOD_OUTPUTTYPE_NOSOUND));
-	AttachFMODFileSystem(lowLevelSystem);
+	AttachFMODFileSystem(lowLevelSystem, 2048);
 	verifyfmod(StudioSystem->initialize(1, FMOD_STUDIO_INIT_ALLOW_MISSING_PLUGINS | FMOD_STUDIO_INIT_SYNCHRONOUS_UPDATE, FMOD_INIT_MIX_FROM_UPDATE, 0));
 }
 
@@ -119,7 +119,7 @@ void FFMODAssetTable::AddAsset(const FGuid& AssetGuid, const FString& AssetFullN
 {
 	FString AssetPath = AssetFullName;
 	FString AssetType = "";
-	FString AssetShortName = "asset";
+	FString AssetFileName = "asset";
 
 	int DelimIndex;
 	if (AssetPath.FindChar(':', DelimIndex))
@@ -162,24 +162,24 @@ void FFMODAssetTable::AddAsset(const FGuid& AssetGuid, const FString& AssetFullN
 
 	if (AssetPath.FindLastChar('/', DelimIndex))
 	{
-		AssetShortName = AssetPath.Right(AssetPath.Len() - DelimIndex - 1);
-		AssetPath = AssetPath.Left(AssetPath.Len() - AssetShortName.Len() - 1);
+        AssetFileName = AssetPath.Right(AssetPath.Len() - DelimIndex - 1);
+		AssetPath = AssetPath.Left(AssetPath.Len() - AssetFileName.Len() - 1);
 	}
 	else
 	{
 		// No path part, all name
-		AssetShortName = AssetPath;
+        AssetFileName = AssetPath;
 		AssetPath = TEXT("");
 	}
 
-	if (AssetShortName.IsEmpty() || AssetShortName.Contains(TEXT(".strings")))
+	if (AssetFileName.IsEmpty() || AssetFileName.Contains(TEXT(".strings")))
 	{
 		UE_LOG(LogFMOD, Log, TEXT("Skipping asset: %s"), *AssetFullName);
 		return;
 	}
 
 	AssetPath = AssetPath.Replace(TEXT(" "), TEXT("_"));
-	AssetShortName = AssetShortName.Replace(TEXT(" "), TEXT("_"));
+	FString AssetShortName = AssetFileName.Replace(TEXT(" "), TEXT("_"));
 
 	const UFMODSettings& Settings = *GetDefault<UFMODSettings>();
 
@@ -203,11 +203,15 @@ void FFMODAssetTable::AddAsset(const FGuid& AssetGuid, const FString& AssetFullN
 		UPackage* NewPackage = CreatePackage(NULL, *AssetPackagePath);
 		if (NewPackage)
 		{
-			NewPackage->SetPackageFlags(PKG_CompiledIn);
+			if (!GEventDrivenLoaderEnabled)
+			{
+				NewPackage->SetPackageFlags(PKG_CompiledIn);
+			}
 
 			AssetNameObject = NewObject<UFMODAsset>(NewPackage, AssetClass, FName(*AssetShortName), RF_Standalone | RF_Public /* | RF_Transient */);
 			AssetNameObject->AssetGuid = AssetGuid;
 			AssetNameObject->bShowAsAsset = true;
+            AssetNameObject->FileName = AssetFileName;
 
 #if WITH_EDITOR
 			FAssetRegistryModule& AssetRegistryModule = FModuleManager::LoadModuleChecked<FAssetRegistryModule>(TEXT("AssetRegistry"));
@@ -231,7 +235,10 @@ void FFMODAssetTable::AddAsset(const FGuid& AssetGuid, const FString& AssetFullN
 			UPackage* ReverbPackage = CreatePackage(NULL, *ReverbAssetPackagePath);
 			if (ReverbPackage)
 			{
-				ReverbPackage->SetPackageFlags(PKG_CompiledIn);
+				if (!GEventDrivenLoaderEnabled)
+				{
+					ReverbPackage->SetPackageFlags(PKG_CompiledIn);
+				}
 				UFMODSnapshotReverb* AssetReverb = NewObject<UFMODSnapshotReverb>(ReverbPackage, UFMODSnapshotReverb::StaticClass(), FName(*AssetShortName), RF_Standalone | RF_Public /* | RF_Transient */);
 				AssetReverb->AssetGuid = AssetGuid;
 				AssetReverb->bShowAsAsset = true;

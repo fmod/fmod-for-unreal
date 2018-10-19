@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include "Map.h"
+#include "Containers/Map.h"
 #include "Runtime/Launch/Resources/Version.h"
 #include "Sound/SoundAttenuation.h"
 #include "AudioDevice.h"
@@ -146,7 +146,7 @@ UCLASS(Blueprintable, ClassGroup = (Audio, Common), hidecategories = (Object, Ac
 class FMODSTUDIO_API UFMODAudioComponent : public USceneComponent
 {
 	GENERATED_UCLASS_BODY()
-
+public:
 	/** The event asset to use for this sound */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category=FMODAudio)
 	TAssetPtr<class UFMODEvent> Event;
@@ -334,6 +334,16 @@ private:
 	void ReleaseEventCache();
 	void ReleaseEventInstance();
 	
+	IFMODStudioModule& GetModule()
+	{
+		if (Module == nullptr)
+		{
+			Module = &FModuleManager::LoadModuleChecked<IFMODStudioModule>("FMODStudio");
+		}
+
+		return *Module;
+	}
+
 	// Settings for ambient volume effects
 	double InteriorLastUpdateTime; 
 	float SourceInteriorVolume;
@@ -358,6 +368,8 @@ private:
 	int LowPassParam;
 
 	int32 EventLength;
+
+	IFMODStudioModule* Module = nullptr;
 };
 
 

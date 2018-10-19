@@ -1,9 +1,9 @@
 // Copyright (c), Firelight Technologies Pty, Ltd. 2012-2018.
 
 #include "FMODSettings.h"
-#include "Engine/Engine.h"
-#include "FileManager.h"
-#include "Paths.h"
+//#include "Engine/Engine.h"
+#include "HAL/FileManager.h"
+#include "Misc/Paths.h"
 
 //////////////////////////////////////////////////////////////////////////
 // UPaperRuntimeSettings
@@ -24,6 +24,7 @@ UFMODSettings::UFMODSettings(const FObjectInitializer& ObjectInitializer)
 	TotalChannelCount = 512;
 	DSPBufferLength = 0;
 	DSPBufferCount = 0;
+    FileBufferSize = 2048;
 	StudioUpdatePeriod = 0;
 	LiveUpdatePort = 9264;
 	EditorLiveUpdatePort = 9265;

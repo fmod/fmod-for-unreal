@@ -2,11 +2,11 @@
 
 #include "FMODFileCallbacks.h"
 #include "FMODUtils.h"
-#include "FileManager.h"
-#include "GenericPlatformProcess.h"
-#include "Runnable.h"
-#include "RunnableThread.h"
-#include "ScopeLock.h"
+#include "HAL/FileManager.h"
+#include "GenericPlatform/GenericPlatformProcess.h"
+#include "HAL/Runnable.h"
+#include "HAL/RunnableThread.h"
+#include "Misc/ScopeLock.h"
 #include "FMODStudioPrivatePCH.h"
 
 FMOD_RESULT F_CALLBACK FMODLogCallback(FMOD_DEBUG_FLAGS flags, const char *file, int line, const char *func, const char *message)
@@ -112,11 +112,11 @@ public:
 		}
 	}
 
-	void Attach(FMOD::System *system)
+	void Attach(FMOD::System *system, int32 fileBufferSize)
 	{
 		check(mThread);
 
-		verifyfmod(system->setFileSystem(OpenCallback, CloseCallback, ReadCallback, SeekCallback, 0, 0, 2048));
+		verifyfmod(system->setFileSystem(OpenCallback, CloseCallback, ReadCallback, SeekCallback, 0, 0, fileBufferSize));
 	}
 
 	uint32 Run() override
@@ -323,7 +323,7 @@ void ReleaseFMODFileSystem()
 	gFileSystem.DecrementReferenceCount();
 }
 
-void AttachFMODFileSystem(FMOD::System *system)
+void AttachFMODFileSystem(FMOD::System *system, int32 fileBufferSize)
 {
-	gFileSystem.Attach(system);
+	gFileSystem.Attach(system, fileBufferSize);
 }

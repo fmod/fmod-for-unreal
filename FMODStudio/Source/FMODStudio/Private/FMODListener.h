@@ -2,9 +2,9 @@
 
 #pragma once
 
-#include "GenericPlatform.h"
-#include "Object.h"
-#include "Vector.h"
+#include "GenericPlatform/GenericPlatform.h"
+#include "UObject/Object.h"
+#include "Math/Vector.h"
 
 struct FInteriorSettings;
 

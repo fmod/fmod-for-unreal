@@ -18,13 +18,13 @@ struct FFMODEventParameterPreAnimatedToken : IMovieScenePreAnimatedToken
     {
         UFMODAudioComponent* AudioComponent = CastChecked<UFMODAudioComponent>(&Object);
 
-        for (FFMODEventParameterNameAndValue& Value : Values)
+        for (FScalarParameterNameAndValue& Value : Values)
         {
             AudioComponent->SetParameter(Value.ParameterName, Value.Value);
         }
     }
 
-    TArray< FFMODEventParameterNameAndValue > Values;
+    TArray<FScalarParameterNameAndValue> Values;
 };
 
 struct FFMODEventParameterPreAnimatedTokenProducer : IMovieScenePreAnimatedTokenProducer
@@ -39,10 +39,11 @@ struct FFMODEventParameterPreAnimatedTokenProducer : IMovieScenePreAnimatedToken
         {
             TArray<FMOD_STUDIO_PARAMETER_DESCRIPTION> ParameterDescriptions;
             AudioComponent->Event->GetParameterDescriptions(ParameterDescriptions);
+
             for (const FMOD_STUDIO_PARAMETER_DESCRIPTION& ParameterDescription : ParameterDescriptions)
             {
                 float Value = AudioComponent->GetParameter(ParameterDescription.name);
-                Token.Values.Add(FFMODEventParameterNameAndValue(ParameterDescription.name, Value));
+                Token.Values.Add(FScalarParameterNameAndValue(ParameterDescription.name, Value));
             }
         }
 
@@ -57,49 +58,45 @@ struct FFMODEventParameterExecutionToken : IMovieSceneExecutionToken
     FFMODEventParameterExecutionToken(FFMODEventParameterExecutionToken&&) = default;
     FFMODEventParameterExecutionToken& operator=(FFMODEventParameterExecutionToken&&) = default;
 
+    // Non-copyable
+    FFMODEventParameterExecutionToken(const FFMODEventParameterExecutionToken&) = delete;
+    FFMODEventParameterExecutionToken& operator=(const FFMODEventParameterExecutionToken&) = delete;
+
     virtual void Execute(const FMovieSceneContext& Context, const FMovieSceneEvaluationOperand& Operand, FPersistentEvaluationData& PersistentData, IMovieScenePlayer& Player)
     {
         for (TWeakObjectPtr<>& WeakObject : Player.FindBoundObjects(Operand))
         {
             UFMODAudioComponent* AudioComponent = Cast<UFMODAudioComponent>(WeakObject.Get());
+
             if (!AudioComponent)
             {
                 AFMODAmbientSound* AmbientSound = Cast<AFMODAmbientSound>(WeakObject.Get());
                 AudioComponent = AmbientSound ? AmbientSound->AudioComponent : nullptr;
             }
 
-            if (!AudioComponent)
+            if (AudioComponent)
             {
-                continue;
-            }
+                Player.SavePreAnimatedState(*AudioComponent, TMovieSceneAnimTypeID<FFMODEventParameterExecutionToken>(), FFMODEventParameterPreAnimatedTokenProducer());
 
-            Player.SavePreAnimatedState(*AudioComponent, TMovieSceneAnimTypeID<FFMODEventParameterExecutionToken>(), FFMODEventParameterPreAnimatedTokenProducer());
-
-            for (const FFMODEventParameterNameAndValue& NameAndValue : Values)
-            {
-                AudioComponent->SetParameter(NameAndValue.ParameterName, NameAndValue.Value);
+                for (const FScalarParameterNameAndValue& NameAndValue : Values.ScalarValues)
+                {
+                    AudioComponent->SetParameter(NameAndValue.ParameterName, NameAndValue.Value);
+                }
             }
         }
     }
 
-    TArray< FFMODEventParameterNameAndValue > Values;
+    FEvaluatedParameterSectionValues Values;
 };
 
-FFMODEventParameterSectionTemplate::FFMODEventParameterSectionTemplate(const UFMODEventParameterSection& Section)
-    : Parameters(Section.GetParameterNamesAndCurves())
+FFMODEventParameterSectionTemplate::FFMODEventParameterSectionTemplate(const UMovieSceneParameterSection& Section, const UFMODEventParameterTrack& Track)
+    : FMovieSceneParameterSectionTemplate(Section)
 {
 }
 
 void FFMODEventParameterSectionTemplate::Evaluate(const FMovieSceneEvaluationOperand& Operand, const FMovieSceneContext& Context, const FPersistentEvaluationData& PersistentData, FMovieSceneExecutionTokens& ExecutionTokens) const
 {
     FFMODEventParameterExecutionToken ExecutionToken;
-
-    float Time = Context.GetTime();
-
-    for (const FFMODEventParameterNameAndCurve& Parameter : Parameters)
-    {
-        ExecutionToken.Values.Add(FFMODEventParameterNameAndValue(Parameter.ParameterName, Parameter.Curve.Eval(Time)));
-    }
-
+    EvaluateCurves(Context, ExecutionToken.Values);
     ExecutionTokens.Add(MoveTemp(ExecutionToken));
 }

@@ -2,9 +2,9 @@
 
 #pragma once
 
-#include "Class.h"
+#include "UObject/Class.h"
 #include "Engine/EngineTypes.h"
-#include "GenericPlatform.h"
+#include "GenericPlatform/GenericPlatform.h"
 #include "FMODSettings.generated.h"
 
 class Paths;
@@ -132,16 +132,24 @@ public:
 	int32 TotalChannelCount;
 
 	/**
-	 * DSP mixer buffer length, or 0 for system default.
+	 * DSP mixer buffer length (eg. 512, 1024) or 0 for system default.
+	 * When changing the Buffer Length, Buffer Count also needs to be set.
 	 */
 	UPROPERTY(config, EditAnywhere, Category = InitSettings)
 	int32 DSPBufferLength;
 
 	/**
-	 * DSP mixer buffer count, or 0 for system default.
+	 * DSP mixer buffer count (eg. 2, 4) or 0 for system default.
+	 * When changing the Buffer Count, Buffer Length also needs to be set.
 	 */
 	UPROPERTY(config, EditAnywhere, Category = InitSettings)
 	int32 DSPBufferCount;
+
+	/**
+	 * File buffer size in bytes (2048 by default).
+	 */
+    UPROPERTY(config, EditAnywhere, Category = InitSettings)
+    int32 FileBufferSize;
 
 	/**
 	 * Studio update period in milliseconds, or 0 for default (which means 20ms).

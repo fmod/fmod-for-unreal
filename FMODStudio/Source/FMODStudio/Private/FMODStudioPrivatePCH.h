@@ -2,11 +2,11 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Object.h"
+#include "UObject/NoExportTypes.h"
 #include "Components/SceneComponent.h"
 #include "Runtime/Launch/Resources/Version.h"
 #if WITH_EDITOR
-#include "UnrealEd.h"
+//#include "UnrealEd.h"
 #endif
 DECLARE_LOG_CATEGORY_EXTERN(LogFMOD, Log, All);
 

@@ -1,7 +1,6 @@
 // Copyright (c), Firelight Technologies Pty, Ltd. 2012-2018.
 
 #include "FMODStudioModule.h"
-#include "Async.h"
 #include "FMODSettings.h"
 #include "FMODAudioComponent.h"
 #include "FMODBlueprintStatics.h"
@@ -12,16 +11,17 @@
 #include "FMODEvent.h"
 #include "FMODListener.h"
 #include "FMODSnapshotReverb.h"
-#include "IPluginManager.h"
 
-#include "App.h"
-#include "CommandLine.h"
-#include "CoreDelegates.h"
-#include "Engine/Engine.h"
+#include "Async/Async.h"
+#include "Interfaces/IPluginManager.h"
+#include "Misc/App.h"
+#include "Misc/CommandLine.h"
+#include "Misc/CoreDelegates.h"
+//#include "Engine/Engine.h"
 #include "Engine/GameViewportClient.h"
 #include "GameFramework/PlayerController.h"
-#include "Ticker.h"
-#include "Paths.h"
+#include "Containers/Ticker.h"
+#include "Misc/Paths.h"
 
 #include "fmod_studio.hpp"
 #include "fmod_errors.h"
@@ -212,7 +212,7 @@ public:
 		return bUseSound;
 	}
 
-	virtual bool LoadPlugin(const TCHAR* ShortName) override;
+	virtual bool LoadPlugin(EFMODSystemContext::Type Context, const TCHAR* ShortName) override;
 
 	virtual void LogError(int result, const char* function) override;
 
@@ -292,7 +292,7 @@ void FFMODStudioModule::LogError(int result, const char* function)
 	UE_LOG(LogFMOD, Error, TEXT("'%s' returned '%s'"), *FunctionStr, *ErrorStr);
 }
 
-bool FFMODStudioModule::LoadPlugin(const TCHAR* ShortName)
+bool FFMODStudioModule::LoadPlugin(EFMODSystemContext::Type Context, const TCHAR* ShortName)
 {
 	UE_LOG(LogFMOD, Log, TEXT("Loading plugin '%s'"), ShortName);
 
@@ -308,7 +308,7 @@ bool FFMODStudioModule::LoadPlugin(const TCHAR* ShortName)
 	};
 
 	FMOD::System* LowLevelSystem = nullptr;
-	verifyfmod(StudioSystem[EFMODSystemContext::Runtime]->getLowLevelSystem(&LowLevelSystem));
+	verifyfmod(StudioSystem[Context]->getLowLevelSystem(&LowLevelSystem));
 
 	FMOD_RESULT PluginLoadResult;
 
@@ -593,7 +593,7 @@ void FFMODStudioModule::CreateStudioSystem(EFMODSystemContext::Type Type)
 
 	verifyfmod(lowLevelSystem->setSoftwareFormat(SampleRate, OutputMode, 0));
 	verifyfmod(lowLevelSystem->setSoftwareChannels(Settings.RealChannelCount));
-	AttachFMODFileSystem(lowLevelSystem);
+	AttachFMODFileSystem(lowLevelSystem, Settings.FileBufferSize);
 
 	if (Settings.DSPBufferLength > 0 && Settings.DSPBufferCount > 0)
 	{
@@ -634,15 +634,14 @@ void FFMODStudioModule::CreateStudioSystem(EFMODSystemContext::Type Type)
 
 	verifyfmod(StudioSystem[Type]->initialize(Settings.TotalChannelCount, StudioInitFlags, InitFlags, InitData));
 
-	// Don't bother loading plugins during editor, only during PIE or in game
+	for (FString PluginName : Settings.PluginFiles)
+	{
+		if (!PluginName.IsEmpty())
+			LoadPlugin(Type, *PluginName);
+	}
+	
 	if (Type == EFMODSystemContext::Runtime)
 	{
-		for (FString PluginName : Settings.PluginFiles)
-		{
-			if (!PluginName.IsEmpty())
-				LoadPlugin(*PluginName);
-		}
-		
 		// Add interrupt callbacks for Mobile
 		FCoreDelegates::ApplicationWillDeactivateDelegate.AddRaw(this, &FFMODStudioModule::HandleApplicationWillDeactivate);
 		FCoreDelegates::ApplicationHasReactivatedDelegate.AddRaw(this, &FFMODStudioModule::HandleApplicationHasReactivated);
@@ -705,6 +704,10 @@ bool FFMODStudioModule::Tick(float DeltaTime)
 
 void FFMODStudioModule::UpdateViewportPosition()
 {
+	if (bSimulating)
+	{
+		return;
+	}
 	int ListenerIndex = 0;
 
 	UWorld* ViewportWorld = nullptr;

@@ -4,8 +4,11 @@
 #include "FMODStudioModule.h"
 #include "FMODUtils.h"
 #include "Input/Reply.h"
-#include "SNumericEntryBox.h"
-#include "SExpandableArea.h"
+#include "Widgets/Input/SNumericEntryBox.h"
+#include "Widgets/Layout/SExpandableArea.h"
+#include "EditorStyle/Public/EditorStyleSet.h"
+#include "Widgets/Input/SButton.h"
+#include "Widgets/Layout/SScrollBox.h"
 #include "fmod_studio.hpp"
 
 #define LOCTEXT_NAMESPACE "FMODEventEditor"

@@ -7,6 +7,9 @@
 #include "FMODUtils.h"
 #include "FMODStudioModule.h"
 #include "FMODStudioEditorModule.h"
+#include "UnrealEd/Public/Editor.h"
+#include "Framework/MultiBox/MultiBoxBuilder.h"
+#include "EditorStyle/Public/EditorStyleSet.h"
 
 #define LOCTEXT_NAMESPACE "AssetTypeActions"
 
