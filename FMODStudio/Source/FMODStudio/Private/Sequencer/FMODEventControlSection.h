@@ -29,7 +29,7 @@ struct FFMODEventControlChannel : public FMovieSceneByteChannel
 template<>
 struct TStructOpsTypeTraits<FFMODEventControlChannel> : public TStructOpsTypeTraitsBase2<FFMODEventControlChannel>
 {
-    enum { WithSerializeFromMismatchedTag = true };
+    enum { WithStructuredSerializeFromMismatchedTag = true };
 };
 
 
