@@ -237,7 +237,7 @@ void UFMODAudioComponent::UpdateAttenuation()
 		const FVector& Location = GetOwner()->GetTransform().GetTranslation();
 		const FFMODListener& Listener = IFMODStudioModule::Get().GetNearestListener(Location);
 
-		bool bIsOccluded = GWorld->LineTraceTestByChannel(Location, Listener.Transform.GetLocation(), ECC_Visibility, Params);
+		bool bIsOccluded = GWorld->LineTraceTestByChannel(Location, Listener.Transform.GetLocation(), OcclusionDetails.OcclusionTraceChannel, Params);
 
 		// Apply directly as gain and LPF
 		if (bApplyOcclusionDirect)
