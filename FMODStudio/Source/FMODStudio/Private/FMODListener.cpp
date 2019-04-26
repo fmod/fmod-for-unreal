@@ -40,9 +40,12 @@ void FFMODListener::ApplyInteriorSettings( class AAudioVolume* InVolume, const F
 		InteriorLPFEndTime = InteriorStartTime + (Settings.bIsWorldSettings ? InteriorSettings.InteriorLPFTime : Settings.InteriorLPFTime);
 		ExteriorLPFEndTime = InteriorStartTime + (Settings.bIsWorldSettings ? InteriorSettings.ExteriorLPFTime : Settings.ExteriorLPFTime);
 
-		Volume = InVolume;
 		InteriorSettings = Settings;
 	}
+	if (!Volume || InVolume->GetPriority() > Volume->GetPriority())
+    	{
+        	Volume = InVolume;
+    	}
 }
 
 
