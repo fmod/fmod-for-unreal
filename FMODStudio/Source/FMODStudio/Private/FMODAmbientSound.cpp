@@ -1,62 +1,67 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2018.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2019.
 
 #include "FMODAmbientSound.h"
 #include "FMODEvent.h"
-#include "MessageLog.h"
-#include "UObjectToken.h"
-#include "MapErrors.h"
+#include "Logging/MessageLog.h"
+#include "Misc/UObjectToken.h"
+#include "Misc/MapErrors.h"
 
 #define LOCTEXT_NAMESPACE "FMODAmbientSound"
 
-AFMODAmbientSound::AFMODAmbientSound(const FObjectInitializer& ObjectInitializer)
-	: Super(ObjectInitializer)
+AFMODAmbientSound::AFMODAmbientSound(const FObjectInitializer &ObjectInitializer)
+    : Super(ObjectInitializer)
 {
-	AudioComponent = ObjectInitializer.CreateDefaultSubobject<UFMODAudioComponent>(this, TEXT("FMODAudioComponent0"));
+    AudioComponent = ObjectInitializer.CreateDefaultSubobject<UFMODAudioComponent>(this, TEXT("FMODAudioComponent0"));
 
-	AudioComponent->bAutoActivate = true;
-	AudioComponent->bStopWhenOwnerDestroyed = true;
-	AudioComponent->Mobility = EComponentMobility::Movable;
+    AudioComponent->bAutoActivate = true;
+    AudioComponent->bStopWhenOwnerDestroyed = true;
+    AudioComponent->Mobility = EComponentMobility::Movable;
 
-	RootComponent = AudioComponent;
+    RootComponent = AudioComponent;
 
-	bReplicates = false;
-	bHidden = true;
-	bCanBeDamaged = false;
+    bReplicates = false;
+    bHidden = true;
+    bCanBeDamaged = false;
 }
 
 #if WITH_EDITOR
 
-void AFMODAmbientSound::CheckForErrors( void )
+void AFMODAmbientSound::CheckForErrors(void)
 {
-	Super::CheckForErrors();
+    Super::CheckForErrors();
 
-	if (!AudioComponent)
-	{
-		FFormatNamedArguments Arguments;
-		Arguments.Add(TEXT("ActorName"), FText::FromString(GetName()));
-		FMessageLog("MapCheck").Warning()
-			->AddToken(FUObjectToken::Create(this))
-			->AddToken(FTextToken::Create(FText::Format( LOCTEXT( "MapCheck_Message_AudioComponentNull", "{ActorName} : Ambient sound actor has NULL AudioComponent property - please delete" ), Arguments ) ))
-			->AddToken(FMapErrorToken::Create(FMapErrors::AudioComponentNull));
-	}
-	else if (AudioComponent->Event == NULL)
-	{
-		FFormatNamedArguments Arguments;
-		Arguments.Add(TEXT("ActorName"), FText::FromString(GetName()));
-		FMessageLog("MapCheck").Warning()
-			->AddToken(FUObjectToken::Create(this))
-			->AddToken(FTextToken::Create(FText::Format( LOCTEXT( "MapCheck_Message_EventNull", "{ActorName} : Ambient sound actor has NULL Event property" ), Arguments ) ))
-			->AddToken(FMapErrorToken::Create(FMapErrors::SoundCueNull));
-	}
+    if (!AudioComponent)
+    {
+        FFormatNamedArguments Arguments;
+        Arguments.Add(TEXT("ActorName"), FText::FromString(GetName()));
+        FMessageLog("MapCheck")
+            .Warning()
+            ->AddToken(FUObjectToken::Create(this))
+            ->AddToken(FTextToken::Create(FText::Format(
+                LOCTEXT("MapCheck_Message_AudioComponentNull", "{ActorName} : Ambient sound actor has NULL AudioComponent property - please delete"),
+                Arguments)))
+            ->AddToken(FMapErrorToken::Create(FMapErrors::AudioComponentNull));
+    }
+    else if (AudioComponent->Event == NULL)
+    {
+        FFormatNamedArguments Arguments;
+        Arguments.Add(TEXT("ActorName"), FText::FromString(GetName()));
+        FMessageLog("MapCheck")
+            .Warning()
+            ->AddToken(FUObjectToken::Create(this))
+            ->AddToken(FTextToken::Create(
+                FText::Format(LOCTEXT("MapCheck_Message_EventNull", "{ActorName} : Ambient sound actor has NULL Event property"), Arguments)))
+            ->AddToken(FMapErrorToken::Create(FMapErrors::SoundCueNull));
+    }
 }
 
-bool AFMODAmbientSound::GetReferencedContentObjects( TArray<UObject*>& Objects ) const
+bool AFMODAmbientSound::GetReferencedContentObjects(TArray<UObject *> &Objects) const
 {
-	if (AudioComponent->Event)
-	{
-		Objects.Add(AudioComponent->Event.Get());
-	}
-	return true;
+    if (IsValid(AudioComponent) && AudioComponent->Event)
+    {
+        Objects.Add(AudioComponent->Event.Get());
+    }
+    return true;
 }
 
 #endif

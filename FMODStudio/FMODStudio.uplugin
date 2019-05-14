@@ -2,8 +2,8 @@
     "FileVersion" : 3,
 	
 	"FriendlyName" : "FMOD Studio Integration",
-	"Version" : 11004,
-	"VersionName" : "1.10.04",
+	"Version" : 11013,
+	"VersionName" : "1.10.13",
 	"CreatedBy" : "Firelight Technologies",
 	"CreatedByURL" : "http://fmod.com",
 	"Description" : "FMOD Studio Integration.",
@@ -13,9 +13,14 @@
 	"Modules" :
 	[
 		{
-			"Name" : "FMODStudio",
-			"Type" : "Runtime",
-			"LoadingPhase" : "PreDefault"
+			"Name": "FMODStudio",
+			"Type": "CookedOnly",
+			"LoadingPhase": "PreEarlyLoadingScreen"
+		},
+		{
+			"Name": "FMODStudio",
+			"Type": "Editor",
+			"LoadingPhase": "PreDefault"
 		},
 		{
 			"Name" : "FMODStudioEditor",

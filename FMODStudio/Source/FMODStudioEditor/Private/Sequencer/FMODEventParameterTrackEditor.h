@@ -1,8 +1,18 @@
 // Taken from ParticleParameterTrackEditor
 
 #pragma once
-#include "Editor/Sequencer/Public/MovieSceneTrackEditor.h"
+#include "CoreMinimal.h"
+#include "Misc/Guid.h"
+#include "Templates/SubclassOf.h"
+#include "Widgets/SWidget.h"
+#include "ISequencer.h"
+#include "MovieSceneTrack.h"
+#include "ISequencerSection.h"
+#include "Framework/Commands/UIAction.h"
+#include "ISequencerTrackEditor.h"
+#include "MovieSceneTrackEditor.h"
 
+class FMenuBuilder;
 class UFMODEventParameterTrack;
 class UFMODAudioComponent;
 struct FMOD_STUDIO_PARAMETER_DESCRIPTION;
@@ -13,12 +23,11 @@ struct FMOD_STUDIO_PARAMETER_DESCRIPTION;
 class FFMODEventParameterTrackEditor : public FMovieSceneTrackEditor
 {
 public:
-
     /** Constructor. */
     FFMODEventParameterTrackEditor(TSharedRef<ISequencer> InSequencer);
 
     /** Virtual destructor. */
-    virtual ~FFMODEventParameterTrackEditor() { }
+    virtual ~FFMODEventParameterTrackEditor() {}
 
     /**
     * Creates an instance of this class.  Called by a sequencer.
@@ -30,12 +39,13 @@ public:
 
     // ISequencerTrackEditor interface
 
-    virtual TSharedPtr<SWidget> BuildOutlinerEditWidget(const FGuid& ObjectBinding, UMovieSceneTrack* Track, const FBuildEditWidgetParams& Params) override;
-    virtual TSharedRef<ISequencerSection> MakeSectionInterface(UMovieSceneSection& SectionObject, UMovieSceneTrack& Track, FGuid ObjectBinding) override;
+    virtual TSharedPtr<SWidget> BuildOutlinerEditWidget(
+        const FGuid &ObjectBinding, UMovieSceneTrack *Track, const FBuildEditWidgetParams &Params) override;
+    virtual TSharedRef<ISequencerSection> MakeSectionInterface(
+        UMovieSceneSection &SectionObject, UMovieSceneTrack &Track, FGuid ObjectBinding) override;
     virtual bool SupportsType(TSubclassOf<UMovieSceneTrack> Type) const override;
 
 private:
-
     static FName TrackName;
 
     // Struct used for building the parameter menu.
@@ -50,21 +60,18 @@ private:
             Action = InAction;
         }
 
-        bool operator<(FParameterNameAndAction const& Other) const
-        {
-            return ParameterName < Other.ParameterName;
-        }
+        bool operator<(FParameterNameAndAction const &Other) const { return ParameterName < Other.ParameterName; }
     };
 
-    void BuildObjectBindingTrackMenu(FMenuBuilder& MenuBuilder, const FGuid& ObjectBinding, const UClass* ObjectClass);
+    void BuildObjectBindingTrackMenu(FMenuBuilder &MenuBuilder, const FGuid &ObjectBinding, const UClass *ObjectClass);
 
     /** Provides the contents of the add parameter menu. */
-    TSharedRef<SWidget> OnGetAddParameterMenuContent(FGuid ObjectBinding, UFMODEventParameterTrack* EventParameterTrack);
-	TSharedRef<SWidget> BuildParameterMenu(FGuid ObjectBinding, UFMODEventParameterTrack* EventParameterTrack, UFMODAudioComponent* AudioComponent);
+    TSharedRef<SWidget> OnGetAddParameterMenuContent(FGuid ObjectBinding, UFMODEventParameterTrack *EventParameterTrack);
+    TSharedRef<SWidget> BuildParameterMenu(FGuid ObjectBinding, UFMODEventParameterTrack *EventParameterTrack, UFMODAudioComponent *AudioComponent);
 
-    bool CanAddEventParameterTrack (FGuid ObjectBinding);
+    bool CanAddEventParameterTrack(FGuid ObjectBinding);
     void AddEventParameterTrack(FGuid ObjectBinding);
 
     /** Adds an event parameter and initial key to a track. */
-    void AddParameter(FGuid ObjectBinding, UFMODEventParameterTrack* EventParameterTrack, FName ParameterName);
+    void AddParameter(FGuid ObjectBinding, UFMODEventParameterTrack *EventParameterTrack, FName ParameterName);
 };

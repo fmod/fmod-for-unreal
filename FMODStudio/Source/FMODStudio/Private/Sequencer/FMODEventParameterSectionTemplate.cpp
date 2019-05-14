@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2018.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2017.
 
 #include "FMODEventParameterSectionTemplate.h"
 #include "FMODAmbientSound.h"
@@ -11,38 +11,42 @@ struct FFMODEventParameterPreAnimatedToken : IMovieScenePreAnimatedToken
 {
     FFMODEventParameterPreAnimatedToken() {}
 
-    FFMODEventParameterPreAnimatedToken(FFMODEventParameterPreAnimatedToken&&) = default;
-    FFMODEventParameterPreAnimatedToken& operator=(FFMODEventParameterPreAnimatedToken&&) = default;
+    FFMODEventParameterPreAnimatedToken(FFMODEventParameterPreAnimatedToken &&) = default;
+    FFMODEventParameterPreAnimatedToken &operator=(FFMODEventParameterPreAnimatedToken &&) = default;
 
-    virtual void RestoreState(UObject& Object, IMovieScenePlayer& Player) override
+    virtual void RestoreState(UObject &Object, IMovieScenePlayer &Player) override
     {
-        UFMODAudioComponent* AudioComponent = CastChecked<UFMODAudioComponent>(&Object);
+        UFMODAudioComponent *AudioComponent = CastChecked<UFMODAudioComponent>(&Object);
 
-        for (FFMODEventParameterNameAndValue& Value : Values)
+        if (IsValid(AudioComponent))
         {
-            AudioComponent->SetParameter(Value.ParameterName, Value.Value);
+            for (FScalarParameterNameAndValue &Value : Values)
+            {
+                AudioComponent->SetParameter(Value.ParameterName, Value.Value);
+            }
         }
     }
 
-    TArray< FFMODEventParameterNameAndValue > Values;
+    TArray<FScalarParameterNameAndValue> Values;
 };
 
 struct FFMODEventParameterPreAnimatedTokenProducer : IMovieScenePreAnimatedTokenProducer
 {
-    virtual IMovieScenePreAnimatedTokenPtr CacheExistingState(UObject& Object) const override
+    virtual IMovieScenePreAnimatedTokenPtr CacheExistingState(UObject &Object) const override
     {
-        UFMODAudioComponent* AudioComponent = CastChecked<UFMODAudioComponent>(&Object);
+        UFMODAudioComponent *AudioComponent = CastChecked<UFMODAudioComponent>(&Object);
 
         FFMODEventParameterPreAnimatedToken Token;
 
-        if (AudioComponent && AudioComponent->Event)
+        if (IsValid(AudioComponent) && AudioComponent->Event)
         {
             TArray<FMOD_STUDIO_PARAMETER_DESCRIPTION> ParameterDescriptions;
             AudioComponent->Event->GetParameterDescriptions(ParameterDescriptions);
-            for (const FMOD_STUDIO_PARAMETER_DESCRIPTION& ParameterDescription : ParameterDescriptions)
+
+            for (const FMOD_STUDIO_PARAMETER_DESCRIPTION &ParameterDescription : ParameterDescriptions)
             {
                 float Value = AudioComponent->GetParameter(ParameterDescription.name);
-                Token.Values.Add(FFMODEventParameterNameAndValue(ParameterDescription.name, Value));
+                Token.Values.Add(FScalarParameterNameAndValue(ParameterDescription.name, Value));
             }
         }
 
@@ -54,52 +58,52 @@ struct FFMODEventParameterExecutionToken : IMovieSceneExecutionToken
 {
     FFMODEventParameterExecutionToken() = default;
 
-    FFMODEventParameterExecutionToken(FFMODEventParameterExecutionToken&&) = default;
-    FFMODEventParameterExecutionToken& operator=(FFMODEventParameterExecutionToken&&) = default;
+    FFMODEventParameterExecutionToken(FFMODEventParameterExecutionToken &&) = default;
+    FFMODEventParameterExecutionToken &operator=(FFMODEventParameterExecutionToken &&) = default;
 
-    virtual void Execute(const FMovieSceneContext& Context, const FMovieSceneEvaluationOperand& Operand, FPersistentEvaluationData& PersistentData, IMovieScenePlayer& Player)
+    // Non-copyable
+    FFMODEventParameterExecutionToken(const FFMODEventParameterExecutionToken &) = delete;
+    FFMODEventParameterExecutionToken &operator=(const FFMODEventParameterExecutionToken &) = delete;
+
+    virtual void Execute(const FMovieSceneContext &Context, const FMovieSceneEvaluationOperand &Operand, FPersistentEvaluationData &PersistentData,
+        IMovieScenePlayer &Player)
     {
-        for (TWeakObjectPtr<>& WeakObject : Player.FindBoundObjects(Operand))
+        for (TWeakObjectPtr<> &WeakObject : Player.FindBoundObjects(Operand))
         {
-            UFMODAudioComponent* AudioComponent = Cast<UFMODAudioComponent>(WeakObject.Get());
+            UFMODAudioComponent *AudioComponent = Cast<UFMODAudioComponent>(WeakObject.Get());
+
             if (!AudioComponent)
             {
-                AFMODAmbientSound* AmbientSound = Cast<AFMODAmbientSound>(WeakObject.Get());
+                AFMODAmbientSound *AmbientSound = Cast<AFMODAmbientSound>(WeakObject.Get());
                 AudioComponent = AmbientSound ? AmbientSound->AudioComponent : nullptr;
             }
 
-            if (!AudioComponent)
+            if (IsValid(AudioComponent))
             {
-                continue;
-            }
+                Player.SavePreAnimatedState(
+                    *AudioComponent, TMovieSceneAnimTypeID<FFMODEventParameterExecutionToken>(), FFMODEventParameterPreAnimatedTokenProducer());
 
-            Player.SavePreAnimatedState(*AudioComponent, TMovieSceneAnimTypeID<FFMODEventParameterExecutionToken>(), FFMODEventParameterPreAnimatedTokenProducer());
-
-            for (const FFMODEventParameterNameAndValue& NameAndValue : Values)
-            {
-                AudioComponent->SetParameter(NameAndValue.ParameterName, NameAndValue.Value);
+                for (const FScalarParameterNameAndValue &NameAndValue : Values.ScalarValues)
+                {
+                    AudioComponent->SetParameter(NameAndValue.ParameterName, NameAndValue.Value);
+                }
             }
         }
     }
 
-    TArray< FFMODEventParameterNameAndValue > Values;
+    FEvaluatedParameterSectionValues Values;
 };
 
-FFMODEventParameterSectionTemplate::FFMODEventParameterSectionTemplate(const UFMODEventParameterSection& Section)
-    : Parameters(Section.GetParameterNamesAndCurves())
+FFMODEventParameterSectionTemplate::FFMODEventParameterSectionTemplate(
+    const UMovieSceneParameterSection &Section, const UFMODEventParameterTrack &Track)
+    : FMovieSceneParameterSectionTemplate(Section)
 {
 }
 
-void FFMODEventParameterSectionTemplate::Evaluate(const FMovieSceneEvaluationOperand& Operand, const FMovieSceneContext& Context, const FPersistentEvaluationData& PersistentData, FMovieSceneExecutionTokens& ExecutionTokens) const
+void FFMODEventParameterSectionTemplate::Evaluate(const FMovieSceneEvaluationOperand &Operand, const FMovieSceneContext &Context,
+    const FPersistentEvaluationData &PersistentData, FMovieSceneExecutionTokens &ExecutionTokens) const
 {
     FFMODEventParameterExecutionToken ExecutionToken;
-
-    float Time = Context.GetTime();
-
-    for (const FFMODEventParameterNameAndCurve& Parameter : Parameters)
-    {
-        ExecutionToken.Values.Add(FFMODEventParameterNameAndValue(Parameter.ParameterName, Parameter.Curve.Eval(Time)));
-    }
-
+    EvaluateCurves(Context, ExecutionToken.Values);
     ExecutionTokens.Add(MoveTemp(ExecutionToken));
 }

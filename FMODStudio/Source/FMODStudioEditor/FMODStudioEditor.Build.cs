@@ -1,9 +1,10 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2018.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2019.
+using System.IO;
 
 namespace UnrealBuildTool.Rules
 {
-	public class FMODStudioEditor : ModuleRules
-	{
+    public class FMODStudioEditor : ModuleRules
+    {
     #if WITH_FORWARDED_MODULE_RULES_CTOR
         public FMODStudioEditor(ReadOnlyTargetRules Target) : base(Target)
     #else
@@ -12,65 +13,49 @@ namespace UnrealBuildTool.Rules
         {
             PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
             PrivatePCHHeaderFile = "Private/FMODStudioEditorPrivatePCH.h";
-			
-			bFasterWithoutUnity = true;
+            
+            bFasterWithoutUnity = true;
 
-			PublicIncludePaths.AddRange(
-				new string[] {
-				}
-				);
-
-			PrivateIncludePaths.AddRange(
-				new string[] {
-					"FMODStudioEditor/Private",
-					"FMODStudio/Private",
-                    "Editor/MovieSceneTools/Private",
-                    "Editor/MovieSceneTools/Private/CurveKeyEditors",
-                    "Editor/MovieSceneTools/Private/TrackEditors",
-                    "Editor/MovieSceneTools/Private/TrackEditors/PropertyTrackEditors",
-                    "Editor/MovieSceneTools/Private/TrackEditorThumbnail",
-                    "Editor/MovieSceneTools/Private/Sections"
-				}
+            PrivateIncludePaths.AddRange(
+                new string[] {
+                    "FMODStudio/Private",
+                    "FMODStudio/Public/FMOD",
+                    Path.Combine(ModuleDirectory, "Classes")
+                }
                 );
 
-			PublicDependencyModuleNames.AddRange(
-				new string[]
-				{
-					"Core",
-					"CoreUObject",
-					"Engine",
-					"FMODStudio",
+            PublicDependencyModuleNames.AddRange(
+                new string[]
+                {
+                    "Core",
+                    "CoreUObject",
+                    "Engine",
+                    "FMODStudio",
                     "InputCore",
                     "UnrealEd",
                     "Sequencer"
                 }
                 );
 
-			PrivateDependencyModuleNames.AddRange(
-				new string[]
-				{
-					"Slate",
-					"SlateCore",
-					"Settings",
-					"EditorStyle",
-					"LevelEditor",
-					"AssetTools",
-					"AssetRegistry",
-					"PropertyEditor",
-					"WorkspaceMenuStructure",
-					"Sockets",
+            PrivateDependencyModuleNames.AddRange(
+                new string[]
+                {
+                    "Slate",
+                    "SlateCore",
+                    "Settings",
+                    "EditorStyle",
+                    "LevelEditor",
+                    "AssetTools",
+                    "AssetRegistry",
+                    "PropertyEditor",
+                    "WorkspaceMenuStructure",
+                    "Sockets",
                     "LevelSequence",
                     "MovieScene",
                     "MovieSceneTracks",
                     "MovieSceneTools"
                 }
                 );
-
-			DynamicallyLoadedModuleNames.AddRange(
-				new string[]
-				{
-                }
-                );
-		}
-	}
+        }
+    }
 }

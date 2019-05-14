@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2018.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2019.
 
 #pragma once
 
@@ -13,16 +13,14 @@ struct FMOD_STUDIO_PARAMETER_DESCRIPTION;
 UCLASS()
 class FMODSTUDIO_API UFMODEvent : public UFMODAsset
 {
-	GENERATED_UCLASS_BODY()
+    GENERATED_UCLASS_BODY()
 
-	/** Get tags to show in content view */
-	virtual void GetAssetRegistryTags(TArray<FAssetRegistryTag>& OutTags) const override;
+    /** Get tags to show in content view */
+    virtual void GetAssetRegistryTags(TArray<FAssetRegistryTag> &OutTags) const override;
 
-	/** Descriptive name */
-	virtual FString GetDesc() override;
+    /** Descriptive name */
+    virtual FString GetDesc() override;
 
     /** Get parameter descriptions for this event */
-    void GetParameterDescriptions(TArray<FMOD_STUDIO_PARAMETER_DESCRIPTION>& Parameters) const;
+    void GetParameterDescriptions(TArray<FMOD_STUDIO_PARAMETER_DESCRIPTION> &Parameters) const;
 };
-
-

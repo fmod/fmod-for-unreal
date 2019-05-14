@@ -1,15 +1,14 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2018.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2019.
 
 #include "FMODSnapshot.h"
 #include "FMODStudioModule.h"
 
-UFMODSnapshot::UFMODSnapshot(const FObjectInitializer& ObjectInitializer)
-	: Super(ObjectInitializer)
+UFMODSnapshot::UFMODSnapshot(const FObjectInitializer &ObjectInitializer)
+    : Super(ObjectInitializer)
 {
 }
 
 FString UFMODSnapshot::GetDesc()
 {
-	return FString::Printf( TEXT( "Snapshot %s" ), *AssetGuid.ToString(EGuidFormats::DigitsWithHyphensInBraces) );
+    return FString::Printf(TEXT("Snapshot %s"), *AssetGuid.ToString(EGuidFormats::DigitsWithHyphensInBraces));
 }
-

@@ -1,28 +1,28 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2018.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2019.
 
 #pragma once
 
-#include "UnrealString.h"
-#include "DateTime.h"
-#include "Delegate.h"
+#include "Containers/UnrealString.h"
+#include "Misc/DateTime.h"
+#include "Delegates/Delegate.h"
 
 class FFMODBankUpdateNotifier
 {
 public:
-	FFMODBankUpdateNotifier();
+    FFMODBankUpdateNotifier();
 
-	void SetFilePath(const FString& InPath);
-	void Update();
+    void SetFilePath(const FString &InPath);
+    void Update();
 
-	void EnableUpdate(bool bEnable);
+    void EnableUpdate(bool bEnable);
 
-	FSimpleMulticastDelegate BanksUpdatedEvent;
+    FSimpleMulticastDelegate BanksUpdatedEvent;
 
 private:
-	void Refresh();
+    void Refresh();
 
-	bool bUpdateEnabled;
-	FString FilePath;
-	FDateTime NextRefreshTime;
-	FDateTime FileTime;
+    bool bUpdateEnabled;
+    FString FilePath;
+    FDateTime NextRefreshTime;
+    FDateTime FileTime;
 };

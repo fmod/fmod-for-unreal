@@ -1,8 +1,19 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2018.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2019.
 
 #pragma once
 
-class FMovieSceneTrackEditor;
+#include "CoreMinimal.h"
+#include "Misc/Guid.h"
+#include "Templates/SubclassOf.h"
+#include "Curves/KeyHandle.h"
+#include "ISequencer.h"
+#include "MovieSceneTrack.h"
+#include "ISequencerSection.h"
+#include "ISequencerTrackEditor.h"
+#include "MovieSceneTrackEditor.h"
+
+class FMenuBuilder;
+class FSequencerSectionPainter;
 
 /** FMOD Event control track */
 class FFMODEventControlTrackEditor : public FMovieSceneTrackEditor
@@ -15,47 +26,34 @@ public:
     void AddControlKey(const FGuid ObjectGuid);
 
     // Begin ISequencerTrackEditor interface
-    virtual void BuildObjectBindingTrackMenu(FMenuBuilder& MenuBuilder, const FGuid& ObjectBinding, const UClass* ObjectClass) override;
-    virtual TSharedRef<ISequencerSection> MakeSectionInterface(UMovieSceneSection& SectionObject, UMovieSceneTrack& Track, FGuid ObjectBinding) override;
+    virtual void BuildObjectBindingTrackMenu(FMenuBuilder &MenuBuilder, const FGuid &ObjectBinding, const UClass *ObjectClass) override;
+    virtual TSharedRef<ISequencerSection> MakeSectionInterface(
+        UMovieSceneSection &SectionObject, UMovieSceneTrack &Track, FGuid ObjectBinding) override;
     virtual bool SupportsType(TSubclassOf<UMovieSceneTrack> Type) const override;
     // End ISequencerTrackEditor interface
 
 private:
-
     /** Delegate for AnimatablePropertyChanged in AddKey. */
-    virtual FKeyPropertyResult AddKeyInternal(float KeyTime, UObject* Object);
+    virtual FKeyPropertyResult AddKeyInternal(FFrameNumber KeyTime, UObject *Object);
 };
 
-
 /** Class for event control sections. */
-class FFMODEventControlSection
-    : public ISequencerSection
-    , public TSharedFromThis<FFMODEventControlSection>
+class FFMODEventControlSection : public ISequencerSection, public TSharedFromThis<FFMODEventControlSection>
 {
 public:
-    FFMODEventControlSection(UMovieSceneSection& InSection, TSharedRef<ISequencer> InOwningSequencer);
+    FFMODEventControlSection(UMovieSceneSection &InSection, TSharedRef<ISequencer> InOwningSequencer);
 
     // Begin ISequencerSection interface
-    virtual UMovieSceneSection* GetSectionObject() override;
-    virtual FText GetSectionTitle() const override { return FText::GetEmpty(); }
+    virtual UMovieSceneSection *GetSectionObject() override;
     virtual float GetSectionHeight() const override;
-    virtual void GenerateSectionLayout(class ISectionLayoutBuilder& LayoutBuilder) const override;
-    virtual int32 OnPaintSection(FSequencerSectionPainter& InPainter) const override;
-    virtual const FSlateBrush* GetKeyBrush(FKeyHandle KeyHandle) const override;
-    virtual FVector2D GetKeyBrushOrigin(FKeyHandle KeyHandle) const override;
+    virtual int32 OnPaintSection(FSequencerSectionPainter &InPainter) const override;
     virtual bool SectionIsResizable() const override { return false; }
     // End ISequencerSection interface
 
 private:
     /** The section we are visualizing. */
-    UMovieSceneSection& Section;
+    UMovieSceneSection &Section;
 
     /** The sequencer that owns this section */
     TWeakPtr<ISequencer> OwningSequencerPtr;
-
-    /** The UEnum for the EFMODEventControlKey enum */
-    const UEnum* ControlKeyEnum;
-
-    const FSlateBrush* LeftKeyBrush;
-    const FSlateBrush* RightKeyBrush;
 };

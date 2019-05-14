@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2018.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2019.
 
 #pragma once
 
@@ -6,34 +6,32 @@
 
 namespace FMOD
 {
-	namespace Studio
-	{
-		class System;
-	}
+namespace Studio
+{
+class System;
+}
 }
 
 class FFMODAssetTable
 {
 public:
-	FFMODAssetTable();
-	~FFMODAssetTable();
+    FFMODAssetTable();
+    ~FFMODAssetTable();
 
-	void Create();
-	void Destroy();
+    void Create();
+    void Destroy();
 
-	void Refresh();
+    void Refresh();
 
-	UFMODAsset* FindByName(const FString& Name);
-
-private:
-
-	void HandleBanksUpdated();
-	void AddAsset(const FGuid& AssetGuid, const FString& AssetFullName);
+    UFMODAsset *FindByName(const FString &Name);
 
 private:
-	FMOD::Studio::System* StudioSystem;
-	TMap< FGuid, TWeakObjectPtr<UFMODAsset> > GuidMap;
-	TMap< FName, TWeakObjectPtr<UFMODAsset> > NameMap;
-	TMap< FString, TWeakObjectPtr<UFMODAsset> > FullNameLookup;
+    void HandleBanksUpdated();
+    void AddAsset(const FGuid &AssetGuid, const FString &AssetFullName);
+
+private:
+    FMOD::Studio::System *StudioSystem;
+    TMap<FGuid, TWeakObjectPtr<UFMODAsset>> GuidMap;
+    TMap<FName, TWeakObjectPtr<UFMODAsset>> NameMap;
+    TMap<FString, TWeakObjectPtr<UFMODAsset>> FullNameLookup;
 };
-

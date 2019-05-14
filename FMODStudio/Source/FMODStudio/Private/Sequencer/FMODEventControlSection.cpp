@@ -1,81 +1,49 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2018.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2019.
 
 #include "FMODEventControlSection.h"
+#include "FMODEventControlSectionTemplate.h"
+#include "Channels/MovieSceneChannelProxy.h"
+#include "UObject/SequencerObjectVersion.h"
+#include "UObject/Package.h"
 
+FFMODEventControlChannel::FFMODEventControlChannel()
+{
+    SetEnum(FindObject<UEnum>(ANY_PACKAGE, TEXT("EFMODEventControlKey")));
+}
 
-UFMODEventControlSection::UFMODEventControlSection(const FObjectInitializer& ObjectInitializer)
+UFMODEventControlSection::UFMODEventControlSection(const FObjectInitializer &ObjectInitializer)
     : Super(ObjectInitializer)
 {
-    ControlKeys.SetDefaultValue((int32)EFMODEventControlKey::Stop);
-    ControlKeys.SetUseDefaultValueBeforeFirstKey(true);
-    SetIsInfinite(true);
-}
+    SetRange(TRange<FFrameNumber>::All());
 
+    int32 LinkerCustomVersion = GetLinkerCustomVersion(FSequencerObjectVersion::GUID);
+    EMovieSceneCompletionMode CompletionMode;
 
-void UFMODEventControlSection::AddKey(float Time, EFMODEventControlKey::Type KeyType)
-{
-    ControlKeys.AddKey(Time, (int32)KeyType);
-}
-
-
-FIntegralCurve& UFMODEventControlSection::GetControlCurve()
-{
-    return ControlKeys;
-}
-
-const FIntegralCurve& UFMODEventControlSection::GetControlCurve() const
-{
-    return ControlKeys;
-}
-
-void UFMODEventControlSection::MoveSection(float DeltaPosition, TSet<FKeyHandle>& KeyHandles)
-{
-    Super::MoveSection(DeltaPosition, KeyHandles);
-
-    ControlKeys.ShiftCurve(DeltaPosition, KeyHandles);
-}
-
-
-void UFMODEventControlSection::DilateSection(float DilationFactor, float Origin, TSet<FKeyHandle>& KeyHandles)
-{
-    Super::DilateSection(DilationFactor, Origin, KeyHandles);
-
-    ControlKeys.ScaleCurve(Origin, DilationFactor, KeyHandles);
-}
-
-
-void UFMODEventControlSection::GetKeyHandles(TSet<FKeyHandle>& OutKeyHandles, TRange<float> TimeRange) const
-{
-    if (!TimeRange.Overlaps(GetRange()))
+    if (LinkerCustomVersion < FSequencerObjectVersion::WhenFinishedDefaultsToRestoreState)
     {
-        return;
+        CompletionMode = EMovieSceneCompletionMode::KeepState;
+    }
+    else if (LinkerCustomVersion < FSequencerObjectVersion::WhenFinishedDefaultsToProjectDefault)
+    {
+        CompletionMode = EMovieSceneCompletionMode::RestoreState;
+    }
+    else
+    {
+        CompletionMode = EMovieSceneCompletionMode::ProjectDefault;
     }
 
-    for (auto It(ControlKeys.GetKeyHandleIterator()); It; ++It)
-    {
-        float Time = ControlKeys.GetKeyTime(It.Key());
-        if (TimeRange.Contains(Time))
-        {
-            OutKeyHandles.Add(It.Key());
-        }
-    }
+#if WITH_EDITOR
+
+    ChannelProxy = MakeShared<FMovieSceneChannelProxy>(ControlKeys, FMovieSceneChannelMetaData(), TMovieSceneExternalValue<uint8>());
+
+#else
+
+    ChannelProxy = MakeShared<FMovieSceneChannelProxy>(ControlKeys);
+
+#endif
 }
 
-
-TOptional<float> UFMODEventControlSection::GetKeyTime(FKeyHandle KeyHandle) const
+FMovieSceneEvalTemplatePtr UFMODEventControlSection::GenerateTemplate() const
 {
-    if (ControlKeys.IsKeyHandleValid(KeyHandle))
-    {
-        return TOptional<float>(ControlKeys.GetKeyTime(KeyHandle));
-    }
-    return TOptional<float>();
-}
-
-
-void UFMODEventControlSection::SetKeyTime(FKeyHandle KeyHandle, float Time)
-{
-    if (ControlKeys.IsKeyHandleValid(KeyHandle))
-    {
-        ControlKeys.SetKeyTime(KeyHandle, Time);
-    }
+    return FFMODEventControlSectionTemplate(*this);
 }

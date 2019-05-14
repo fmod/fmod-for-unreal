@@ -1,22 +1,21 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2018.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2019.
 
 #pragma once
 
-#include "PropertySection.h"
+#include "ISequencerSection.h"
 
 class UMovieSceneSection;
 
 /** A movie scene section for Event parameters. */
-class FFMODParameterSection
-    : public FPropertySection
+class FFMODParameterSection : public FSequencerSection
 {
 public:
-    FFMODParameterSection(UMovieSceneSection& InSectionObject, const FText& SectionName)
-        : FPropertySection(InSectionObject, SectionName)
-    { }
+    FFMODParameterSection(UMovieSceneSection &InSectionObject)
+        : FSequencerSection(InSectionObject)
+    {
+    }
 
     // Begin ISequencerSection interface
-    virtual void GenerateSectionLayout(class ISectionLayoutBuilder& LayoutBuilder) const override;
-    virtual bool RequestDeleteKeyArea(const TArray<FName>& KeyAreaNamePath) override;
+    virtual bool RequestDeleteKeyArea(const TArray<FName> &KeyAreaNamePath) override;
     // End ISequencerSection interface
 };
