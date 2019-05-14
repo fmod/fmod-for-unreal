@@ -47,11 +47,11 @@ void UFMODEvent::GetParameterDescriptions(TArray<FMOD_STUDIO_PARAMETER_DESCRIPTI
         if (EventDesc)
         {
             int ParameterCount;
-            EventDesc->getParameterCount(&ParameterCount);
+            EventDesc->getParameterDescriptionCount(&ParameterCount);
             Parameters.SetNumUninitialized(ParameterCount);
             for (int ParameterIndex = 0; ParameterIndex < ParameterCount; ++ParameterIndex)
             {
-                EventDesc->getParameterByIndex(ParameterIndex, &Parameters[ParameterIndex]);
+                EventDesc->getParameterDescriptionByIndex(ParameterIndex, &Parameters[ParameterIndex]);
             }
         }
     }

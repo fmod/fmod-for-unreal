@@ -66,7 +66,6 @@ namespace UnrealBuildTool.Rules
 
             string platformName = Target.Platform.ToString();
 
-            string platformMidName = "";
             string linkExtension = "";
             string dllExtension = "";
             string libPrefix = "";
@@ -93,7 +92,6 @@ namespace UnrealBuildTool.Rules
             }
             else if (Target.Platform.ToString() == "UWP64")
             {
-                platformMidName = "_X64";
                 linkExtension = ".lib";
                 dllExtension = ".dll";
                 bAddDelayLoad = true;
@@ -108,7 +106,6 @@ namespace UnrealBuildTool.Rules
                         bAddDelayLoad = true;
                         break;
                     case UnrealTargetPlatform.Win64:
-                        platformMidName = "64";
                         linkExtension = "_vc.lib";
                         dllExtension = ".dll";
                         bAddDelayLoad = true;
@@ -163,11 +160,11 @@ namespace UnrealBuildTool.Rules
 
             PublicLibraryPaths.Add(BasePath);
 
-            string fmodLibName = System.String.Format("{0}fmod{1}{2}{3}", libPrefix, configName, platformMidName, linkExtension);
-            string fmodStudioLibName = System.String.Format("{0}fmodstudio{1}{2}{3}", libPrefix, configName, platformMidName, linkExtension);
+            string fmodLibName = System.String.Format("{0}fmod{1}{2}", libPrefix, configName, linkExtension);
+            string fmodStudioLibName = System.String.Format("{0}fmodstudio{1}{2}", libPrefix, configName, linkExtension);
 
-            string fmodDllName = System.String.Format("{0}fmod{1}{2}{3}", libPrefix, configName, platformMidName, dllExtension);
-            string fmodStudioDllName = System.String.Format("{0}fmodstudio{1}{2}{3}", libPrefix, configName, platformMidName, dllExtension);
+            string fmodDllName = System.String.Format("{0}fmod{1}{2}", libPrefix, configName, dllExtension);
+            string fmodStudioDllName = System.String.Format("{0}fmodstudio{1}{2}", libPrefix, configName, dllExtension);
 
             string fmodLibPath = System.IO.Path.Combine(BasePath, fmodLibName);
             string fmodStudioLibPath = System.IO.Path.Combine(BasePath, fmodStudioLibName);
@@ -181,8 +178,8 @@ namespace UnrealBuildTool.Rules
             {
                 // For android we have provided the paths to all architectures above
                 // Just provide the name without "lib" and without extension
-                PublicAdditionalLibraries.Add(System.String.Format("fmod{0}{1}", configName, platformMidName));
-                PublicAdditionalLibraries.Add(System.String.Format("fmodstudio{0}{1}", configName, platformMidName));
+                PublicAdditionalLibraries.Add(System.String.Format("fmod{0}", configName));
+                PublicAdditionalLibraries.Add(System.String.Format("fmodstudio{0}", configName));
             }
             else if (bLinkFromBinaries)
             {

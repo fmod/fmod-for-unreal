@@ -12,6 +12,7 @@
 #include "FMODFileCallbacks.h"
 #include "FMODStudioPrivatePCH.h"
 #include "fmod_studio.hpp"
+#include "Misc/Paths.h"
 #include "UObject/Package.h"
 
 #if WITH_EDITOR
@@ -35,7 +36,7 @@ void FFMODAssetTable::Create()
     // Create a sandbox system purely for loading and considering banks
     verifyfmod(FMOD::Studio::System::create(&StudioSystem));
     FMOD::System *lowLevelSystem = nullptr;
-    verifyfmod(StudioSystem->getLowLevelSystem(&lowLevelSystem));
+    verifyfmod(StudioSystem->getCoreSystem(&lowLevelSystem));
     verifyfmod(lowLevelSystem->setOutput(FMOD_OUTPUTTYPE_NOSOUND));
     AttachFMODFileSystem(lowLevelSystem, 2048);
     verifyfmod(
@@ -51,9 +52,9 @@ void FFMODAssetTable::Destroy()
     StudioSystem = nullptr;
 }
 
-UFMODAsset *FFMODAssetTable::FindByName(const FString &Name)
+UFMODAsset *FFMODAssetTable::FindByName(const FString &Name) const
 {
-    TWeakObjectPtr<UFMODAsset> *FoundAsset = FullNameLookup.Find(Name);
+    const TWeakObjectPtr<UFMODAsset> *FoundAsset = FullNameLookup.Find(Name);
     if (FoundAsset)
     {
         return FoundAsset->Get();
@@ -68,51 +69,56 @@ void FFMODAssetTable::Refresh()
         return;
     }
 
-    const UFMODSettings &Settings = *GetDefault<UFMODSettings>();
-    FString StringPath = Settings.GetMasterStringsBankPath();
+    BuildBankPathLookup();
 
-    UE_LOG(LogFMOD, Log, TEXT("Loading strings bank: %s"), *StringPath);
-
-    FMOD::Studio::Bank *StudioStringBank;
-    FMOD_RESULT StringResult = StudioSystem->loadBankFile(TCHAR_TO_UTF8(*StringPath), FMOD_STUDIO_LOAD_BANK_NORMAL, &StudioStringBank);
-    if (StringResult == FMOD_OK)
+    if (!MasterStringsBankPath.IsEmpty())
     {
-        TArray<char> RawBuffer;
-        RawBuffer.SetNum(256); // Initial capacity
+        const UFMODSettings &Settings = *GetDefault<UFMODSettings>();
+        FString StringPath = Settings.GetFullBankPath() / MasterStringsBankPath;
 
-        int Count = 0;
-        verifyfmod(StudioStringBank->getStringCount(&Count));
-        for (int StringIdx = 0; StringIdx < Count; ++StringIdx)
+        UE_LOG(LogFMOD, Log, TEXT("Loading strings bank: %s"), *StringPath);
+
+        FMOD::Studio::Bank *StudioStringBank;
+        FMOD_RESULT StringResult = StudioSystem->loadBankFile(TCHAR_TO_UTF8(*StringPath), FMOD_STUDIO_LOAD_BANK_NORMAL, &StudioStringBank);
+        if (StringResult == FMOD_OK)
         {
-            FMOD_RESULT Result;
-            FMOD::Studio::ID Guid = { 0 };
-            while (true)
+            TArray<char> RawBuffer;
+            RawBuffer.SetNum(256); // Initial capacity
+
+            int Count = 0;
+            verifyfmod(StudioStringBank->getStringCount(&Count));
+            for (int StringIdx = 0; StringIdx < Count; ++StringIdx)
             {
-                int ActualSize = 0;
-                Result = StudioStringBank->getStringInfo(StringIdx, &Guid, RawBuffer.GetData(), RawBuffer.Num(), &ActualSize);
-                if (Result == FMOD_ERR_TRUNCATED)
+                FMOD_RESULT Result;
+                FMOD::Studio::ID Guid = { 0 };
+                while (true)
                 {
-                    RawBuffer.SetNum(ActualSize);
+                    int ActualSize = 0;
+                    Result = StudioStringBank->getStringInfo(StringIdx, &Guid, RawBuffer.GetData(), RawBuffer.Num(), &ActualSize);
+                    if (Result == FMOD_ERR_TRUNCATED)
+                    {
+                        RawBuffer.SetNum(ActualSize);
+                    }
+                    else
+                    {
+                        break;
+                    }
                 }
-                else
+                verifyfmod(Result);
+                FString AssetName(UTF8_TO_TCHAR(RawBuffer.GetData()));
+                FGuid AssetGuid = FMODUtils::ConvertGuid(Guid);
+                if (!AssetName.IsEmpty())
                 {
-                    break;
+                    AddAsset(AssetGuid, AssetName);
                 }
             }
-            verifyfmod(Result);
-            FString AssetName(UTF8_TO_TCHAR(RawBuffer.GetData()));
-            FGuid AssetGuid = FMODUtils::ConvertGuid(Guid);
-            if (!AssetName.IsEmpty())
-            {
-                AddAsset(AssetGuid, AssetName);
-            }
+            verifyfmod(StudioStringBank->unload());
+            verifyfmod(StudioSystem->update());
         }
-        verifyfmod(StudioStringBank->unload());
-        verifyfmod(StudioSystem->update());
-    }
-    else
-    {
-        UE_LOG(LogFMOD, Warning, TEXT("Failed to load strings bank: %s"), *StringPath);
+        else
+        {
+            UE_LOG(LogFMOD, Warning, TEXT("Failed to load strings bank: %s"), *StringPath);
+        }
     }
 }
 
@@ -155,6 +161,10 @@ void FFMODAssetTable::AddAsset(const FGuid &AssetGuid, const FString &AssetFullN
     {
         FormattedAssetType = TEXT("VCAs");
         AssetClass = UFMODVCA::StaticClass();
+    }
+    else if (AssetType.Equals(TEXT("parameter")))
+    {
+        return;
     }
     else
     {
@@ -202,7 +212,7 @@ void FFMODAssetTable::AddAsset(const FGuid &AssetGuid, const FString &AssetFullN
     {
         UE_LOG(LogFMOD, Log, TEXT("Constructing asset: %s"), *AssetPackagePath);
 
-        UPackage *NewPackage = CreatePackage(NULL, *AssetPackagePath);
+        UPackage *NewPackage = CreatePackage(nullptr, *AssetPackagePath);
         if (IsValid(NewPackage))
         {
             if (!GEventDrivenLoaderEnabled)
@@ -234,7 +244,7 @@ void FFMODAssetTable::AddAsset(const FGuid &AssetGuid, const FString &AssetFullN
 
             FString ReverbAssetPackagePath = ReverbFolderPath + TEXT("/") + AssetShortName;
 
-            UPackage *ReverbPackage = CreatePackage(NULL, *ReverbAssetPackagePath);
+            UPackage *ReverbPackage = CreatePackage(nullptr, *ReverbAssetPackagePath);
             if (ReverbPackage)
             {
                 if (!GEventDrivenLoaderEnabled)
@@ -273,4 +283,94 @@ void FFMODAssetTable::AddAsset(const FGuid &AssetGuid, const FString &AssetFullN
     ExistingNameAsset = AssetNameObject;
     ExistingGuidAsset = AssetNameObject;
     ExistingFullNameLookupAsset = AssetNameObject;
+}
+
+FString FFMODAssetTable::GetBankPath(const UFMODBank &Bank) const
+{
+    FString BankPath = "";
+    const FString* File = BankPathLookup.Find(Bank.AssetGuid);
+
+    if (File)
+    {
+        BankPath = *File;
+    }
+    else
+    {
+        UE_LOG(LogFMOD, Warning, TEXT("Could not find disk file for bank %s"), *Bank.FileName);
+    }
+
+    return BankPath;
+}
+
+FString FFMODAssetTable::GetMasterBankPath() const
+{
+    return MasterBankPath;
+}
+
+FString FFMODAssetTable::GetMasterStringsBankPath() const
+{
+    return MasterStringsBankPath;
+}
+
+FString FFMODAssetTable::GetMasterAssetsBankPath() const
+{
+    return MasterAssetsBankPath;
+}
+
+void FFMODAssetTable::BuildBankPathLookup()
+{
+    const UFMODSettings &Settings = *GetDefault<UFMODSettings>();
+
+    TArray<FString> BankPaths;
+    Settings.GetAllBankPaths(BankPaths, true);
+
+    BankPathLookup.Empty(BankPaths.Num());
+    MasterBankPath.Empty();
+    MasterStringsBankPath.Empty();
+    MasterAssetsBankPath.Empty();
+
+    if (BankPaths.Num() == 0)
+    {
+        return;
+    }
+
+    for (FString BankPath : BankPaths)
+    {
+        FMOD::Studio::Bank *Bank;
+        FMOD_RESULT result = StudioSystem->loadBankFile(TCHAR_TO_UTF8(*BankPath), FMOD_STUDIO_LOAD_BANK_NORMAL, &Bank);
+        FMOD_GUID GUID;
+
+        if (result == FMOD_OK)
+        {
+            result = Bank->getID(&GUID);
+            Bank->unload();
+        }
+
+        if (result == FMOD_OK)
+        {
+            FString CurFilename = FPaths::GetCleanFilename(BankPath);
+            BankPath = BankPath.RightChop(Settings.GetFullBankPath().Len() + 1);
+            BankPathLookup.Add(FMODUtils::ConvertGuid(GUID), BankPath);
+
+            if (MasterBankPath.IsEmpty() && CurFilename == Settings.GetMasterBankFilename())
+            {
+                MasterBankPath = BankPath;
+            }
+            else if (MasterStringsBankPath.IsEmpty() && CurFilename == Settings.GetMasterStringsBankFilename())
+            {
+                MasterStringsBankPath = BankPath;
+            }
+            else if (MasterAssetsBankPath.IsEmpty() && CurFilename == Settings.GetMasterAssetsBankFilename())
+            {
+                MasterAssetsBankPath = BankPath;
+            }
+        }
+
+        if (result != FMOD_OK)
+        {
+            UE_LOG(LogFMOD, Error, TEXT("Failed to register disk file for bank: %s"), *BankPath);
+        }
+    }
+
+    StudioSystem->flushCommands();
 }

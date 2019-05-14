@@ -94,7 +94,7 @@ FReply FFMODAudioComponentDetails::OnPlaySoundClicked()
             {
                 for (auto param : AudioComponent->ParameterCache)
                 {
-                    Instance->setParameterValue(TCHAR_TO_UTF8(*param.Key.ToString()), param.Value);
+                    Instance->setParameterByName(TCHAR_TO_UTF8(*param.Key.ToString()), param.Value);
                 }
                 Instance->start();
             }

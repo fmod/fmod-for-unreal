@@ -1,10 +1,13 @@
-/*
-    fmod_studio.hpp - FMOD Studio API
-    Copyright (c), Firelight Technologies Pty, Ltd. 2018.
-
-    This header defines the C++ API. If you are programming in C use fmod_studio.h.
-*/
-
+/* ======================================================================================== */
+/* FMOD Studio API - C++ header file.                                                       */
+/* Copyright (c), Firelight Technologies Pty, Ltd. 2004-2019.                               */
+/*                                                                                          */
+/* Use this header in conjunction with fmod_studio_common.h (which contains all the         */
+/* constants / callbacks) to develop using the C++ language.                                */
+/*                                                                                          */
+/* For more detail visit:                                                                   */
+/* https://fmod.com/resources/documentation-api?version=2.0&page=page=studio-api.html       */
+/* ======================================================================================== */
 #ifndef FMOD_STUDIO_HPP
 #define FMOD_STUDIO_HPP
 
@@ -23,7 +26,6 @@ namespace Studio
     class System;
     class EventDescription;
     class EventInstance;
-    class ParameterInstance;
     class Bus;
     class VCA;
     class Bank;
@@ -54,7 +56,7 @@ namespace Studio
         FMOD_RESULT F_API flushSampleLoading();
 
         // Low-level API access
-        FMOD_RESULT F_API getLowLevelSystem(FMOD::System **system) const;
+        FMOD_RESULT F_API getCoreSystem(FMOD::System **system) const;
 
         // Asset retrieval
         FMOD_RESULT F_API getEvent(const char *path, EventDescription **event) const;
@@ -66,6 +68,15 @@ namespace Studio
         FMOD_RESULT F_API getVCAByID(const FMOD_GUID *id, VCA **vca) const;
         FMOD_RESULT F_API getBankByID(const FMOD_GUID *id, Bank **bank) const;
         FMOD_RESULT F_API getSoundInfo(const char *key, FMOD_STUDIO_SOUND_INFO *info) const;
+        FMOD_RESULT F_API getParameterDescriptionByName(const char *name, FMOD_STUDIO_PARAMETER_DESCRIPTION *parameter) const;
+        FMOD_RESULT F_API getParameterDescriptionByID(FMOD_STUDIO_PARAMETER_ID id, FMOD_STUDIO_PARAMETER_DESCRIPTION *parameter) const;
+
+        // Global parameter control
+        FMOD_RESULT F_API getParameterByID(FMOD_STUDIO_PARAMETER_ID id, float *value, float *finalvalue = 0) const;
+        FMOD_RESULT F_API setParameterByID(FMOD_STUDIO_PARAMETER_ID id, float value, bool ignoreseekspeed = false);
+        FMOD_RESULT F_API setParametersByIDs(const FMOD_STUDIO_PARAMETER_ID *ids, float *values, int count, bool ignoreseekspeed = false);
+        FMOD_RESULT F_API getParameterByName(const char *name, float *value, float *finalvalue = 0) const;
+        FMOD_RESULT F_API setParameterByName(const char *name, float value, bool ignoreseekspeed = false);
 
         // Path lookup
         FMOD_RESULT F_API lookupID(const char *path, FMOD_GUID *id) const;
@@ -95,11 +106,13 @@ namespace Studio
         // Enumeration
         FMOD_RESULT F_API getBankCount(int *count) const;
         FMOD_RESULT F_API getBankList(Bank **array, int capacity, int *count) const;
+        FMOD_RESULT F_API getParameterDescriptionCount(int *count) const;
+        FMOD_RESULT F_API getParameterDescriptionList(FMOD_STUDIO_PARAMETER_DESCRIPTION *array, int capacity, int *count) const;
 
         // Command capture and replay
         FMOD_RESULT F_API startCommandCapture(const char *filename, FMOD_STUDIO_COMMANDCAPTURE_FLAGS flags);
         FMOD_RESULT F_API stopCommandCapture();
-        FMOD_RESULT F_API loadCommandReplay(const char *filename, FMOD_STUDIO_COMMANDREPLAY_FLAGS flags, CommandReplay **playback);
+        FMOD_RESULT F_API loadCommandReplay(const char *filename, FMOD_STUDIO_COMMANDREPLAY_FLAGS flags, CommandReplay **replay);
 
         // Callbacks
         FMOD_RESULT F_API setCallback(FMOD_STUDIO_SYSTEM_CALLBACK callback, FMOD_STUDIO_SYSTEM_CALLBACK_TYPE callbackmask = FMOD_STUDIO_SYSTEM_CALLBACK_ALL);
@@ -122,9 +135,10 @@ namespace Studio
         // Property access
         FMOD_RESULT F_API getID(FMOD_GUID *id) const;
         FMOD_RESULT F_API getPath(char *path, int size, int *retrieved) const;
-        FMOD_RESULT F_API getParameterCount(int *count) const;
-        FMOD_RESULT F_API getParameterByIndex(int index, FMOD_STUDIO_PARAMETER_DESCRIPTION *parameter) const;
-        FMOD_RESULT F_API getParameter(const char *name, FMOD_STUDIO_PARAMETER_DESCRIPTION *parameter) const;
+        FMOD_RESULT F_API getParameterDescriptionCount(int *count) const;
+        FMOD_RESULT F_API getParameterDescriptionByIndex(int index, FMOD_STUDIO_PARAMETER_DESCRIPTION *parameter) const;
+        FMOD_RESULT F_API getParameterDescriptionByName(const char *name, FMOD_STUDIO_PARAMETER_DESCRIPTION *parameter) const;
+        FMOD_RESULT F_API getParameterDescriptionByID(FMOD_STUDIO_PARAMETER_ID id, FMOD_STUDIO_PARAMETER_DESCRIPTION *parameter) const;
         FMOD_RESULT F_API getUserPropertyCount(int *count) const;
         FMOD_RESULT F_API getUserPropertyByIndex(int index, FMOD_STUDIO_USER_PROPERTY *property) const;
         FMOD_RESULT F_API getUserProperty(const char *name, FMOD_STUDIO_USER_PROPERTY *property) const;
@@ -135,7 +149,7 @@ namespace Studio
 
         FMOD_RESULT F_API isSnapshot(bool *snapshot) const;
         FMOD_RESULT F_API isOneshot(bool *oneshot) const;
-        FMOD_RESULT F_API isStream(bool *stream) const;
+        FMOD_RESULT F_API isStream(bool *isStream) const;
         FMOD_RESULT F_API is3D(bool *is3d) const;
         FMOD_RESULT F_API hasCue(bool *cue) const;
 
@@ -206,19 +220,14 @@ namespace Studio
 
         FMOD_RESULT F_API release();
 
-        FMOD_RESULT F_API isVirtual(bool *virtualState) const;
+        FMOD_RESULT F_API isVirtual(bool *virtualstate) const;
 
-        FMOD_RESULT F_API getParameterValue(const char *name, float *value, float *finalvalue = 0);
-        FMOD_RESULT F_API setParameterValue(const char *name, float value);
+        FMOD_RESULT F_API getParameterByID(FMOD_STUDIO_PARAMETER_ID id, float *value, float *finalvalue = 0) const;
+        FMOD_RESULT F_API setParameterByID(FMOD_STUDIO_PARAMETER_ID id, float value, bool ignoreseekspeed = false);
+        FMOD_RESULT F_API setParametersByIDs(const FMOD_STUDIO_PARAMETER_ID *ids, float *values, int count, bool ignoreseekspeed = false);
 
-        FMOD_RESULT F_API getParameterValueByIndex(int index, float *value, float *finalvalue = 0);
-        FMOD_RESULT F_API setParameterValueByIndex(int index, float value);
-        FMOD_RESULT F_API setParameterValuesByIndices(int *indices, float *values, int count);
-
-        // Deprecated - please use getParameterValue, setParameterValue, getParameterValueByIndex and setParameterValueByIndex instead
-        FMOD_RESULT F_API getParameter(const char *name, ParameterInstance **parameter) const;
-        FMOD_RESULT F_API getParameterByIndex(int index, ParameterInstance **parameter) const;
-        FMOD_RESULT F_API getParameterCount(int *count) const;
+        FMOD_RESULT F_API getParameterByName(const char *name, float *value, float *finalvalue = 0) const;
+        FMOD_RESULT F_API setParameterByName(const char *name, float value, bool ignoreseekspeed = false);
 
         FMOD_RESULT F_API triggerCue();
 
@@ -226,26 +235,6 @@ namespace Studio
         FMOD_RESULT F_API setCallback(FMOD_STUDIO_EVENT_CALLBACK callback, FMOD_STUDIO_EVENT_CALLBACK_TYPE callbackmask = FMOD_STUDIO_EVENT_CALLBACK_ALL);
         FMOD_RESULT F_API getUserData(void **userdata) const;
         FMOD_RESULT F_API setUserData(void *userdata);
-    };
-
-    // Deprecated
-    class ParameterInstance
-    {
-    private:
-        // Constructor made private so user cannot statically instance the class.
-        ParameterInstance();
-        ParameterInstance(const ParameterInstance &);
-
-    public:
-        // Handle validity
-        bool F_API isValid() const;
-
-        // Property access
-        FMOD_RESULT F_API getDescription(FMOD_STUDIO_PARAMETER_DESCRIPTION *description) const;
-
-        // Playback control
-        FMOD_RESULT F_API getValue(float *value) const;
-        FMOD_RESULT F_API setValue(float value);
     };
 
     class Bus
@@ -278,7 +267,7 @@ namespace Studio
         // Low-level API access
         FMOD_RESULT F_API lockChannelGroup();
         FMOD_RESULT F_API unlockChannelGroup();
-        FMOD_RESULT F_API getChannelGroup(FMOD::ChannelGroup **channelgroup) const;
+        FMOD_RESULT F_API getChannelGroup(FMOD::ChannelGroup **group) const;
     };
 
     class VCA

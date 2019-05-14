@@ -205,9 +205,9 @@ public:
     /** Show FMOD version */
     void ShowVersion();
     /** Open CHM */
-    void OpenCHM();
+    void OpenIntegrationDocs();
     /** Open web page to online docs */
-    void OpenOnlineDocs();
+    void OpenAPIDocs();
     /** Open Video tutorials page */
     void OpenVideoTutorials();
     /** Set Studio build path */
@@ -349,13 +349,13 @@ void FFMODStudioEditorModule::AddHelpMenuExtension(FMenuBuilder &MenuBuilder)
     MenuBuilder.AddMenuEntry(LOCTEXT("FMODHelpCHMTitle", "FMOD Documentation..."),
         LOCTEXT("FMODHelpCHMToolTip", "Opens the local FMOD documentation."),
         FSlateIcon(FEditorStyle::GetStyleSetName(), "LevelEditor.BrowseAPIReference"),
-        FUIAction(FExecuteAction::CreateRaw(this, &FFMODStudioEditorModule::OpenCHM)));
+        FUIAction(FExecuteAction::CreateRaw(this, &FFMODStudioEditorModule::OpenIntegrationDocs)));
 #endif
 
     MenuBuilder.AddMenuEntry(LOCTEXT("FMODHelpOnlineTitle", "FMOD Online Documentation..."),
         LOCTEXT("FMODHelpOnlineToolTip", "Go to the online FMOD documentation."),
         FSlateIcon(FEditorStyle::GetStyleSetName(), "LevelEditor.BrowseDocumentation"),
-        FUIAction(FExecuteAction::CreateRaw(this, &FFMODStudioEditorModule::OpenOnlineDocs)));
+        FUIAction(FExecuteAction::CreateRaw(this, &FFMODStudioEditorModule::OpenAPIDocs)));
 
     MenuBuilder.AddMenuEntry(LOCTEXT("FMODHelpVideosTitle", "FMOD Tutorial Videos..."),
         LOCTEXT("FMODHelpVideosToolTip", "Go to the online FMOD tutorial videos."),
@@ -378,17 +378,7 @@ void FFMODStudioEditorModule::AddFileMenuExtension(FMenuBuilder &MenuBuilder)
     MenuBuilder.EndSection();
 }
 
-int DLLVersionToInt(unsigned int FullVersion, unsigned int offset)
-{
-    return (((((FullVersion) >> ((offset) + 0)) & 0xF) * 1) + ((((FullVersion) >> ((offset) + 4)) & 0xF) * 10));
-}
-void VersionToArray(unsigned int FullVersion, unsigned int *outVersion)
-{
-    outVersion[0] = DLLVersionToInt(FullVersion, 16);
-    outVersion[1] = DLLVersionToInt(FullVersion, 8);
-    outVersion[2] = DLLVersionToInt(FullVersion, 0);
-}
-void GetDLLVersion(unsigned int *outVersion)
+unsigned int GetDLLVersion()
 {
     // Just grab it from the audition context which is always valid
     unsigned int DLLVersion = 0;
@@ -396,50 +386,65 @@ void GetDLLVersion(unsigned int *outVersion)
     if (StudioSystem)
     {
         FMOD::System *LowLevelSystem = nullptr;
-        if (StudioSystem->getLowLevelSystem(&LowLevelSystem) == FMOD_OK)
+        if (StudioSystem->getCoreSystem(&LowLevelSystem) == FMOD_OK)
         {
             LowLevelSystem->getVersion(&DLLVersion);
         }
     }
-    return VersionToArray(DLLVersion, outVersion);
+    return DLLVersion;
 }
-FString VersionToString(unsigned int *FullVersion)
+
+FString VersionToString(unsigned int Version)
 {
-    return FString::Printf(TEXT("%d.%02d.%02d"), FullVersion[0], FullVersion[1], FullVersion[2]);
+    unsigned int ProductVersion = (Version & 0xffff0000) >> 16;
+    unsigned int MajorVersion = (Version & 0x0000ff00) >> 8;
+    unsigned int MinorVersion = (Version & 0x000000ff);
+    return FString::Printf(TEXT("%d.%02d.%02d"), ProductVersion, MajorVersion, MinorVersion);
+}
+
+unsigned int MakeVersion(unsigned int ProductVersion, unsigned int MajorVersion, unsigned int MinorVersion)
+{
+    return ((ProductVersion & 0xffff) << 16) | ((MajorVersion & 0xff) << 8) | (MinorVersion & 0xff);
+}
+
+unsigned int VersionFromString(FString Version)
+{
+    unsigned int ProductVersion = 0;
+    unsigned int MajorVersion = 0;
+    unsigned int MinorVersion = 0;
+    TArray<FString> VersionFields;
+
+    if (Version.ParseIntoArray(VersionFields, TEXT(".")) == 3)
+    {
+        ProductVersion = FCString::Atoi(*VersionFields[0]);
+        MajorVersion = FCString::Atoi(*VersionFields[1]);
+        MinorVersion = FCString::Atoi(*VersionFields[2]);
+    }
+
+    return MakeVersion(ProductVersion, MajorVersion, MinorVersion);
 }
 
 void FFMODStudioEditorModule::ShowVersion()
 {
-    unsigned int HeaderVersion[3];
-    unsigned int DLLVersion[3];
-    VersionToArray(FMOD_VERSION, HeaderVersion);
-    GetDLLVersion(DLLVersion);
+    FString HeaderVersion = VersionToString(FMOD_VERSION);
+    FString DLLVersion = VersionToString(GetDLLVersion());
 
     FText VersionMessage = FText::Format(LOCTEXT("FMODStudio_About",
                                              "FMOD Studio\n\nBuilt Version: {0}\nDLL Version: {1}\n\nCopyright \u00A9 Firelight Technologies Pty "
                                              "Ltd.\n\nSee LICENSE.TXT for additional license information."),
-        FText::FromString(VersionToString(HeaderVersion)), FText::FromString(VersionToString(DLLVersion)));
+        FText::FromString(HeaderVersion), FText::FromString(DLLVersion));
+
     FMessageDialog::Open(EAppMsgType::Ok, VersionMessage);
 }
 
-void FFMODStudioEditorModule::OpenCHM()
+void FFMODStudioEditorModule::OpenIntegrationDocs()
 {
-    FString APIPath = FPaths::Combine(*FPaths::EngineDir(), TEXT("Plugins/FMODStudio/Docs/FMOD UE4 Integration.chm"));
-    if (IFileManager::Get().FileSize(*APIPath) != INDEX_NONE)
-    {
-        FString AbsoluteAPIPath = IFileManager::Get().ConvertToAbsolutePathForExternalAppForRead(*APIPath);
-        FPlatformProcess::LaunchFileInDefaultExternalApplication(*AbsoluteAPIPath);
-    }
-    else
-    {
-        FMessageDialog::Open(EAppMsgType::Ok,
-            NSLOCTEXT("Documentation", "CannotFindFMODIntegration", "Cannot open FMOD Studio Integration CHM reference; help file not found."));
-    }
+    FPlatformProcess::LaunchFileInDefaultExternalApplication(TEXT("https://fmod.com/resources/documentation-ue4"));
 }
 
-void FFMODStudioEditorModule::OpenOnlineDocs()
+void FFMODStudioEditorModule::OpenAPIDocs()
 {
-    FPlatformProcess::LaunchFileInDefaultExternalApplication(TEXT("http://www.fmod.org/documentation"));
+    FPlatformProcess::LaunchFileInDefaultExternalApplication(TEXT("https://fmod.com/resources/documentation-api"));
 }
 
 void FFMODStudioEditorModule::OpenVideoTutorials()
@@ -450,9 +455,9 @@ void FFMODStudioEditorModule::OpenVideoTutorials()
 void FFMODStudioEditorModule::ValidateFMOD()
 {
     int ProblemsFound = 0;
-
     FFMODStudioLink StudioLink;
     bool Connected = StudioLink.Connect();
+
     if (!Connected)
     {
         if (EAppReturnType::No ==
@@ -463,33 +468,29 @@ void FFMODStudioEditorModule::ValidateFMOD()
             return;
         }
     }
-    unsigned int HeaderVersion[3];
-    unsigned int DLLVersion[3];
-    VersionToArray(FMOD_VERSION, HeaderVersion);
-    GetDLLVersion(DLLVersion);
-    unsigned int StudioVersion[3];
+
+    unsigned int HeaderVersion = FMOD_VERSION;
+    unsigned int DLLVersion = GetDLLVersion();
+    unsigned int StudioVersion = 0;
+
     if (Connected)
     {
         FString StudioVersionString;
+
         if (StudioLink.Execute(TEXT("studio.version"), StudioVersionString))
         {
             // We expect something like "Version xx.yy.zz, 32/64, Some build number"
             UE_LOG(LogFMOD, Log, TEXT("Received studio version: %s"), *StudioVersionString);
             TArray<FString> VersionParts;
+
             if (StudioVersionString.StartsWith(TEXT("Version ")) && StudioVersionString.ParseIntoArray(VersionParts, TEXT(",")) >= 1)
             {
-                TArray<FString> VersionFields;
-                VersionParts[0].RightChop(8).ParseIntoArray(VersionFields, TEXT("."));
-                if (VersionFields.Num() == 3)
-                {
-                    StudioVersion[0] = FCString::Atoi(*VersionFields[0]);
-                    StudioVersion[1] = FCString::Atoi(*VersionFields[1]);
-                    StudioVersion[2] = FCString::Atoi(*VersionFields[2]);
-                }
+                StudioVersion = VersionFromString(VersionParts[0].RightChop(8));
             }
         }
     }
-    if (HeaderVersion[0] != DLLVersion[0] || HeaderVersion[1] != DLLVersion[1])
+
+    if (HeaderVersion != DLLVersion)
     {
         FText VersionMessage = FText::Format(LOCTEXT("SetStudioBuildStudio_Status",
                                                  "The FMOD DLL version is different to the version the integration was built against.  This may "
@@ -498,7 +499,8 @@ void FFMODStudioEditorModule::ValidateFMOD()
         FMessageDialog::Open(EAppMsgType::Ok, VersionMessage);
         ProblemsFound++;
     }
-    if (StudioVersion[0] != DLLVersion[0] || StudioVersion[1] != DLLVersion[1])
+
+    if (StudioVersion != DLLVersion)
     {
         FText VersionMessage =
             FText::Format(LOCTEXT("SetStudioBuildStudio_Version",
@@ -507,19 +509,23 @@ void FFMODStudioEditorModule::ValidateFMOD()
                               "using the Studio tool that matches the integration.\n\nDo you want to continue with the validation?"),
                 FText::FromString(VersionToString(HeaderVersion)), FText::FromString(VersionToString(DLLVersion)),
                 FText::FromString(VersionToString(StudioVersion)));
+
         if (EAppReturnType::No == FMessageDialog::Open(EAppMsgType::YesNo, VersionMessage))
         {
             return;
         }
+
         ProblemsFound++;
     }
 
     const UFMODSettings &Settings = *GetDefault<UFMODSettings>();
     FString FullBankPath = Settings.BankOutputDirectory.Path;
+
     if (FPaths::IsRelative(FullBankPath))
     {
         FullBankPath = FPaths::ProjectContentDir() / FullBankPath;
     }
+
     FString PlatformBankPath = Settings.GetFullBankPath();
     FullBankPath = FPaths::ConvertRelativePathToFull(FullBankPath);
     PlatformBankPath = FPaths::ConvertRelativePathToFull(PlatformBankPath);
@@ -529,9 +535,11 @@ void FFMODStudioEditorModule::ValidateFMOD()
         // File path was added in FMOD Studio 1.07.00
         FString StudioProjectPath;
         FString StudioProjectDir;
-        if (StudioVersion[0] >= 1 && StudioVersion[1] >= 7)
+
+        if (StudioVersion >= MakeVersion(1, 7, 0))
         {
             StudioLink.Execute(TEXT("studio.project.filePath"), StudioProjectPath);
+
             if (StudioProjectPath.IsEmpty() || StudioProjectPath == TEXT("undefined"))
             {
                 FMessageDialog::Open(EAppMsgType::Ok,
@@ -541,7 +549,9 @@ void FFMODStudioEditorModule::ValidateFMOD()
                 FString Result;
                 StudioLink.Execute(TEXT("studio.project.save()"), Result);
             }
+
             StudioLink.Execute(TEXT("studio.project.filePath"), StudioProjectPath);
+
             if (StudioProjectPath != TEXT("undefined"))
             {
                 StudioProjectDir = FPaths::GetPath(StudioProjectPath);
@@ -550,6 +560,7 @@ void FFMODStudioEditorModule::ValidateFMOD()
 
         FString StudioPathString;
         StudioLink.Execute(TEXT("studio.project.workspace.builtBanksOutputDirectory"), StudioPathString);
+
         if (StudioPathString == TEXT("undefined"))
         {
             StudioPathString = TEXT("");
@@ -560,19 +571,22 @@ void FFMODStudioEditorModule::ValidateFMOD()
         FPaths::NormalizeDirectoryName(CanonicalBankPath);
         FPaths::RemoveDuplicateSlashes(CanonicalBankPath);
         FPaths::NormalizeDirectoryName(CanonicalBankPath);
-
         FString CanonicalStudioPath = StudioPathString;
+
         if (FPaths::IsRelative(CanonicalStudioPath) && !StudioProjectDir.IsEmpty() && !StudioPathString.IsEmpty())
         {
             CanonicalStudioPath = FPaths::Combine(*StudioProjectDir, *CanonicalStudioPath);
         }
+
         FPaths::CollapseRelativeDirectories(CanonicalStudioPath);
         FPaths::NormalizeDirectoryName(CanonicalStudioPath);
         FPaths::RemoveDuplicateSlashes(CanonicalStudioPath);
         FPaths::NormalizeDirectoryName(CanonicalStudioPath);
+
         if (!FPaths::IsSamePath(CanonicalBankPath, CanonicalStudioPath))
         {
             FString BankPathToSet = FullBankPath;
+
             // Extra logic - if we have put the studio project inside the game project, then make it relative
             if (!StudioProjectDir.IsEmpty())
             {
@@ -585,23 +599,27 @@ void FFMODStudioEditorModule::ValidateFMOD()
                     FPaths::MakePathRelativeTo(BankPathToSet, *(StudioProjectDir + TEXT("/")));
                 }
             }
+
             ProblemsFound++;
 
             FText AskMessage = FText::Format(LOCTEXT("SetStudioBuildStudio_Ask",
                                                  "FMOD Studio build path should be set up.\n\nCurrent Studio build path: {0}\nNew build path: "
                                                  "{1}\n\nDo you want to fix up the project now?"),
                 FText::FromString(StudioPathString), FText::FromString(BankPathToSet));
+
             if (EAppReturnType::Yes == FMessageDialog::Open(EAppMsgType::YesNo, AskMessage))
             {
                 FString Result;
                 StudioLink.Execute(*FString::Printf(TEXT("studio.project.workspace.builtBanksOutputDirectory = \"%s\";"), *BankPathToSet), Result);
                 StudioLink.Execute(TEXT("studio.project.workspace.builtBanksOutputDirectory"), Result);
+
                 if (Result != BankPathToSet)
                 {
                     FMessageDialog::Open(EAppMsgType::Ok,
                         LOCTEXT("SetStudioBuildStudio_Save",
                             "Failed to set bank directory.  Please go to FMOD Studio, and set the bank path in FMOD Studio project settings."));
                 }
+
                 FMessageDialog::Open(
                     EAppMsgType::Ok, LOCTEXT("SetStudioBuildStudio_Save", "Please go to FMOD Studio, save your project and build banks."));
                 // Just try to do it again anyway
@@ -612,7 +630,9 @@ void FFMODStudioEditorModule::ValidateFMOD()
             }
         }
     }
+
     bool bAnyBankFiles = false;
+
     // Check bank path
     if (!FPaths::DirectoryExists(FullBankPath) || !FPaths::DirectoryExists(PlatformBankPath))
     {
@@ -627,6 +647,7 @@ void FFMODStudioEditorModule::ValidateFMOD()
     {
         TArray<FString> BankFiles;
         Settings.GetAllBankPaths(BankFiles, true);
+
         if (BankFiles.Num() != 0)
         {
             bAnyBankFiles = true;
@@ -642,6 +663,7 @@ void FFMODStudioEditorModule::ValidateFMOD()
             ProblemsFound++;
         }
     }
+
     // Look for banks that may have failed to load
     if (bAnyBankFiles)
     {
@@ -649,15 +671,19 @@ void FFMODStudioEditorModule::ValidateFMOD()
         int BankCount = 0;
         StudioSystem->getBankCount(&BankCount);
         TArray<FString> FailedBanks = IFMODStudioModule::Get().GetFailedBankLoads(EFMODSystemContext::Auditioning);
+
         if (BankCount == 0 || FailedBanks.Num() != 0)
         {
             FString CombinedBanks;
+
             for (auto Bank : FailedBanks)
             {
                 CombinedBanks += Bank;
                 CombinedBanks += TEXT("\n");
             }
+
             FText BankLoadMessage;
+
             if (BankCount == 0 && FailedBanks.Num() == 0)
             {
                 BankLoadMessage = LOCTEXT("SetStudioBuildStudio_BankLoad", "Failed to load banks\n");
@@ -672,6 +698,7 @@ void FFMODStudioEditorModule::ValidateFMOD()
                 BankLoadMessage =
                     FText::Format(LOCTEXT("SetStudioBuildStudio_BankLoad", "Some banks failed to load:\n{0}\n"), FText::FromString(CombinedBanks));
             }
+
             FMessageDialog::Open(EAppMsgType::Ok, BankLoadMessage);
             ProblemsFound++;
         }
@@ -681,12 +708,14 @@ void FFMODStudioEditorModule::ValidateFMOD()
             TArray<FMOD::Studio::Bank *> Banks;
             Banks.SetNum(BankCount);
             StudioSystem->getBankList(Banks.GetData(), BankCount, &BankCount);
+
             for (FMOD::Studio::Bank *Bank : Banks)
             {
                 int EventCount = 0;
                 Bank->getEventCount(&EventCount);
                 TotalEventCount += EventCount;
             }
+
             if (TotalEventCount == 0)
             {
                 FMessageDialog::Open(EAppMsgType::Ok,
@@ -696,16 +725,20 @@ void FFMODStudioEditorModule::ValidateFMOD()
             }
         }
     }
+
     // Look for required plugins that have not been registered
     TArray<FString> RequiredPlugins = IFMODStudioModule::Get().GetRequiredPlugins();
+
     if (RequiredPlugins.Num() != 0 && Settings.PluginFiles.Num() == 0)
     {
         FString CombinedPlugins;
+
         for (auto Name : RequiredPlugins)
         {
             CombinedPlugins += Name;
             CombinedPlugins += TEXT("\n");
         }
+
         FText PluginMessage =
             FText::Format(LOCTEXT("SetStudioBuildStudio_Plugins",
                               "The banks require the following plugins, but no plugin filenames are listed in the settings:\n{0}\n"),
@@ -713,9 +746,11 @@ void FFMODStudioEditorModule::ValidateFMOD()
         FMessageDialog::Open(EAppMsgType::Ok, PluginMessage);
         ProblemsFound++;
     }
+
     // Look for FMOD in packaging settings
     UProjectPackagingSettings *PackagingSettings = Cast<UProjectPackagingSettings>(UProjectPackagingSettings::StaticClass()->GetDefaultObject());
     bool bPackagingFound = false;
+
     for (int i = 0; i < PackagingSettings->DirectoriesToAlwaysStageAsUFS.Num(); ++i)
     {
         // We allow subdirectory references, such as "FMOD/Mobile"
@@ -725,6 +760,7 @@ void FFMODStudioEditorModule::ValidateFMOD()
             break;
         }
     }
+
     if (!bPackagingFound)
     {
         ProblemsFound++;
@@ -737,6 +773,7 @@ void FFMODStudioEditorModule::ValidateFMOD()
             PackagingSettings->UpdateDefaultConfigFile();
         }
     }
+
     // Summary
     if (ProblemsFound)
     {

@@ -17,7 +17,6 @@
 #include "Misc/App.h"
 #include "Misc/CommandLine.h"
 #include "Misc/CoreDelegates.h"
-//#include "Engine/Engine.h"
 #include "Engine/GameViewportClient.h"
 #include "GameFramework/PlayerController.h"
 #include "Containers/Ticker.h"
@@ -221,6 +220,7 @@ public:
 
     virtual UFMODAsset *FindAssetByName(const FString &Name) override;
     virtual UFMODEvent *FindEventByName(const FString &Name) override;
+    virtual FString GetBankPath(const UFMODBank &Bank) override;
 
     FSimpleMulticastDelegate BanksReloadedDelegate;
     virtual FSimpleMulticastDelegate &BanksReloadedEvent() override { return BanksReloadedDelegate; }
@@ -339,7 +339,7 @@ bool FFMODStudioModule::LoadPlugin(EFMODSystemContext::Type Context, const TCHAR
     };
 
     FMOD::System *LowLevelSystem = nullptr;
-    verifyfmod(StudioSystem[Context]->getLowLevelSystem(&LowLevelSystem));
+    verifyfmod(StudioSystem[Context]->getCoreSystem(&LowLevelSystem));
 
     FMOD_RESULT PluginLoadResult;
 
@@ -438,12 +438,6 @@ bool FFMODStudioModule::LoadLibraries()
     FString ConfigName = TEXT("");
 #else
 #error FMODSTUDIO_LINK not defined
-#endif
-
-#if PLATFORM_WINDOWS && PLATFORM_64BITS
-    ConfigName += TEXT("64");
-#elif defined(PLATFORM_UWP) && PLATFORM_UWP
-    ConfigName += TEXT("_X64");
 #endif
 
     FString LowLevelName = FString(TEXT("fmod")) + ConfigName;
@@ -575,7 +569,7 @@ void FFMODStudioModule::CreateStudioSystem(EFMODSystemContext::Type Type)
 
     verifyfmod(FMOD::Studio::System::create(&StudioSystem[Type]));
     FMOD::System *lowLevelSystem = nullptr;
-    verifyfmod(StudioSystem[Type]->getLowLevelSystem(&lowLevelSystem));
+    verifyfmod(StudioSystem[Type]->getCoreSystem(&lowLevelSystem));
 
     int DriverIndex = 0;
     if (!Settings.InitialOutputDriverName.IsEmpty())
@@ -661,6 +655,12 @@ void FFMODStudioModule::CreateStudioSystem(EFMODSystemContext::Type Type)
     FMOD_STUDIO_ADVANCEDSETTINGS advStudioSettings = { 0 };
     advStudioSettings.cbsize = sizeof(advStudioSettings);
     advStudioSettings.studioupdateperiod = Settings.StudioUpdatePeriod;
+
+	if (!Settings.EncryptionKey.IsEmpty())
+	{
+		advStudioSettings.encryptionkey = TCHAR_TO_UTF8(*Settings.EncryptionKey);
+	}
+
     verifyfmod(StudioSystem[Type]->setAdvancedSettings(&advStudioSettings));
 
     verifyfmod(StudioSystem[Type]->initialize(Settings.TotalChannelCount, StudioInitFlags, InitFlags, InitData));
@@ -795,7 +795,7 @@ bool FFMODStudioModule::Tick(float DeltaTime)
 
         int channels, realChannels;
         FMOD::System *lowlevel;
-        StudioSystem[EFMODSystemContext::Runtime]->getLowLevelSystem(&lowlevel);
+        StudioSystem[EFMODSystemContext::Runtime]->getCoreSystem(&lowlevel);
         lowlevel->getChannelsPlaying(&channels, &realChannels);
         SET_DWORD_STAT(STAT_FMOD_Real_Channels, realChannels);
         SET_DWORD_STAT(STAT_FMOD_Total_Channels, channels);
@@ -919,7 +919,6 @@ void FFMODStudioModule::SetListenerPosition(int ListenerIndex, UWorld *World, co
         Attributes.up = FMODUtils::ConvertUnitVector(Up);
         Attributes.velocity = FMODUtils::ConvertWorldVector(Listeners[ListenerIndex].Velocity);
 
-#if FMOD_VERSION >= 0x00010600
         // Expand number of listeners dynamically
         if (ListenerIndex >= ListenerCount)
         {
@@ -928,9 +927,6 @@ void FFMODStudioModule::SetListenerPosition(int ListenerIndex, UWorld *World, co
             verifyfmod(System->setNumListeners(ListenerCount));
         }
         verifyfmod(System->setListenerAttributes(ListenerIndex, &Attributes));
-#else
-        verifyfmod(System->setListenerAttributes(&Attributes));
-#endif
 
         bListenerMoved = true;
     }
@@ -947,9 +943,7 @@ void FFMODStudioModule::FinishSetListenerPosition(int NumListeners, float DeltaS
     if (System && NumListeners < ListenerCount)
     {
         ListenerCount = NumListeners;
-#if FMOD_VERSION >= 0x00010600
         verifyfmod(System->setNumListeners(ListenerCount));
-#endif
     }
 
     for (int i = 0; i < ListenerCount; ++i)
@@ -1006,7 +1000,7 @@ void FFMODStudioModule::FinishSetListenerPosition(int NumListeners, float DeltaS
                 EventDesc->createInstance(&NewInstance);
                 if (NewInstance)
                 {
-                    NewInstance->setParameterValue("Intensity", 0.0f);
+                    NewInstance->setParameterByName("Intensity", 0.0f);
                     NewInstance->start();
                 }
             }
@@ -1025,7 +1019,7 @@ void FFMODStudioModule::FinishSetListenerPosition(int NumListeners, float DeltaS
     {
         UE_LOG(LogFMOD, Verbose, TEXT("Ramping intensity (%f,%f) -> %f"), ReverbSnapshots[i].FadeIntensityStart, ReverbSnapshots[i].FadeIntensityEnd,
             ReverbSnapshots[i].CurrentIntensity());
-        ReverbSnapshots[i].Instance->setParameterValue("Intensity", 100.0f * ReverbSnapshots[i].CurrentIntensity());
+        ReverbSnapshots[i].Instance->setParameterByName("Intensity", 100.0f * ReverbSnapshots[i].CurrentIntensity());
 
         if (ReverbSnapshots[i].Snapshot != NewSnapshot)
         {
@@ -1054,7 +1048,7 @@ void FFMODStudioModule::RefreshSettings()
     if (GIsEditor)
     {
         const UFMODSettings &Settings = *GetDefault<UFMODSettings>();
-        BankUpdateNotifier.SetFilePath(Settings.GetMasterStringsBankPath());
+        BankUpdateNotifier.SetFilePath(Settings.GetFullBankPath() / AssetTable.GetMasterStringsBankPath());
     }
 }
 
@@ -1121,6 +1115,19 @@ UFMODEvent *FFMODStudioModule::FindEventByName(const FString &Name)
     return Cast<UFMODEvent>(Asset);
 }
 
+FString FFMODStudioModule::GetBankPath(const UFMODBank &Bank)
+{
+    FString BankPath = AssetTable.GetBankPath(Bank);
+
+    if (!BankPath.IsEmpty())
+    {
+        const UFMODSettings &Settings = *GetDefault<UFMODSettings>();
+        BankPath = Settings.GetFullBankPath() / BankPath;
+    }
+
+    return BankPath;
+}
+
 void FFMODStudioModule::SetSystemPaused(bool paused)
 {
     if (StudioSystem[EFMODSystemContext::Runtime])
@@ -1128,7 +1135,7 @@ void FFMODStudioModule::SetSystemPaused(bool paused)
         if (bMixerPaused != paused)
         {
             FMOD::System *LowLevelSystem = nullptr;
-            verifyfmod(StudioSystem[EFMODSystemContext::Runtime]->getLowLevelSystem(&LowLevelSystem));
+            verifyfmod(StudioSystem[EFMODSystemContext::Runtime]->getCoreSystem(&LowLevelSystem));
 
             // Resume mixer before making calls for Android in particular
             if (!paused)
@@ -1230,28 +1237,36 @@ void FFMODStudioModule::LoadBanks(EFMODSystemContext::Type Type)
         UE_LOG(LogFMOD, Verbose, TEXT("LoadBanks for context %s"), FMODSystemContextNames[Type]);
 
         /*
-			Queue up all banks to load asynchronously then wait at the end.
-		*/
+            Queue up all banks to load asynchronously then wait at the end.
+        */
         bool bLoadAllBanks = ((Type == EFMODSystemContext::Auditioning) || (Type == EFMODSystemContext::Editor) || Settings.bLoadAllBanks);
         bool bLoadSampleData = ((Type == EFMODSystemContext::Runtime) && Settings.bLoadAllSampleData);
         bool bLockAllBuses = ((Type == EFMODSystemContext::Runtime) && Settings.bLockAllBuses);
         FMOD_STUDIO_LOAD_BANK_FLAGS BankFlags = (bLockAllBuses ? FMOD_STUDIO_LOAD_BANK_NORMAL : FMOD_STUDIO_LOAD_BANK_NONBLOCKING);
-
-        // Always load the master bank at startup
-        FString MasterBankPath = Settings.GetMasterBankPath();
-        UE_LOG(LogFMOD, Verbose, TEXT("Loading master bank: %s"), *MasterBankPath);
-
+        FMOD_RESULT Result = FMOD_OK;
         TArray<NamedBankEntry> BankEntries;
 
+        // Always load the master bank at startup
         FMOD::Studio::Bank *MasterBank = nullptr;
-        FMOD_RESULT Result;
-        Result = StudioSystem[Type]->loadBankFile(TCHAR_TO_UTF8(*MasterBankPath), BankFlags, &MasterBank);
-        BankEntries.Add(NamedBankEntry(MasterBankPath, MasterBank, Result));
+
+        if (AssetTable.GetMasterBankPath().IsEmpty())
+        {
+            FString MasterBankFilename = Settings.GetMasterBankFilename();
+            UE_LOG(LogFMOD, Warning, TEXT("Master bank (%s) not found."), *MasterBankFilename);
+            FailedBankLoads[Type].Add(FString::Printf(TEXT("Could not find master bank (%s). Check project settings."), *MasterBankFilename));
+        }
+        else
+        {
+            FString MasterBankPath = Settings.GetFullBankPath() / AssetTable.GetMasterBankPath();
+            UE_LOG(LogFMOD, Verbose, TEXT("Loading master bank: %s"), *MasterBankPath);
+            Result = StudioSystem[Type]->loadBankFile(TCHAR_TO_UTF8(*MasterBankPath), BankFlags, &MasterBank);
+            BankEntries.Add(NamedBankEntry(MasterBankPath, MasterBank, Result));
+        }
 
         if (Result == FMOD_OK)
         {
             FMOD::Studio::Bank *MasterAssetsBank = nullptr;
-            FString MasterAssetsBankPath = Settings.GetMasterAssetsBankPath();
+            FString MasterAssetsBankPath = Settings.GetFullBankPath() / AssetTable.GetMasterAssetsBankPath();
             if (FPaths::FileExists(MasterAssetsBankPath))
             {
                 Result = StudioSystem[Type]->loadBankFile(TCHAR_TO_UTF8(*MasterAssetsBankPath), BankFlags, &MasterAssetsBank);
@@ -1263,8 +1278,9 @@ void FFMODStudioModule::LoadBanks(EFMODSystemContext::Type Type)
         {
             // Auditioning needs string bank to get back full paths from events
             // Runtime could do without it, but if we load it we can look up guids to names which is helpful
+            if (MasterBank)
             {
-                FString StringsBankPath = Settings.GetMasterStringsBankPath();
+                FString StringsBankPath = Settings.GetFullBankPath() / AssetTable.GetMasterStringsBankPath();
                 UE_LOG(LogFMOD, Verbose, TEXT("Loading strings bank: %s"), *StringsBankPath);
                 FMOD::Studio::Bank *StringsBank = nullptr;
                 Result = StudioSystem[Type]->loadBankFile(TCHAR_TO_UTF8(*StringsBankPath), BankFlags, &StringsBank);
@@ -1293,7 +1309,7 @@ void FFMODStudioModule::LoadBanks(EFMODSystemContext::Type Type)
             }
 
             // Optionally lock all buses to make sure they are created
-            if (Settings.bLockAllBuses)
+            if (MasterBank && Settings.bLockAllBuses)
             {
                 UE_LOG(LogFMOD, Verbose, TEXT("Locking all buses"));
                 int BusCount = 0;

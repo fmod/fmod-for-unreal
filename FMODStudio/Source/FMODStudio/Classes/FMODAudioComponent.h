@@ -31,14 +31,6 @@ enum Type
 };
 }
 
-class FFMODDynamicParameter : public FDynamicParameter
-{
-public:
-    FFMODDynamicParameter(float Initial = 0.0f)
-        : FDynamicParameter(Initial)
-    {
-    }
-};
 
 /** Used to store callback info from FMOD thread to our event */
 struct FTimelineMarkerProperties
@@ -80,8 +72,7 @@ struct FFMODAttenuationDetails
     FFMODAttenuationDetails()
         : MinimumDistance(1.0f)
         , MaximumDistance(10.0f)
-    {
-    }
+    {}
 };
 
 USTRUCT(BlueprintType)
@@ -97,34 +88,15 @@ struct FFMODOcclusionDetails
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FMOD|Occlusion", meta = (EditCondition = "bEnableOcclusion"))
     TEnumAsByte<enum ECollisionChannel> OcclusionTraceChannel;
 
-    /** The low pass filter frequency (in hertz) to apply if the sound playing in this audio component is occluded. This will override the frequency set in LowPassFilterFrequency. A frequency of 0.0 is the device sample rate and will bypass the filter. */
-    UPROPERTY(
-        EditAnywhere, BlueprintReadWrite, Category = "FMOD|Occlusion", meta = (ClampMin = "0.0", UIMin = "0.0", EditCondition = "bEnableOcclusion"))
-    float OcclusionLowPassFilterFrequency;
-
-    /** The amount of volume attenuation to apply to sounds which are occluded. */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FMOD|Occlusion",
-        meta = (ClampMin = "0.0", UIMin = "0.0", ClampMax = "1.0", UIMax = "1.0", EditCondition = "bEnableOcclusion"))
-    float OcclusionVolumeAttenuation;
-
-    /** The amount of time in seconds to interpolate to the target OcclusionLowPassFilterFrequency when a sound is occluded. */
-    UPROPERTY(
-        EditAnywhere, BlueprintReadWrite, Category = "FMOD|Occlusion", meta = (ClampMin = "0.0", UIMin = "0.0", EditCondition = "bEnableOcclusion"))
-    float OcclusionInterpolationTime;
-
     /** Whether or not to enable complex geometry occlusion checks. */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FMOD|Occlusion", meta = (EditCondition = "bEnableOcclusion"))
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="FMOD|Occlusion", meta=(EditCondition = "bEnableOcclusion"))
     bool bUseComplexCollisionForOcclusion;
 
     FFMODOcclusionDetails()
         : bEnableOcclusion(false)
         , OcclusionTraceChannel(ECC_Visibility)
-        , OcclusionLowPassFilterFrequency(20000.0f)
-        , OcclusionVolumeAttenuation(1.0f)
-        , OcclusionInterpolationTime(0.1f)
         , bUseComplexCollisionForOcclusion(false)
-    {
-    }
+    {}
 };
 
 /** called when an event stops, either because it played to completion or because a Stop() call turned it off early */
@@ -160,11 +132,11 @@ class FMODSTUDIO_API UFMODAudioComponent : public USceneComponent
     GENERATED_UCLASS_BODY()
 public:
 
-    /** The event asset to use for this sound */
+    /** The event asset to use for this sound. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = FMODAudio)
     TAssetPtr<class UFMODEvent> Event;
 
-    /** Event parameter cache */
+    /** Event parameter cache. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, SimpleDisplay, Category = FMODAudio)
     TMap<FName, float> ParameterCache;
     bool bDefaultParameterValuesCached;
@@ -173,111 +145,106 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = FMODAudio)
     FString ProgrammerSoundName;
 
-    /** Enable timeline callbacks for this sound, so that OnTimelineMarker and OnTimelineBeat can be used */
+    /** Enable timeline callbacks for this sound, so that OnTimelineMarker and OnTimelineBeat can be used. */
     UPROPERTY(EditAnywhere, Category = FMODAudio)
     uint32 bEnableTimelineCallbacks : 1;
 
-    /** Stored properties to apply next time we create an instance */
+    /** Stored properties to apply next time we create an instance. */
     float StoredProperties[EFMODEventProperty::Count];
 
-    /** Auto destroy this component on completion */
+    /** Auto destroy this component on completion. */
     UPROPERTY()
     uint32 bAutoDestroy : 1;
 
-    /** Stop sound when owner is destroyed */
+    /** Stop sound when owner is destroyed. */
     UPROPERTY()
     uint32 bStopWhenOwnerDestroyed : 1;
 
     /** Whether we apply gain and low-pass based on audio zones. */
     uint32 bApplyAmbientVolumes : 1;
 
-    /** Whether we apply gain and low-pass based on occlusion directly into the sound. */
-    uint32 bApplyOcclusionDirect : 1;
-
     /** Whether we apply gain and low-pass based on occlusion onto a parameter. */
-    uint32 bApplyOcclusionParameter : 1;
+    uint32 bApplyOcclusionParameter:1;
 
-    /** Whether we have applied the occlusion at least once. */
-    uint32 bHasCheckedOcclusion : 1;
-
-    /** called when an event stops, either because it played to completion or because a Stop() call turned it off early */
+    /** Called when an event stops, either because it played to completion or because a Stop() call turned it off early. */
     UPROPERTY(BlueprintAssignable)
     FOnEventStopped OnEventStopped;
 
-    /** called when we reach a named marker (if bEnableTimelineCallbacks is true) */
+    /** Called when we reach a named marker (if bEnableTimelineCallbacks is true). */
     UPROPERTY(BlueprintAssignable)
     FOnTimelineMarker OnTimelineMarker;
 
-    /** called when we reach a beat of a tempo (if bEnableTimelineCallbacks is true) */
+    /** Called when we reach a beat of a tempo (if bEnableTimelineCallbacks is true). */
     UPROPERTY(BlueprintAssignable)
     FOnTimelineBeat OnTimelineBeat;
 
+    /** New Event to be used by the FMODAudioComponent. */
     UFUNCTION(BlueprintCallable, Category = "Audio|FMOD|Components")
     void SetEvent(UFMODEvent *NewEvent);
 
-    /** Start a sound playing on an audio component */
+    /** Start a sound playing on an audio component. */
     UFUNCTION(BlueprintCallable, Category = "Audio|FMOD|Components")
     void Play();
 
-    /** Stop an audio component playing its sound cue, issue any delegates if needed */
+    /** Stop an audio component playing its sound cue, issue any delegates if needed. */
     UFUNCTION(BlueprintCallable, Category = "Audio|FMOD|Components")
     void Stop();
 
     UFUNCTION(BlueprintCallable, Category = "Audio|FMOD|Components")
     void Release();
 
-    /** Trigger a cue in an event */
+    /** Trigger a cue in an event. */
     UFUNCTION(BlueprintCallable, Category = "Audio|FMOD|Components")
     void TriggerCue();
 
-    /** @return true if this component is currently playing an event */
+    /** Return true if this component is currently playing an event. */
     UFUNCTION(BlueprintCallable, Category = "Audio|FMOD|Components")
     bool IsPlaying();
 
-    /** Set volume on an audio component */
+    /** Sets the volume level. */
     UFUNCTION(BlueprintCallable, Category = "Audio|FMOD|Components")
     void SetVolume(float volume);
 
-    /** Set pitch on an audio component */
+    /** Sets the pitch multiplier. */
     UFUNCTION(BlueprintCallable, Category = "Audio|FMOD|Components")
     void SetPitch(float pitch);
 
-    /** Pause/Unpause an audio component */
+    /** Pause/Unpause an audio component. */
     UFUNCTION(BlueprintCallable, Category = "Audio|FMOD|Components")
     void SetPaused(bool paused);
 
-    /** Set a parameter into the event */
+    /** Set a parameter of the Event. */
     UFUNCTION(BlueprintCallable, Category = "Audio|FMOD|Components")
     void SetParameter(FName Name, float Value);
 
-    /** Get parameter value from the event */
+    /** Get parameter value from the Event. */
     UFUNCTION(BlueprintCallable, Category = "Audio|FMOD|Components")
     float GetParameter(FName Name);
 
-    /** Set a parameter into the event */
+    /** Set a property of the Event. */
     UFUNCTION(BlueprintCallable, Category = "Audio|FMOD|Components")
     void SetProperty(EFMODEventProperty::Type Property, float Value);
 
-    /** Get a property from the event */
+    /** Get a property of the Event. */
     UFUNCTION(BlueprintCallable, Category = "Audio|FMOD|Components")
     float GetProperty(EFMODEventProperty::Type Property);
 
-    /** Get the event length in milliseconds */
+    /** Get the event length in milliseconds. */
     UFUNCTION(BlueprintCallable, Category = "Audio|FMOD|Components")
     int32 GetLength() const;
 
-    /** Set the timeline position in milliseconds  */
+    /** Set the timeline position in milliseconds. */
     UFUNCTION(BlueprintCallable, Category = "Audio|FMOD|Components")
     void SetTimelinePosition(int32 Time);
 
-    /** Get the timeline position in milliseconds */
+    /** Get the timeline position in milliseconds. */
     UFUNCTION(BlueprintCallable, Category = "Audio|FMOD|Components")
     int32 GetTimelinePosition();
 
-    /** Called when the event has finished stopping */
+    /** Called when the event has finished stopping. */
     void OnPlaybackCompleted();
 
-    /** Update gain and low-pass based on interior volumes */
+    /** Update gain and low-pass based on interior volumes. */
     void UpdateInteriorVolumes();
 
     /** Set the sound name to use for programmer sound.  Will look up the name in any loaded audio table. */
@@ -287,33 +254,40 @@ public:
     /** Set a programmer sound to use for this audio component.  Lifetime of sound must exceed that of the audio component. */
     void SetProgrammerSound(FMOD::Sound *Sound);
 
-    /** FMOD Custom Attenuation Details */
+    /** FMOD Custom Attenuation Details. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = FMODAudio)
     struct FFMODAttenuationDetails AttenuationDetails;
 
-    /** FMOD Custom Attenuation Details */
+    /** FMOD Custom Occlusion Details. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = FMODAudio)
     struct FFMODOcclusionDetails OcclusionDetails;
 
-    /** Update attenuation if we have it set */
+    /** Update attenuation if we have it set. */
     void UpdateAttenuation();
 
-    /** Apply Volume and LPF into event */
+    /** Apply Volume and LPF into event. */
     void ApplyVolumeLPF();
 
-    /** Cache default event parameter values */
+    /** Cache default event parameter values. */
     void CacheDefaultParameterValues();
 
 public:
-    /** Internal play function which can play events in the editor */
+    /** Internal play function which can play events in the editor. */
     void PlayInternal(EFMODSystemContext::Type Context);
 
-    /** Actual Studio instance handle */
+    /** Actual Studio instance handle. */
     FMOD::Studio::EventInstance *StudioInstance;
 
+    /** Timeline Marker callback. */
     void EventCallbackAddMarker(struct FMOD_STUDIO_TIMELINE_MARKER_PROPERTIES *props);
+
+    /** Timeline Beat callback. */
     void EventCallbackAddBeat(struct FMOD_STUDIO_TIMELINE_BEAT_PROPERTIES *props);
+
+    /** Programmer Sound Create callback. */
     void EventCallbackCreateProgrammerSound(struct FMOD_STUDIO_PROGRAMMER_SOUND_PROPERTIES *props);
+
+    /** Programmer Sound Destroy callback. */
     void EventCallbackDestroyProgrammerSound(struct FMOD_STUDIO_PROGRAMMER_SOUND_PROPERTIES *props);
 
 // Begin UObject interface.
@@ -342,9 +316,13 @@ private:
     void UpdateSpriteTexture();
 #endif
 
+    /** Release any cached parameters then the Studio Instance. */
     void ReleaseEventCache();
+
+    /** Release the Studio Instance. */
     void ReleaseEventInstance();
 
+    /** Return a cached reference to the current IFMODStudioModule.*/
     IFMODStudioModule& GetStudioModule()
     {
         if (Module == nullptr)
@@ -355,28 +333,28 @@ private:
     }
     IFMODStudioModule* Module;
 
-    // Settings for ambient volume effects
+    // Settings for ambient volume effects.
     double InteriorLastUpdateTime;
     float SourceInteriorVolume;
     float SourceInteriorLPF;
     float CurrentInteriorVolume;
     float CurrentInteriorLPF;
-    float AmbientVolumeMultiplier;
+    float AmbientVolume;
     float AmbientLPF;
-    float LastLPF;
     float LastVolume;
-    FFMODDynamicParameter CurrentOcclusionFilterFrequency;
-    FFMODDynamicParameter CurrentOcclusionVolumeAttenuation;
+    float LastLPF;
+    bool wasOccluded;
+    FMOD_STUDIO_PARAMETER_ID OcclusionID;
+    FMOD_STUDIO_PARAMETER_ID AmbientVolumeID;
+    FMOD_STUDIO_PARAMETER_ID AmbientLPFID;
 
-    // Tempo and marker callbacks
+    // Tempo and marker callbacks.
     FCriticalSection CallbackLock;
     TArray<FTimelineMarkerProperties> CallbackMarkerQueue;
     TArray<FTimelineBeatProperties> CallbackBeatQueue;
 
-    // Direct assignment of programmer sound from other C++ code
+    // Direct assignment of programmer sound from other C++ code.
     FMOD::Sound *ProgrammerSound;
-    FMOD::DSP *LowPass;
-    int LowPassParam;
 
     int32 EventLength;
 };

@@ -187,13 +187,13 @@ TSharedRef<SExpandableArea> SFMODEventEditorPanel::ConstructParameters(FMOD::Stu
     if (EventDescription != nullptr)
     {
         int32 ParameterCount;
-        EventDescription->getParameterCount(&ParameterCount);
+        EventDescription->getParameterDescriptionCount(&ParameterCount);
         for (int32 ParamIdx = 0; ParamIdx < ParameterCount; ParamIdx++)
         {
             FMOD_STUDIO_PARAMETER_DESCRIPTION Parameter;
-            EventDescription->getParameterByIndex(ParamIdx, &Parameter);
+            EventDescription->getParameterDescriptionByIndex(ParamIdx, &Parameter);
 
-            EventEditor->GetParameterValues().Add(Parameter.minimum);
+            EventEditor->AddParameter(Parameter.id, Parameter.minimum);
 
             const FString ParameterName = Parameter.type == FMOD_STUDIO_PARAMETER_GAME_CONTROLLED ? FString(UTF8_TO_TCHAR(Parameter.name)) :
                                                                                                     FMODUtils::ParameterTypeToString(Parameter.type);
@@ -204,8 +204,8 @@ TSharedRef<SExpandableArea> SFMODEventEditorPanel::ConstructParameters(FMOD::Stu
                 2.0f)[SNew(SHorizontalBox).ToolTipText(ToolTipText) +
                       SHorizontalBox::Slot().FillWidth(0.3f)[SNew(STextBlock).Text(FText::FromString(ParameterName))] +
                       SHorizontalBox::Slot().MaxWidth(200.0f)[SNew(SNumericEntryBox<float>)
-                                                                  .Value(this, &SFMODEventEditorPanel::GetParameterValue, ParamIdx)
-                                                                  .OnValueChanged(this, &SFMODEventEditorPanel::OnParameterValueChanged, ParamIdx)
+                                                                  .Value(this, &SFMODEventEditorPanel::GetParameterValue, Parameter.id)
+                                                                  .OnValueChanged(this, &SFMODEventEditorPanel::OnParameterValueChanged, Parameter.id)
                                                                   .AllowSpin(true)
                                                                   .MinValue(Parameter.minimum)
                                                                   .MaxValue(Parameter.maximum)
@@ -274,14 +274,14 @@ FReply SFMODEventEditorPanel::OnClickedPause()
     return FReply::Handled();
 }
 
-void SFMODEventEditorPanel::OnParameterValueChanged(float NewValue, int32 ParameterIdx)
+void SFMODEventEditorPanel::OnParameterValueChanged(float NewValue, FMOD_STUDIO_PARAMETER_ID ParameterId)
 {
-    FMODEventEditorPtr.Pin()->SetParameterValue(ParameterIdx, NewValue);
+    FMODEventEditorPtr.Pin()->SetParameterValue(ParameterId, NewValue);
 }
 
-TOptional<float> SFMODEventEditorPanel::GetParameterValue(int32 ParameterIdx) const
+TOptional<float> SFMODEventEditorPanel::GetParameterValue(FMOD_STUDIO_PARAMETER_ID ParameterId) const
 {
-    return FMODEventEditorPtr.Pin()->GetParameterValues()[ParameterIdx];
+    return FMODEventEditorPtr.Pin()->GetParameterValue(ParameterId);
 }
 
 #undef LOC_NAMESPACE

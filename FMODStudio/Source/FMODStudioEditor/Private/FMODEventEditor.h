@@ -14,6 +14,15 @@ class EventInstance;
 }
 }
 
+static bool operator==(const FMOD_STUDIO_PARAMETER_ID &a, const FMOD_STUDIO_PARAMETER_ID &b)
+{
+    return (a.data1 == b.data1 && a.data2 == b.data2);
+}
+FORCEINLINE uint32 GetTypeHash(const FMOD_STUDIO_PARAMETER_ID& id)
+{
+    return FCrc::MemCrc_DEPRECATED(&id, sizeof(FMOD_STUDIO_PARAMETER_ID));
+}
+
 class FFMODEventEditor : public FAssetEditorToolkit
 {
 public:
@@ -40,8 +49,9 @@ public:
     void PlayEvent();
     void PauseEvent();
     void StopEvent();
-    void SetParameterValue(int32 ParameterIdx, float Value);
-    TArray<float> &GetParameterValues();
+    float GetParameterValue(FMOD_STUDIO_PARAMETER_ID Id);
+    void SetParameterValue(FMOD_STUDIO_PARAMETER_ID ParameterId, float Value);
+    void AddParameter(FMOD_STUDIO_PARAMETER_ID ParameterId, float Value);
 
     /** IToolkit interface */
     virtual FName GetToolkitFName() const override;
@@ -49,9 +59,8 @@ public:
     virtual FString GetWorldCentricTabPrefix() const override;
     virtual FLinearColor GetWorldCentricTabColorScale() const override;
 
-    TArray<float> ParameterValues;
-
 private:
+    TMap<FMOD_STUDIO_PARAMETER_ID, float> ParameterValues;
     FMOD::Studio::EventInstance *CurrentPreviewEventInstance;
 
     void HandlePreBanksReloaded();

@@ -1,7 +1,6 @@
 // Copyright (c), Firelight Technologies Pty, Ltd. 2012-2019.
 
 #include "FMODSettings.h"
-//#include "Engine/Engine.h"
 #include "HAL/FileManager.h"
 #include "Misc/Paths.h"
 
@@ -11,7 +10,7 @@
 UFMODSettings::UFMODSettings(const FObjectInitializer &ObjectInitializer)
     : Super(ObjectInitializer)
 {
-    MasterBankName = TEXT("Master Bank");
+    MasterBankName = TEXT("Master");
     BankOutputDirectory.Path = TEXT("FMOD");
     OutputFormat = EFMODSpeakerMode::Surround_5_1;
     ContentBrowserPrefix = TEXT("/Game/FMOD/");
@@ -66,38 +65,42 @@ FString UFMODSettings::GetFullBankPath() const
     return FullPath;
 }
 
-FString UFMODSettings::GetMasterBankPath() const
+FString UFMODSettings::GetMasterBankFilename() const
 {
-    return GetFullBankPath() / (MasterBankName + TEXT(".bank"));
+    return MasterBankName + TEXT(".bank");
 }
 
-FString UFMODSettings::GetMasterAssetsBankPath() const
+FString UFMODSettings::GetMasterAssetsBankFilename() const
 {
-    return GetFullBankPath() / (MasterBankName + TEXT(".assets.bank"));
+    return MasterBankName + TEXT(".assets.bank");
 }
 
-FString UFMODSettings::GetMasterStringsBankPath() const
+FString UFMODSettings::GetMasterStringsBankFilename() const
 {
-    return GetFullBankPath() / (MasterBankName + TEXT(".strings.bank"));
+    return MasterBankName + TEXT(".strings.bank");
 }
 
 void UFMODSettings::GetAllBankPaths(TArray<FString> &Paths, bool IncludeMasterBank) const
 {
     FString BankDir = GetFullBankPath();
-    FString SearchDir = BankDir / FString(TEXT("*"));
+    FString SearchDir = BankDir;
 
     TArray<FString> AllFiles;
-    IFileManager::Get().FindFiles(AllFiles, *SearchDir, true, false);
+    IFileManager::Get().FindFilesRecursive(AllFiles, *SearchDir, TEXT("*.bank"), true, false, false);
+
     for (FString &CurFile : AllFiles)
     {
-        if (CurFile.EndsWith(".bank"))
+        bool Skip = false;
+
+        if (!IncludeMasterBank)
         {
-            bool IsMaster = (CurFile == MasterBankName + TEXT(".bank") || CurFile == MasterBankName + TEXT(".assets.bank") ||
-                             CurFile == MasterBankName + TEXT(".strings.bank"));
-            if (IncludeMasterBank || !IsMaster)
-            {
-                Paths.Push(BankDir / CurFile);
-            }
+            FString CurFilename = FPaths::GetCleanFilename(CurFile);
+            Skip = (CurFilename == GetMasterBankFilename() || CurFilename == GetMasterAssetsBankFilename() || CurFilename == GetMasterStringsBankFilename());
+        }
+
+        if (!Skip)
+        {
+            Paths.Push(CurFile);
         }
     }
 }

@@ -15,6 +15,7 @@ class EventInstance;
 }
 
 class UFMODAsset;
+class UFMODBank;
 class UFMODEvent;
 class UWorld;
 class AAudioVolume;
@@ -90,6 +91,11 @@ public:
 	 * Look up an event given its name
 	 */
     virtual UFMODEvent *FindEventByName(const FString &Name) = 0;
+
+    /**
+      * Get the disk path for a Bank asset
+      */
+    virtual FString GetBankPath(const UFMODBank &Bank) = 0;
 
     /**
 	 * Get an event description.

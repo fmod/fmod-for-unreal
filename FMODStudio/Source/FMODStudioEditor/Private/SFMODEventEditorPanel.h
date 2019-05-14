@@ -37,6 +37,6 @@ private:
     FReply OnClickedStop();
     FReply OnClickedPause();
 
-    TOptional<float> GetParameterValue(int32 ParameterIdx) const;
-    void OnParameterValueChanged(float NewValue, int32 ParameterIdx);
+    TOptional<float> GetParameterValue(FMOD_STUDIO_PARAMETER_ID ParameterId) const;
+    void OnParameterValueChanged(float NewValue, FMOD_STUDIO_PARAMETER_ID ParameterId);
 };

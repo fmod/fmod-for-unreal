@@ -178,6 +178,19 @@ class FMODSTUDIO_API UFMODBlueprintStatics : public UBlueprintFunctionLibrary
     UFUNCTION(BlueprintCallable, Category = "Audio|FMOD|VCA", meta = (UnsafeDuringActorConstruction = "true"))
     static void VCASetVolume(class UFMODVCA *Vca, float Volume);
 
+    /** Set a global parameter from the System.
+     * @param Name - Name of parameter
+     * @param Value - Value of parameter
+     */
+    UFUNCTION(BlueprintCallable, Category = "Audio|FMOD", meta = (UnsafeDuringActorConstruction = "true"))
+    static void SetGlobalParameterByName(FName Name, float Value);
+
+    /** Get a global parameter from the System.
+     * @param Name - Name of parameter
+     */
+    UFUNCTION(BlueprintCallable, Category = "Audio|FMOD", meta = (UnsafeDuringActorConstruction = "true"))
+    static float GetGlobalParameterByName(FName Name);
+
     /** Returns whether this FMOD Event Instance is valid.  The instance will be invalidated when the sound stops.
 	 * @param EventInstance - Event instance
 	 */
@@ -246,7 +259,7 @@ class FMODSTUDIO_API UFMODBlueprintStatics : public UBlueprintFunctionLibrary
     UFUNCTION(BlueprintCallable, Category = "Audio|FMOD|EventInstance", meta = (UnsafeDuringActorConstruction = "true"))
     static void EventInstanceTriggerCue(FFMODEventInstance EventInstance);
 
-    /** Set transform on an FMOD Event Instance.
+    /** Set 3D attributes on a FMOD Event Instance.
 	 * @param EventInstance - Event instance
 	 * @param Location - Location to place event
 	 */

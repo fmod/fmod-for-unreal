@@ -134,16 +134,16 @@ void UFMODBlueprintStatics::LoadBank(class UFMODBank *Bank, bool bBlocking, bool
     {
         UE_LOG(LogFMOD, Log, TEXT("LoadBank %s"), *Bank->FileName);
 
-        const UFMODSettings &Settings = *GetDefault<UFMODSettings>();
-        FString BankPath = Settings.GetFullBankPath() / (Bank->FileName + TEXT(".bank"));
-
+        FString BankPath = IFMODStudioModule::Get().GetBankPath(*Bank);
         FMOD::Studio::Bank *bank = nullptr;
         FMOD_STUDIO_LOAD_BANK_FLAGS flags = (bBlocking || bLoadSampleData) ? FMOD_STUDIO_LOAD_BANK_NORMAL : FMOD_STUDIO_LOAD_BANK_NONBLOCKING;
         FMOD_RESULT result = StudioSystem->loadBankFile(TCHAR_TO_UTF8(*BankPath), flags, &bank);
+
         if (result != FMOD_OK)
         {
             UE_LOG(LogFMOD, Error, TEXT("Failed to load bank %s: %s"), *Bank->FileName, UTF8_TO_TCHAR(FMOD_ErrorString(result)));
         }
+
         if (result == FMOD_OK)
         {
             bank->loadSampleData();
@@ -344,6 +344,34 @@ void UFMODBlueprintStatics::VCASetVolume(class UFMODVCA *Vca, float Volume)
     }
 }
 
+void UFMODBlueprintStatics::SetGlobalParameterByName(FName Name, float Value)
+{
+    FMOD::Studio::System *StudioSystem = IFMODStudioModule::Get().GetStudioSystem(EFMODSystemContext::Runtime);
+    if (StudioSystem != nullptr)
+    {
+        FMOD_RESULT Result = StudioSystem->setParameterByName(TCHAR_TO_UTF8(*Name.ToString()), Value);
+        if (Result != FMOD_OK)
+        {
+            UE_LOG(LogFMOD, Warning, TEXT("Failed to set parameter %s"), *Name.ToString());
+        }
+    }
+}
+
+float UFMODBlueprintStatics::GetGlobalParameterByName(FName Name)
+{
+    FMOD::Studio::System *StudioSystem = IFMODStudioModule::Get().GetStudioSystem(EFMODSystemContext::Runtime);
+    float Value = 0.0f;
+    if (StudioSystem != nullptr)
+    {
+        FMOD_RESULT Result = StudioSystem->getParameterByName(TCHAR_TO_UTF8(*Name.ToString()), &Value);
+        if (Result != FMOD_OK)
+        {
+            UE_LOG(LogFMOD, Warning, TEXT("Failed to get event instance parameter %s"), *Name.ToString());
+        }
+    }
+    return Value;
+}
+
 bool UFMODBlueprintStatics::EventInstanceIsValid(FFMODEventInstance EventInstance)
 {
     if (EventInstance.Instance)
@@ -393,7 +421,7 @@ void UFMODBlueprintStatics::EventInstanceSetParameter(FFMODEventInstance EventIn
 {
     if (EventInstance.Instance)
     {
-        FMOD_RESULT Result = EventInstance.Instance->setParameterValue(TCHAR_TO_UTF8(*Name.ToString()), Value);
+        FMOD_RESULT Result = EventInstance.Instance->setParameterByName(TCHAR_TO_UTF8(*Name.ToString()), Value);
         if (Result != FMOD_OK)
         {
             UE_LOG(LogFMOD, Warning, TEXT("Failed to set event instance parameter %s"), *Name.ToString());
@@ -406,12 +434,7 @@ float UFMODBlueprintStatics::EventInstanceGetParameter(FFMODEventInstance EventI
     float Value = 0.0f;
     if (EventInstance.Instance)
     {
-        FMOD::Studio::ParameterInstance *ParamInst = nullptr;
-        FMOD_RESULT Result = EventInstance.Instance->getParameter(TCHAR_TO_UTF8(*Name.ToString()), &ParamInst);
-        if (Result == FMOD_OK)
-        {
-            Result = ParamInst->getValue(&Value);
-        }
+        FMOD_RESULT Result = EventInstance.Instance->getParameterByName(TCHAR_TO_UTF8(*Name.ToString()), &Value);
         if (Result != FMOD_OK)
         {
             UE_LOG(LogFMOD, Warning, TEXT("Failed to get event instance parameter %s"), *Name.ToString());
@@ -464,17 +487,7 @@ void UFMODBlueprintStatics::EventInstanceTriggerCue(FFMODEventInstance EventInst
 {
     if (EventInstance.Instance)
     {
-// Studio only supports a single cue so try to get it
-#if FMOD_VERSION >= 0x00010800
         EventInstance.Instance->triggerCue();
-#else
-        FMOD::Studio::CueInstance *Cue = nullptr;
-        EventInstance.Instance->getCueByIndex(0, &Cue);
-        if (Cue)
-        {
-            Cue->trigger();
-        }
-#endif
     }
 }
 
@@ -500,7 +513,7 @@ TArray<FString> UFMODBlueprintStatics::GetOutputDrivers()
     if (StudioSystem != nullptr)
     {
         FMOD::System *LowLevelSystem = nullptr;
-        verifyfmod(StudioSystem->getLowLevelSystem(&LowLevelSystem));
+        verifyfmod(StudioSystem->getCoreSystem(&LowLevelSystem));
 
         int DriverCount = 0;
         verifyfmod(LowLevelSystem->getNumDrivers(&DriverCount));
@@ -523,7 +536,7 @@ void UFMODBlueprintStatics::SetOutputDriverByName(FString NewDriverName)
     if (StudioSystem != nullptr)
     {
         FMOD::System *LowLevelSystem = nullptr;
-        verifyfmod(StudioSystem->getLowLevelSystem(&LowLevelSystem));
+        verifyfmod(StudioSystem->getCoreSystem(&LowLevelSystem));
 
         int DriverIndex = -1;
         int DriverCount = 0;
@@ -559,7 +572,7 @@ void UFMODBlueprintStatics::SetOutputDriverByIndex(int NewDriverIndex)
     if (StudioSystem != nullptr)
     {
         FMOD::System *LowLevelSystem = nullptr;
-        verifyfmod(StudioSystem->getLowLevelSystem(&LowLevelSystem));
+        verifyfmod(StudioSystem->getCoreSystem(&LowLevelSystem));
 
         int DriverCount = 0;
         verifyfmod(LowLevelSystem->getNumDrivers(&DriverCount));
@@ -583,7 +596,7 @@ void UFMODBlueprintStatics::MixerSuspend()
     if (StudioSystem != nullptr)
     {
         FMOD::System *LowLevelSystem = nullptr;
-        verifyfmod(StudioSystem->getLowLevelSystem(&LowLevelSystem));
+        verifyfmod(StudioSystem->getCoreSystem(&LowLevelSystem));
 
         verifyfmod(LowLevelSystem->mixerSuspend());
     }
@@ -596,7 +609,7 @@ void UFMODBlueprintStatics::MixerResume()
     if (StudioSystem != nullptr)
     {
         FMOD::System *LowLevelSystem = nullptr;
-        verifyfmod(StudioSystem->getLowLevelSystem(&LowLevelSystem));
+        verifyfmod(StudioSystem->getCoreSystem(&LowLevelSystem));
 
         verifyfmod(LowLevelSystem->mixerResume());
     }

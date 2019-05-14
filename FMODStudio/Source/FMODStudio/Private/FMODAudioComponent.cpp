@@ -5,6 +5,7 @@
 #include "FMODUtils.h"
 #include "FMODEvent.h"
 #include "FMODListener.h"
+#include "FMODSettings.h"
 #include "fmod_studio.hpp"
 #include "Misc/App.h"
 #include "Misc/Paths.h"
@@ -17,8 +18,6 @@
 
 UFMODAudioComponent::UFMODAudioComponent(const FObjectInitializer &ObjectInitializer)
     : Super(ObjectInitializer)
-    , CurrentOcclusionFilterFrequency(MAX_FILTER_FREQUENCY)
-    , CurrentOcclusionVolumeAttenuation(1.0f)
 {
     bAutoDestroy = false;
     bAutoActivate = true;
@@ -29,10 +28,7 @@ UFMODAudioComponent::UFMODAudioComponent(const FObjectInitializer &ObjectInitial
 #if WITH_EDITORONLY_DATA
     bVisualizeComponent = true;
 #endif
-    bApplyAmbientVolumes = false;
-    bApplyOcclusionDirect = false;
     bApplyOcclusionParameter = false;
-    bHasCheckedOcclusion = false;
     bDefaultParameterValuesCached = false;
 
     PrimaryComponentTick.bCanEverTick = true;
@@ -41,19 +37,11 @@ UFMODAudioComponent::UFMODAudioComponent(const FObjectInitializer &ObjectInitial
 
     StudioInstance = nullptr;
     ProgrammerSound = nullptr;
-    LowPass = nullptr;
-    LowPassParam = -1;
 
-    InteriorLastUpdateTime = 0.0;
-    SourceInteriorVolume = 0.0f;
-    SourceInteriorLPF = 0.0f;
-    CurrentInteriorVolume = 0.0f;
-    CurrentInteriorLPF = 0.0f;
-    AmbientVolumeMultiplier = 1.0f;
-    AmbientLPF = MAX_FILTER_FREQUENCY;
     LastLPF = MAX_FILTER_FREQUENCY;
     LastVolume = 1.0f;
     Module = nullptr;
+    wasOccluded = false;
 
     for (int i = 0; i < EFMODEventProperty::Count; ++i)
     {
@@ -228,7 +216,7 @@ void UFMODAudioComponent::UpdateInteriorVolumes()
         }
     }
 
-    AmbientVolumeMultiplier = NewAmbientVolumeMultiplier;
+    AmbientVolume = NewAmbientVolumeMultiplier;
     AmbientLPF = NewAmbientHighFrequencyGain;
 }
 
@@ -249,7 +237,7 @@ void UFMODAudioComponent::UpdateAttenuation()
     }
 
     // Use occlusion part of settings
-    if (OcclusionDetails.bEnableOcclusion && (bApplyOcclusionDirect || bApplyOcclusionParameter))
+    if (OcclusionDetails.bEnableOcclusion && bApplyOcclusionParameter)
     {
         static FName NAME_SoundOcclusion = FName(TEXT("SoundOcclusion"));
         FCollisionQueryParams Params(NAME_SoundOcclusion, OcclusionDetails.bUseComplexCollisionForOcclusion, GetOwner());
@@ -259,110 +247,40 @@ void UFMODAudioComponent::UpdateAttenuation()
 
         bool bIsOccluded = GWorld->LineTraceTestByChannel(Location, Listener.Transform.GetLocation(), OcclusionDetails.OcclusionTraceChannel, Params);
 
-        // Apply directly as gain and LPF
-        if (bApplyOcclusionDirect)
+        if (bIsOccluded != wasOccluded)
         {
-            float InterpolationTime = bHasCheckedOcclusion ? OcclusionDetails.OcclusionInterpolationTime : 0.0f;
-            if (bIsOccluded)
-            {
-                if (CurrentOcclusionFilterFrequency.GetTargetValue() > OcclusionDetails.OcclusionLowPassFilterFrequency)
-                {
-                    CurrentOcclusionFilterFrequency.Set(OcclusionDetails.OcclusionLowPassFilterFrequency, InterpolationTime);
-                }
-
-                if (CurrentOcclusionVolumeAttenuation.GetTargetValue() > OcclusionDetails.OcclusionVolumeAttenuation)
-                {
-                    CurrentOcclusionVolumeAttenuation.Set(OcclusionDetails.OcclusionVolumeAttenuation, InterpolationTime);
-                }
-            }
-            else
-            {
-                CurrentOcclusionFilterFrequency.Set(MAX_FILTER_FREQUENCY, InterpolationTime);
-                CurrentOcclusionVolumeAttenuation.Set(1.0f, InterpolationTime);
-            }
-
-            CurrentOcclusionFilterFrequency.Update(GWorld->DeltaTimeSeconds);
-            CurrentOcclusionVolumeAttenuation.Update(GWorld->DeltaTimeSeconds);
+            StudioInstance->setParameterByID(OcclusionID, bIsOccluded ? 1.0f : 0.0f);
+            wasOccluded = bIsOccluded;
         }
-
-        // Apply as a studio parameter
-        if (bApplyOcclusionParameter)
-        {
-            StudioInstance->setParameterValue("Occlusion", bIsOccluded ? 1.0f : 0.0f);
-        }
-
-        bHasCheckedOcclusion = true;
+    }
+    else
+    {
+        wasOccluded = false;
     }
 }
 
 void UFMODAudioComponent::ApplyVolumeLPF()
 {
-    float CurVolume = AmbientVolumeMultiplier * CurrentOcclusionVolumeAttenuation.GetValue();
-    if (CurVolume != LastVolume)
+    if (bApplyAmbientVolumes)
     {
-        StudioInstance->setVolume(CurVolume);
-        LastVolume = CurVolume;
+        float CurVolume = AmbientVolume;
+        if (CurVolume != LastVolume)
+        {
+            StudioInstance->setParameterByID(AmbientVolumeID, CurVolume);
+            LastVolume = CurVolume;
+        }
+
+        float CurLPF = AmbientLPF;
+        if (CurLPF != LastLPF)
+        {
+            StudioInstance->setParameterByID(AmbientLPFID, CurLPF);
+            LastLPF = CurLPF;
+        }
     }
-
-    float CurLPF = FMath::Min(AmbientLPF, CurrentOcclusionFilterFrequency.GetValue());
-    if (CurLPF != LastLPF)
+    else
     {
-        if (!LowPass)
-        {
-            FMOD::ChannelGroup *ChanGroup = nullptr;
-            StudioInstance->getChannelGroup(&ChanGroup);
-            if (ChanGroup)
-            {
-                int NumDSP = 0;
-                ChanGroup->getNumDSPs(&NumDSP);
-                for (int Index = 0; Index < NumDSP; ++Index)
-                {
-                    FMOD::DSP *ChanDSP = nullptr;
-                    ChanGroup->getDSP(Index, &ChanDSP);
-                    if (ChanDSP)
-                    {
-                        FMOD_DSP_TYPE DSPType = FMOD_DSP_TYPE_UNKNOWN;
-                        ChanDSP->getType(&DSPType);
-                        if (DSPType == FMOD_DSP_TYPE_LOWPASS)
-                        {
-                            LowPassParam = FMOD_DSP_LOWPASS_CUTOFF;
-                            LowPass = ChanDSP;
-                            break;
-                        }
-                        else if (DSPType == FMOD_DSP_TYPE_LOWPASS_SIMPLE)
-                        {
-                            LowPassParam = FMOD_DSP_LOWPASS_SIMPLE_CUTOFF;
-                            LowPass = ChanDSP;
-                            break;
-                        }
-                        else if (DSPType == FMOD_DSP_TYPE_THREE_EQ)
-                        {
-                            LowPassParam = FMOD_DSP_THREE_EQ_LOWCROSSOVER;
-                            LowPass = ChanDSP;
-                            break;
-                        }
-                        else if (DSPType == FMOD_DSP_TYPE_MULTIBAND_EQ)
-                        {
-                            int a_Filter = -1;
-                            ChanDSP->getParameterInt(FMOD_DSP_MULTIBAND_EQ_A_FILTER, &a_Filter, nullptr, 0);
-                            if (a_Filter == FMOD_DSP_MULTIBAND_EQ_FILTER_LOWPASS_12DB || a_Filter == FMOD_DSP_MULTIBAND_EQ_FILTER_LOWPASS_24DB ||
-                                a_Filter == FMOD_DSP_MULTIBAND_EQ_FILTER_LOWPASS_48DB)
-                            {
-                                LowPassParam = FMOD_DSP_MULTIBAND_EQ_A_FREQUENCY;
-                                LowPass = ChanDSP;
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        if (LowPass)
-        {
-            LowPass->setParameterFloat(LowPassParam, CurLPF);
-            LastLPF = CurLPF; // Actually set it!
-        }
+        LastLPF = MAX_FILTER_FREQUENCY;
+        LastVolume = 1.0f;
     }
 }
 
@@ -370,11 +288,16 @@ void UFMODAudioComponent::CacheDefaultParameterValues()
 {
     if (Event)
     {
+        const UFMODSettings &Settings = *GetDefault<UFMODSettings>();
         TArray<FMOD_STUDIO_PARAMETER_DESCRIPTION> ParameterDescriptions;
         Event->GetParameterDescriptions(ParameterDescriptions);
         for (const FMOD_STUDIO_PARAMETER_DESCRIPTION &ParameterDescription : ParameterDescriptions)
         {
-            if (!ParameterCache.Find(ParameterDescription.name) && (ParameterDescription.type == FMOD_STUDIO_PARAMETER_GAME_CONTROLLED))
+            if (!ParameterCache.Find(ParameterDescription.name) && 
+                (ParameterDescription.type == FMOD_STUDIO_PARAMETER_GAME_CONTROLLED) &&
+                ParameterDescription.name != Settings.OcclusionParameter && 
+                ParameterDescription.name != Settings.AmbientVolumeParameter && 
+                ParameterDescription.name != Settings.AmbientLPFParameter)
             {
                 ParameterCache.Add(ParameterDescription.name, ParameterDescription.defaultvalue);
             }
@@ -550,7 +473,7 @@ void UFMODAudioComponent::EventCallbackCreateProgrammerSound(FMOD_STUDIO_PROGRAM
     {
         FMOD::Studio::System *System = GetStudioModule().GetStudioSystem(EFMODSystemContext::Max);
         FMOD::System *LowLevelSystem = nullptr;
-        System->getLowLevelSystem(&LowLevelSystem);
+        System->getCoreSystem(&LowLevelSystem);
         FString SoundName = ProgrammerSoundNameCopy.Len() ? ProgrammerSoundNameCopy : UTF8_TO_TCHAR(props->name);
         FMOD_MODE SoundMode = FMOD_LOOP_NORMAL | FMOD_CREATECOMPRESSEDSAMPLE | FMOD_NONBLOCKING;
 
@@ -635,8 +558,6 @@ void UFMODAudioComponent::PlayInternal(EFMODSystemContext::Type Context)
 {
     Stop();
 
-    bHasCheckedOcclusion = false;
-
     if (!FMODUtils::IsWorldAudible(GetWorld(), Context == EFMODSystemContext::Editor))
     {
         return;
@@ -655,33 +576,46 @@ void UFMODAudioComponent::PlayInternal(EFMODSystemContext::Type Context)
             if (result != FMOD_OK)
                 return;
         }
-        // Query the event for some extra info
-        FMOD_STUDIO_USER_PROPERTY UserProp = { 0 };
-        if (EventDesc->getUserProperty("Ambient", &UserProp) == FMOD_OK)
-        {
-            if (UserProp.type == FMOD_STUDIO_USER_PROPERTY_TYPE_FLOAT) // All numbers are stored as float
-            {
-                bApplyAmbientVolumes = (UserProp.floatvalue != 0.0f);
-            }
-        }
-        if (EventDesc->getUserProperty("Occlusion", &UserProp) == FMOD_OK)
-        {
-            if (UserProp.type == FMOD_STUDIO_USER_PROPERTY_TYPE_FLOAT) // All numbers are stored as float
-            {
-                bApplyOcclusionDirect = (UserProp.floatvalue != 0.0f);
-            }
-        }
+
+        const UFMODSettings &Settings = *GetDefault<UFMODSettings>();
         FMOD_STUDIO_PARAMETER_DESCRIPTION paramDesc = {};
-        if (EventDesc->getParameter("Occlusion", &paramDesc) == FMOD_OK)
+        FString param = Settings.OcclusionParameter;
+        if (!param.IsEmpty())
         {
-            bApplyOcclusionParameter = true;
+            if (EventDesc->getParameterDescriptionByName(TCHAR_TO_UTF8(*Settings.OcclusionParameter), &paramDesc) == FMOD_OK)
+            {
+                OcclusionID = paramDesc.id;
+                bApplyOcclusionParameter = true;
+            }
+        }
+
+        paramDesc = {};
+        param = Settings.AmbientVolumeParameter;
+        if (!param.IsEmpty())
+        {
+            if (EventDesc->getParameterDescriptionByName(TCHAR_TO_UTF8(*param), &paramDesc) == FMOD_OK)
+            {
+                AmbientVolumeID = paramDesc.id;
+                bApplyAmbientVolumes = true;
+            }
+        }
+
+        paramDesc = {};
+        param = Settings.AmbientLPFParameter;
+        if (!param.IsEmpty())
+        {
+            if (EventDesc->getParameterDescriptionByName(TCHAR_TO_UTF8(*Settings.AmbientLPFParameter), &paramDesc) == FMOD_OK)
+            {
+                AmbientLPFID = paramDesc.id;
+                bApplyAmbientVolumes = true;
+            }
         }
 
         OnUpdateTransform(EUpdateTransformFlags::SkipPhysicsUpdate);
         // Set initial parameters
         for (auto Kvp : ParameterCache)
         {
-            FMOD_RESULT Result = StudioInstance->setParameterValue(TCHAR_TO_UTF8(*Kvp.Key.ToString()), Kvp.Value);
+            FMOD_RESULT Result = StudioInstance->setParameterByName(TCHAR_TO_UTF8(*Kvp.Key.ToString()), Kvp.Value);
             if (Result != FMOD_OK)
             {
                 UE_LOG(LogFMOD, Warning, TEXT("Failed to set initial parameter %s"), *Kvp.Key.ToString());
@@ -718,7 +652,6 @@ void UFMODAudioComponent::Stop()
     {
         StudioInstance->stop(FMOD_STUDIO_STOP_ALLOWFADEOUT);
     }
-    InteriorLastUpdateTime = 0.0;
 }
 
 void UFMODAudioComponent::Release()
@@ -737,7 +670,6 @@ void UFMODAudioComponent::ReleaseEventInstance()
 {
     if (StudioInstance)
     {
-        LowPass = nullptr;
         StudioInstance->setCallback(nullptr);
         StudioInstance->release();
         StudioInstance = nullptr;
@@ -749,17 +681,7 @@ void UFMODAudioComponent::TriggerCue()
     UE_LOG(LogFMOD, Verbose, TEXT("UFMODAudioComponent %p TriggerCue"), this);
     if (StudioInstance)
     {
-// Studio only supports a single cue so try to get it
-#if FMOD_VERSION >= 0x00010800
         StudioInstance->triggerCue();
-#else
-        FMOD::Studio::CueInstance *Cue = nullptr;
-        StudioInstance->getCueByIndex(0, &Cue);
-        if (Cue)
-        {
-            Cue->trigger();
-        }
-#endif
     }
 }
 
@@ -827,7 +749,7 @@ void UFMODAudioComponent::SetParameter(FName Name, float Value)
 {
     if (StudioInstance)
     {
-        FMOD_RESULT Result = StudioInstance->setParameterValue(TCHAR_TO_UTF8(*Name.ToString()), Value);
+        FMOD_RESULT Result = StudioInstance->setParameterByName(TCHAR_TO_UTF8(*Name.ToString()), Value);
         if (Result != FMOD_OK)
         {
             UE_LOG(LogFMOD, Warning, TEXT("Failed to set parameter %s"), *Name.ToString());
@@ -907,17 +829,7 @@ float UFMODAudioComponent::GetParameter(FName Name)
     float Value = CachedValue ? *CachedValue : 0.0;
     if (StudioInstance)
     {
-        FMOD::Studio::ParameterInstance *ParamInst = nullptr;
-        FMOD_RESULT Result = StudioInstance->getParameter(TCHAR_TO_UTF8(*Name.ToString()), &ParamInst);
-        if (Result == FMOD_OK)
-        {
-            float QueryValue;
-            Result = ParamInst->getValue(&QueryValue);
-            if (Result == FMOD_OK)
-            {
-                Value = QueryValue;
-            }
-        }
+        FMOD_RESULT Result = StudioInstance->getParameterByName(TCHAR_TO_UTF8(*Name.ToString()), &Value);
         if (Result != FMOD_OK)
         {
             UE_LOG(LogFMOD, Warning, TEXT("Failed to get parameter %s"), *Name.ToString());

@@ -235,6 +235,12 @@ public:
     UPROPERTY(config, EditAnywhere, Category = Advanced)
     FString SkipLoadBankName;
 
+	/*
+    * Specify the key for loading sounds from encrypted banks.
+	*/
+	UPROPERTY(config, EditAnywhere, Category = Advanced)
+	FString EncryptionKey;
+
     /**
 	* Force wav writer output, for debugging only.  Setting this will prevent normal sound output!
 	*/
@@ -244,20 +250,38 @@ public:
     UPROPERTY(config, EditAnywhere, Category = Advanced)
     TEnumAsByte<EFMODLogging> LoggingLevel;
 
+    /**
+    * Name of the parameter used in Studio to control Occlusion effects.
+    */
+    UPROPERTY(config, EditAnywhere, Category = Advanced)
+    FString OcclusionParameter;
+
+    /**
+    * Name of the parameter used in Studio to control Ambient volume.
+    */
+    UPROPERTY(config, EditAnywhere, Category = Advanced)
+    FString AmbientVolumeParameter;
+
+    /**
+    * Name of the parameter used in Studio to control Ambient LPF effects.
+    */
+    UPROPERTY(config, EditAnywhere, Category = Advanced)
+    FString AmbientLPFParameter;
+
     /** Is the bank path set up . */
     bool IsBankPathSet() const { return !BankOutputDirectory.Path.IsEmpty(); }
 
     /** Get the full bank path.  Uses the game's content directory as a base. */
     FString GetFullBankPath() const;
 
-    /** Get the master bank path. */
-    FString GetMasterBankPath() const;
+    /** Get the master bank filename. */
+    FString GetMasterBankFilename() const;
 
-    /** Get the master assets bank path. */
-    FString GetMasterAssetsBankPath() const;
+    /** Get the master assets bank filename. */
+    FString GetMasterAssetsBankFilename() const;
 
-    /** Get the master strings bank path. */
-    FString GetMasterStringsBankPath() const;
+    /** Get the master strings bank filename. */
+    FString GetMasterStringsBankFilename() const;
 
     /** Get all banks in our bank directory excluding the master and strings bank. */
     void GetAllBankPaths(TArray<FString> &Paths, bool IncludeMasterBank = false) const;

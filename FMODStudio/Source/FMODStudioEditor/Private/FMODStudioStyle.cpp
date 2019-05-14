@@ -2,7 +2,6 @@
 
 #include "FMODStudioStyle.h"
 #include "EditorStyle/Public/Interfaces/IEditorStyleModule.h"
-//#include "EditorStyle/Public/EditorStyleSet.h"
 #include "Modules/ModuleManager.h"
 
 #define IMAGE_BRUSH(RelativePath, ...) FSlateImageBrush(Style.RootToContentDir(RelativePath, TEXT(".png")), __VA_ARGS__)
@@ -43,10 +42,8 @@ TSharedRef<FSlateStyleSet> FFMODStudioStyle::Create()
     Style.Set("ClassThumbnail.FMODAmbientSound", new IMAGE_BRUSH("Icons/AssetIcons/AmbientSound_64x", FVector2D(64.0f, 64.0f)));
 
     Style.Set("ClassIcon.FMODAudioComponent", new IMAGE_BRUSH("Icons/ActorIcons/SoundActor_16x", FVector2D(16.0f, 16.0f)));
-    //Style.Set( "ClassThumbnail.FMODAudioComponent", new IMAGE_BRUSH( "Icons/ActorIcons/SoundActor_64x",  FVector2D(64.0f, 64.0f) ) );
 
     Style.Set("ClassIcon.FMODAsset", new IMAGE_BRUSH("Icons/ActorIcons/SoundActor_16x", FVector2D(16.0f, 16.0f)));
-    //Style.Set( "ClassThumbnail.FMODAsset", new IMAGE_BRUSH( "Icons/ActorIcons/SoundActor_64x", FVector2D(64.0f, 64.0f)  ) );
 
     return StyleRef;
 }

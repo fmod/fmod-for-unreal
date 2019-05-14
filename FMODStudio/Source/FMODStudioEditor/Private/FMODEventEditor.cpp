@@ -66,10 +66,13 @@ void FFMODEventEditor::PlayEvent()
     CurrentPreviewEventInstance = IFMODStudioModule::Get().CreateAuditioningInstance(EditedEvent);
     if (CurrentPreviewEventInstance != nullptr)
     {
-        for (int32 ParamIdx = 0; ParamIdx < ParameterValues.Num(); ParamIdx++)
-        {
-            CurrentPreviewEventInstance->setParameterValueByIndex(ParamIdx, ParameterValues[ParamIdx]);
-        }
+        TArray<float> values;
+        TArray<FMOD_STUDIO_PARAMETER_ID> ids;
+        
+        ParameterValues.GenerateKeyArray(ids);
+        ParameterValues.GenerateValueArray(values);
+
+        CurrentPreviewEventInstance->setParametersByIDs(ids.GetData(), values.GetData(), ParameterValues.Num());
 
         CurrentPreviewEventInstance->start();
     }
@@ -90,19 +93,24 @@ void FFMODEventEditor::StopEvent()
     IFMODStudioModule::Get().StopAuditioningInstance();
 }
 
-void FFMODEventEditor::SetParameterValue(int32 ParameterIdx, float Value)
+void FFMODEventEditor::SetParameterValue(FMOD_STUDIO_PARAMETER_ID ParameterId, float Value)
 {
-    ParameterValues[ParameterIdx] = Value;
+    ParameterValues[ParameterId] = Value;
 
     if (CurrentPreviewEventInstance != nullptr)
     {
-        CurrentPreviewEventInstance->setParameterValueByIndex(ParameterIdx, Value);
+        CurrentPreviewEventInstance->setParameterByID(ParameterId, Value);
     }
 }
 
-TArray<float> &FFMODEventEditor::GetParameterValues()
+void FFMODEventEditor::AddParameter(FMOD_STUDIO_PARAMETER_ID ParameterId, float Value)
 {
-    return ParameterValues;
+    ParameterValues.Add(ParameterId, Value);
+}
+
+float FFMODEventEditor::GetParameterValue(FMOD_STUDIO_PARAMETER_ID Id)
+{
+    return ParameterValues[Id];
 }
 
 void FFMODEventEditor::InitFMODEventEditor(const EToolkitMode::Type Mode, const TSharedPtr<class IToolkitHost> &InitToolkitHost, UFMODEvent *Event)
