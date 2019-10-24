@@ -1438,3 +1438,5 @@ void FFMODStudioModule::StopAuditioningInstance()
         AuditioningInstance = nullptr;
     }
 }
+
+#undef LOCTEXT_NAMESPACE
