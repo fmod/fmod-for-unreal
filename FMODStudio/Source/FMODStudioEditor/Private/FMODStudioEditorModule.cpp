@@ -1108,3 +1108,5 @@ void FFMODStudioEditorModule::RegisterComponentVisualizer(FName ComponentClassNa
         Visualizer->OnRegister();
     }
 }
+
+#undef LOCTEXT_NAMESPACE
