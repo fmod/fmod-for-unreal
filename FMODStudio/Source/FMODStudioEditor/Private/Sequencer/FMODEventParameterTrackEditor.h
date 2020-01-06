@@ -60,10 +60,10 @@ private:
             Action = InAction;
         }
 
-        bool operator<(FParameterNameAndAction const &Other) const { return ParameterName < Other.ParameterName; }
+        bool operator<(FParameterNameAndAction const &Other) const { return ParameterName.FastLess(Other.ParameterName); }
     };
 
-    void BuildObjectBindingTrackMenu(FMenuBuilder &MenuBuilder, const FGuid &ObjectBinding, const UClass *ObjectClass);
+    void BuildObjectBindingTrackMenu(FMenuBuilder &MenuBuilder, const TArray<FGuid> &ObjectBindings, const UClass *ObjectClass);
 
     /** Provides the contents of the add parameter menu. */
     TSharedRef<SWidget> OnGetAddParameterMenuContent(FGuid ObjectBinding, UFMODEventParameterTrack *EventParameterTrack);

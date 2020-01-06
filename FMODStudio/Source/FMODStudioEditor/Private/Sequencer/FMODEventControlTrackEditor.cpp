@@ -139,7 +139,7 @@ TSharedRef<ISequencerSection> FFMODEventControlTrackEditor::MakeSectionInterface
     return MakeShareable(new FFMODEventControlSection(SectionObject, OwningSequencer.ToSharedRef()));
 }
 
-void FFMODEventControlTrackEditor::BuildObjectBindingTrackMenu(FMenuBuilder &MenuBuilder, const FGuid &ObjectBinding, const UClass *ObjectClass)
+void FFMODEventControlTrackEditor::BuildObjectBindingTrackMenu(FMenuBuilder &MenuBuilder, const TArray<FGuid> &ObjectBindings, const UClass *ObjectClass)
 {
     if (ObjectClass->IsChildOf(AFMODAmbientSound::StaticClass()) || ObjectClass->IsChildOf(UFMODAudioComponent::StaticClass()))
     {
@@ -147,7 +147,7 @@ void FFMODEventControlTrackEditor::BuildObjectBindingTrackMenu(FMenuBuilder &Men
 
         MenuBuilder.AddMenuEntry(LOCTEXT("AddFMODEventControlTrack", "FMOD Event Control Track"),
             LOCTEXT("FMODEventControlTooltip", "Adds a track for controlling FMOD event."), FSlateIcon(),
-            FUIAction(FExecuteAction::CreateSP(this, &FFMODEventControlTrackEditor::AddControlKey, ObjectBinding)));
+            FUIAction(FExecuteAction::CreateSP(this, &FFMODEventControlTrackEditor::AddControlKey, ObjectBindings[0])));
     }
 }
 

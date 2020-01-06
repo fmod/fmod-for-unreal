@@ -26,7 +26,7 @@ public:
     void AddControlKey(const FGuid ObjectGuid);
 
     // Begin ISequencerTrackEditor interface
-    virtual void BuildObjectBindingTrackMenu(FMenuBuilder &MenuBuilder, const FGuid &ObjectBinding, const UClass *ObjectClass) override;
+    virtual void BuildObjectBindingTrackMenu(FMenuBuilder &MenuBuilder, const TArray<FGuid> &ObjectBindings, const UClass *ObjectClass) override;
     virtual TSharedRef<ISequencerSection> MakeSectionInterface(
         UMovieSceneSection &SectionObject, UMovieSceneTrack &Track, FGuid ObjectBinding) override;
     virtual bool SupportsType(TSubclassOf<UMovieSceneTrack> Type) const override;

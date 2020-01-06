@@ -84,7 +84,7 @@ namespace UnrealBuildTool.Rules
 
             // Minimum UE version for Switch 4.15
             System.Console.WriteLine("Target Platform -- " + Target.Platform.ToString());
-            if (Target.Platform.ToString() == "Switch")
+            if (Target.Platform == UnrealTargetPlatform.Switch)
             {
                 linkExtension = ".a";
                 dllExtension = ".a";
@@ -97,68 +97,73 @@ namespace UnrealBuildTool.Rules
                 dllExtension = ".dll";
                 bAddDelayLoad = true;
             }
+            else if (Target.Platform == UnrealTargetPlatform.Win32)
+            {
+                linkExtension = "_vc.lib";
+                dllExtension = ".dll";
+                bAddDelayLoad = true;
+            }
+            else if (Target.Platform == UnrealTargetPlatform.Win64)
+            {
+                linkExtension = "_vc.lib";
+                dllExtension = ".dll";
+                bAddDelayLoad = true;
+            }
+            else if (Target.Platform == UnrealTargetPlatform.Mac)
+            {
+                linkExtension = dllExtension = ".dylib";
+                libPrefix = "lib";
+                bLinkFromBinaries = false;
+            }
+            else if (Target.Platform == UnrealTargetPlatform.XboxOne)
+            {
+                linkExtension = "_vc.lib";
+                dllExtension = ".dll";
+                copyThirdPartyPath = "../XBoxOne"; // XBoxOne still doesn't seem to support plugins with .dlls
+                bAddDelayLoad = false;
+            }
+            else if (Target.Platform == UnrealTargetPlatform.PS4)
+            {
+                linkExtension = "_stub.a";
+                dllExtension = ".prx";
+                libPrefix = "lib";
+                bAddDelayLoad = true;
+            }
+            else if (Target.Platform == UnrealTargetPlatform.Android)
+            {
+                // Don't use an explicit path with the .so, let the architecture dirs be filtered by UBT
+                PublicLibraryPaths.Add(System.IO.Path.Combine(BasePath, "armeabi-v7a"));
+                PublicLibraryPaths.Add(System.IO.Path.Combine(BasePath, "arm64-v8a"));
+                PublicLibraryPaths.Add(System.IO.Path.Combine(BasePath, "x86"));
+                bAddRuntimeDependencies = false; // Don't use this system
+                bShortLinkNames = true; // strip off lib and .so
+                linkExtension = dllExtension = ".so";
+                libPrefix = "lib";
+            }
+            else if (Target.Platform == UnrealTargetPlatform.IOS)
+            {
+                linkExtension = "_iphoneos.a";
+                libPrefix = "lib";
+                bAddRuntimeDependencies = false;
+            }
+            else if (Target.Platform == UnrealTargetPlatform.TVOS)
+            {
+                linkExtension = "_appletvos.a";
+                libPrefix = "lib";
+                bAddRuntimeDependencies = false;
+            }
+            else if (Target.Platform == UnrealTargetPlatform.Linux)
+            {
+                BasePath = System.IO.Path.Combine(BasePath, "x86_64");
+                linkExtension = ".so";
+                dllExtension = ".so";
+                libPrefix = "lib";
+            }
             else
             {
-                switch (Target.Platform)
-                {
-                    case UnrealTargetPlatform.Win32:
-                        linkExtension = "_vc.lib";
-                        dllExtension = ".dll";
-                        bAddDelayLoad = true;
-                        break;
-                    case UnrealTargetPlatform.Win64:
-                        linkExtension = "_vc.lib";
-                        dllExtension = ".dll";
-                        bAddDelayLoad = true;
-                        break;
-                    case UnrealTargetPlatform.Mac:
-                        linkExtension = dllExtension = ".dylib";
-                        libPrefix = "lib";
-                        bLinkFromBinaries = false;
-                        break;
-                    case UnrealTargetPlatform.XboxOne:
-                        linkExtension = "_vc.lib";
-                        dllExtension = ".dll";
-                        copyThirdPartyPath = "../XBoxOne"; // XBoxOne still doesn't seem to support plugins with .dlls
-                        bAddDelayLoad = false;
-                        break;
-                    case UnrealTargetPlatform.PS4:
-                        linkExtension = "_stub.a";
-                        dllExtension = ".prx";
-                        libPrefix = "lib";
-                        bAddDelayLoad = true;
-                        break;
-                    case UnrealTargetPlatform.Android:
-                        // Don't use an explicit path with the .so, let the architecture dirs be filtered by UBT
-                        PublicLibraryPaths.Add(System.IO.Path.Combine(BasePath, "armeabi-v7a"));
-                        PublicLibraryPaths.Add(System.IO.Path.Combine(BasePath, "arm64-v8a"));
-                        PublicLibraryPaths.Add(System.IO.Path.Combine(BasePath, "x86"));
-                        bAddRuntimeDependencies = false; // Don't use this system
-                        bShortLinkNames = true; // strip off lib and .so
-                        linkExtension = dllExtension = ".so";
-                        libPrefix = "lib";
-                        break;
-                    case UnrealTargetPlatform.IOS:
-                        linkExtension = "_iphoneos.a";
-                        libPrefix = "lib";
-                        bAddRuntimeDependencies = false;
-                        break;
-                    case UnrealTargetPlatform.TVOS:
-                        linkExtension = "_appletvos.a";
-                        libPrefix = "lib";
-                        bAddRuntimeDependencies = false;
-                        break;
-                    case UnrealTargetPlatform.Linux:
-                        BasePath = System.IO.Path.Combine(BasePath, "x86_64");
-                        linkExtension = ".so";
-                        dllExtension = ".so";
-                        libPrefix = "lib";
-                        break;
-                    default:
-                        //extName = ".a";
-                        throw new System.Exception(System.String.Format("Unsupported platform {0}", Target.Platform.ToString()));
-                        //break;
-                }
+                    //extName = ".a";
+                    throw new System.Exception(System.String.Format("Unsupported platform {0}", Target.Platform.ToString()));
+                    //break;
             }
             
             //System.Console.WriteLine("FMOD Current path: " + System.IO.Path.GetFullPath("."));

@@ -45,7 +45,7 @@ TSharedPtr<SWidget> FFMODEventParameterTrackEditor::BuildOutlinerEditWidget(
         GetSequencer());
 }
 
-void FFMODEventParameterTrackEditor::BuildObjectBindingTrackMenu(FMenuBuilder &MenuBuilder, const FGuid &ObjectBinding, const UClass *ObjectClass)
+void FFMODEventParameterTrackEditor::BuildObjectBindingTrackMenu(FMenuBuilder &MenuBuilder, const TArray<FGuid> &ObjectBindings, const UClass *ObjectClass)
 {
     if (ObjectClass->IsChildOf(AFMODAmbientSound::StaticClass()) || ObjectClass->IsChildOf(UFMODAudioComponent::StaticClass()))
     {
@@ -53,8 +53,8 @@ void FFMODEventParameterTrackEditor::BuildObjectBindingTrackMenu(FMenuBuilder &M
 
         MenuBuilder.AddMenuEntry(LOCTEXT("AddFMODParameterTrack", "FMOD Event Parameter Track"),
             LOCTEXT("AddFMODParameterTrackTooltip", "Adds a track for controlling FMOD event parameter values."), FSlateIcon(),
-            FUIAction(FExecuteAction::CreateSP(this, &FFMODEventParameterTrackEditor::AddEventParameterTrack, ObjectBinding),
-                FCanExecuteAction::CreateSP(this, &FFMODEventParameterTrackEditor::CanAddEventParameterTrack, ObjectBinding)));
+            FUIAction(FExecuteAction::CreateSP(this, &FFMODEventParameterTrackEditor::AddEventParameterTrack, ObjectBindings[0]),
+                FCanExecuteAction::CreateSP(this, &FFMODEventParameterTrackEditor::CanAddEventParameterTrack, ObjectBindings[0])));
     }
 }
 
