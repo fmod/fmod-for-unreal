@@ -51,6 +51,7 @@ namespace UnrealBuildTool.Rules
                     "WorkspaceMenuStructure",
                     "Sockets",
                     "LevelSequence",
+                    "MainFrame",
                     "MovieScene",
                     "MovieSceneTracks",
                     "MovieSceneTools"

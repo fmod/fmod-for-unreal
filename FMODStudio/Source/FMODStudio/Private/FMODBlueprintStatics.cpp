@@ -32,7 +32,7 @@ FFMODEventInstance UFMODBlueprintStatics::PlayEventAtLocation(
     FFMODEventInstance Instance;
     Instance.Instance = nullptr;
 
-    UWorld *ThisWorld = GEngine->GetWorldFromContextObjectChecked(WorldContextObject);
+    UWorld *ThisWorld = GEngine->GetWorldFromContextObject(WorldContextObject, EGetWorldErrorMode::ReturnNull);
     if (FMODUtils::IsWorldAudible(ThisWorld, false) && IsValid(Event))
     {
         FMOD::Studio::EventDescription *EventDesc = IFMODStudioModule::Get().GetEventDescription(Event);
@@ -471,7 +471,7 @@ void UFMODBlueprintStatics::EventInstancePlay(FFMODEventInstance EventInstance)
     }
 }
 
-void UFMODBlueprintStatics::EventInstanceStop(FFMODEventInstance EventInstance)
+void UFMODBlueprintStatics::EventInstanceStop(FFMODEventInstance EventInstance, bool Release)
 {
     if (EventInstance.Instance)
     {
@@ -479,6 +479,26 @@ void UFMODBlueprintStatics::EventInstanceStop(FFMODEventInstance EventInstance)
         if (Result != FMOD_OK)
         {
             UE_LOG(LogFMOD, Warning, TEXT("Failed to stop event instance"));
+        }
+        else
+        {
+            if (Release)
+            {
+                EventInstanceRelease(EventInstance);
+                //EventInstance.Instance->release();
+            }
+        }
+    }
+}
+
+void UFMODBlueprintStatics::EventInstanceRelease(FFMODEventInstance EventInstance)
+{
+    if (EventInstance.Instance)
+    {
+        FMOD_RESULT Result = EventInstance.Instance->release();
+        if (Result != FMOD_OK)
+        {
+            UE_LOG(LogFMOD, Warning, TEXT("Failed to release event instance"));
         }
     }
 }
@@ -613,4 +633,9 @@ void UFMODBlueprintStatics::MixerResume()
 
         verifyfmod(LowLevelSystem->mixerResume());
     }
+}
+
+void UFMODBlueprintStatics::SetLocale(const FString& Locale)
+{
+    IFMODStudioModule::Get().SetLocale(Locale);
 }

@@ -12,6 +12,7 @@
 #include "FMODFileCallbacks.h"
 #include "FMODStudioPrivatePCH.h"
 #include "fmod_studio.hpp"
+#include "HAL/FileManager.h"
 #include "Misc/Paths.h"
 #include "UObject/Package.h"
 
@@ -212,6 +213,12 @@ void FFMODAssetTable::AddAsset(const FGuid &AssetGuid, const FString &AssetFullN
     {
         UE_LOG(LogFMOD, Log, TEXT("Constructing asset: %s"), *AssetPackagePath);
 
+        EObjectFlags NewObjectFlags = RF_Standalone | RF_Public /* | RF_Transient */;
+        if (IsRunningDedicatedServer())
+        {
+            NewObjectFlags |= RF_MarkAsRootSet;
+        }
+
         UPackage *NewPackage = CreatePackage(nullptr, *AssetPackagePath);
         if (IsValid(NewPackage))
         {
@@ -220,7 +227,7 @@ void FFMODAssetTable::AddAsset(const FGuid &AssetGuid, const FString &AssetFullN
                 NewPackage->SetPackageFlags(PKG_CompiledIn);
             }
 
-            AssetNameObject = NewObject<UFMODAsset>(NewPackage, AssetClass, FName(*AssetShortName), RF_Standalone | RF_Public /* | RF_Transient */);
+            AssetNameObject = NewObject<UFMODAsset>(NewPackage, AssetClass, FName(*AssetShortName), NewObjectFlags);
             AssetNameObject->AssetGuid = AssetGuid;
             AssetNameObject->bShowAsAsset = true;
             AssetNameObject->FileName = AssetFileName;
@@ -252,7 +259,7 @@ void FFMODAssetTable::AddAsset(const FGuid &AssetGuid, const FString &AssetFullN
                     ReverbPackage->SetPackageFlags(PKG_CompiledIn);
                 }
                 UFMODSnapshotReverb *AssetReverb = NewObject<UFMODSnapshotReverb>(
-                    ReverbPackage, UFMODSnapshotReverb::StaticClass(), FName(*AssetShortName), RF_Standalone | RF_Public /* | RF_Transient */);
+                    ReverbPackage, UFMODSnapshotReverb::StaticClass(), FName(*AssetShortName), NewObjectFlags);
                 AssetReverb->AssetGuid = AssetGuid;
                 AssetReverb->bShowAsAsset = true;
 
@@ -285,16 +292,48 @@ void FFMODAssetTable::AddAsset(const FGuid &AssetGuid, const FString &AssetFullN
     ExistingFullNameLookupAsset = AssetNameObject;
 }
 
-FString FFMODAssetTable::GetBankPath(const UFMODBank &Bank) const
+FString FFMODAssetTable::GetBankPathByGuid(const FGuid& Guid) const
 {
     FString BankPath = "";
-    const FString* File = BankPathLookup.Find(Bank.AssetGuid);
+    const FString* File = nullptr;
+    const BankLocalizations* localizations = BankPathLookup.Find(Guid);
+
+    if (localizations)
+    {
+        const FString* DefaultFile = nullptr;
+
+        for (int i = 0; i < localizations->Num(); ++i)
+        {
+            if ((*localizations)[i].Locale.IsEmpty())
+            {
+                DefaultFile = &(*localizations)[i].Path;
+            }
+            else if ((*localizations)[i].Locale == ActiveLocale)
+            {
+                File = &(*localizations)[i].Path;
+                break;
+            }
+        }
+
+        if (!File)
+        {
+            File = DefaultFile;
+        }
+    }
 
     if (File)
     {
         BankPath = *File;
     }
-    else
+
+    return BankPath;
+}
+
+FString FFMODAssetTable::GetBankPath(const UFMODBank &Bank) const
+{
+    FString BankPath = GetBankPathByGuid(Bank.AssetGuid);
+
+    if (BankPath.IsEmpty())
     {
         UE_LOG(LogFMOD, Warning, TEXT("Could not find disk file for bank %s"), *Bank.FileName);
     }
@@ -317,12 +356,58 @@ FString FFMODAssetTable::GetMasterAssetsBankPath() const
     return MasterAssetsBankPath;
 }
 
+void FFMODAssetTable::SetLocale(const FString &LocaleCode)
+{
+    ActiveLocale = LocaleCode;
+}
+
+void FFMODAssetTable::GetAllBankPaths(TArray<FString> &Paths, bool IncludeMasterBank) const
+{
+    const UFMODSettings &Settings = *GetDefault<UFMODSettings>();
+
+    for (const TMap<FGuid, BankLocalizations>::ElementType& Localizations : BankPathLookup)
+    {
+        FString BankPath = GetBankPathByGuid(Localizations.Key);
+        bool Skip = false;
+
+        if (BankPath.IsEmpty())
+        {
+            // Never expect to be in here, but should skip empty paths
+            continue;
+        }
+
+        if (!IncludeMasterBank)
+        {
+            Skip = (BankPath == Settings.GetMasterBankFilename() || BankPath == Settings.GetMasterAssetsBankFilename() || BankPath == Settings.GetMasterStringsBankFilename());
+        }
+
+        if (!Skip)
+        {
+            Paths.Push(Settings.GetFullBankPath() / BankPath);
+        }
+    }
+}
+
+
+void FFMODAssetTable::GetAllBankPathsFromDisk(const FString &BankDir, TArray<FString> &Paths)
+{
+    FString SearchDir = BankDir;
+
+    TArray<FString> AllFiles;
+    IFileManager::Get().FindFilesRecursive(AllFiles, *SearchDir, TEXT("*.bank"), true, false, false);
+
+    for (FString &CurFile : AllFiles)
+    {
+        Paths.Push(CurFile);
+    }
+}
+
 void FFMODAssetTable::BuildBankPathLookup()
 {
     const UFMODSettings &Settings = *GetDefault<UFMODSettings>();
 
     TArray<FString> BankPaths;
-    Settings.GetAllBankPaths(BankPaths, true);
+    GetAllBankPathsFromDisk(Settings.GetFullBankPath(), BankPaths);
 
     BankPathLookup.Empty(BankPaths.Num());
     MasterBankPath.Empty();
@@ -349,8 +434,27 @@ void FFMODAssetTable::BuildBankPathLookup()
         if (result == FMOD_OK)
         {
             FString CurFilename = FPaths::GetCleanFilename(BankPath);
+            FString PathPart;
+            FString FilenamePart;
+            FString ExtensionPart;
+            FPaths::Split(BankPath, PathPart, FilenamePart, ExtensionPart);
             BankPath = BankPath.RightChop(Settings.GetFullBankPath().Len() + 1);
-            BankPathLookup.Add(FMODUtils::ConvertGuid(GUID), BankPath);
+
+            BankLocalization localization;
+            localization.Path = BankPath;
+            localization.Locale = "";
+
+            for (const FFMODProjectLocale& Locale : Settings.Locales)
+            {
+                if (FilenamePart.EndsWith(FString("_") + Locale.LocaleCode))
+                {
+                    localization.Locale = Locale.LocaleCode;
+                    break;
+                }
+            }
+
+            BankLocalizations& localizations = BankPathLookup.FindOrAdd(FMODUtils::ConvertGuid(GUID));
+            localizations.Add(localization);
 
             if (MasterBankPath.IsEmpty() && CurFilename == Settings.GetMasterBankFilename())
             {

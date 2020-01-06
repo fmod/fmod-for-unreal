@@ -31,10 +31,14 @@ public:
     FString GetMasterBankPath() const;
     FString GetMasterStringsBankPath() const;
     FString GetMasterAssetsBankPath() const;
+    void SetLocale(const FString &LocaleCode);
+    void GetAllBankPaths(TArray<FString> &BankPaths, bool IncludeMasterBank) const;
 
 private:
     void AddAsset(const FGuid &AssetGuid, const FString &AssetFullName);
+    void GetAllBankPathsFromDisk(const FString &BankDir, TArray<FString> &Paths);
     void BuildBankPathLookup();
+    FString GetBankPathByGuid(const FGuid& Guid) const;
 
 private:
     FMOD::Studio::System *StudioSystem;
@@ -44,5 +48,15 @@ private:
     FString MasterBankPath;
     FString MasterStringsBankPath;
     FString MasterAssetsBankPath;
-    TMap<FGuid, FString> BankPathLookup;
+
+    struct BankLocalization
+    {
+        FString Locale;
+        FString Path;
+    };
+
+    typedef TArray<BankLocalization> BankLocalizations;
+
+    TMap<FGuid, BankLocalizations> BankPathLookup;
+    FString ActiveLocale;
 };

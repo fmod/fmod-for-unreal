@@ -98,6 +98,11 @@ public:
     virtual FString GetBankPath(const UFMODBank &Bank) = 0;
 
     /**
+      * Get the disk paths for all Banks
+      */
+    virtual void GetAllBankPaths(TArray<FString> &Paths, bool IncludeMasterBank) const = 0;
+
+    /**
 	 * Get an event description.
 	 * The system type can control which Studio system to use, or leave it as System_Max for it to choose automatically.
 	 */
@@ -157,4 +162,7 @@ public:
 
     /** Returns if the banks have been loaded */
     virtual bool AreBanksLoaded() = 0;
+
+    /** Set active locale. Locale must be the locale name of one of the configured project locales */
+    virtual bool SetLocale(const FString& Locale) = 0;
 };

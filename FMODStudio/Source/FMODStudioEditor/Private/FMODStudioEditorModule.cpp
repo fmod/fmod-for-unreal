@@ -11,6 +11,7 @@
 #include "FMODEventEditor.h"
 #include "FMODAudioComponentVisualizer.h"
 #include "FMODAudioComponentDetails.h"
+#include "FMODSettingsCustomization.h"
 #include "Sequencer/FMODChannelEditors.h"
 #include "Sequencer/FMODEventControlSection.h"
 #include "Sequencer/FMODEventControlTrackEditor.h"
@@ -43,6 +44,7 @@
 #include "Slate/Public/Framework/MultiBox/MultiBoxBuilder.h"
 #include "Misc/MessageDialog.h"
 #include "HAL/FileManager.h"
+#include "Interfaces/IMainFrameModule.h"
 
 #include "fmod_studio.hpp"
 
@@ -213,8 +215,18 @@ public:
     /** Set Studio build path */
     void ValidateFMOD();
 
+    /** Helper to get Studio project locales */
+    bool GetStudioLocales(FFMODStudioLink &StudioLink, TArray<FFMODProjectLocale> &StudioLocales);
+
     /** Reload banks */
     void ReloadBanks();
+
+    /** Callback for the main frame finishing load */
+    void OnMainFrameLoaded(TSharedPtr<SWindow> InRootWindow, bool bIsNewProjectWindow);
+
+    /** Callbacks for bad settings notification buttons */
+    void OnBadSettingsPopupSettingsClicked();
+    void OnBadSettingsPopupDismissClicked();
 
     void TickTest(float DeltaTime);
 
@@ -247,6 +259,9 @@ public:
     TSharedPtr<FAssetTypeActions_FMODEvent> FMODEventAssetTypeActions;
 
     ISettingsSectionPtr SettingsSection;
+
+    /** Notification popup that settings are bad */
+    TWeakPtr<SNotificationItem> BadSettingsNotification;
 
     bool bSimulating;
     bool bIsInPIE;
@@ -287,6 +302,12 @@ void FFMODStudioEditorModule::StartupModule()
     // Register the details customizations
     {
         FPropertyEditorModule &PropertyModule = FModuleManager::LoadModuleChecked<FPropertyEditorModule>("PropertyEditor");
+
+        PropertyModule.RegisterCustomClassLayout(
+            UFMODSettings::StaticClass()->GetFName(),
+            FOnGetDetailCustomizationInstance::CreateStatic(&FFMODSettingsCustomization::MakeInstance)
+        );
+
         PropertyModule.RegisterCustomClassLayout(
             "FMODAudioComponent", FOnGetDetailCustomizationInstance::CreateStatic(&FFMODAudioComponentDetails::MakeInstance));
         PropertyModule.NotifyCustomizationModuleChanged();
@@ -336,6 +357,10 @@ void FFMODStudioEditorModule::StartupModule()
     {
         bRunningTest = true;
     }
+
+    // Register a callback to validate settings on startup
+    IMainFrameModule& MainFrameModule = FModuleManager::LoadModuleChecked<IMainFrameModule>(TEXT("MainFrame"));
+    MainFrameModule.OnMainFrameCreationFinished().AddRaw(this, &FFMODStudioEditorModule::OnMainFrameLoaded);
 }
 
 void FFMODStudioEditorModule::AddHelpMenuExtension(FMenuBuilder &MenuBuilder)
@@ -452,6 +477,41 @@ void FFMODStudioEditorModule::OpenVideoTutorials()
     FPlatformProcess::LaunchFileInDefaultExternalApplication(TEXT("http://www.youtube.com/user/FMODTV"));
 }
 
+bool FFMODStudioEditorModule::GetStudioLocales(FFMODStudioLink &StudioLink, TArray<FFMODProjectLocale> &StudioLocales)
+{
+    FString OutMessage;
+
+    if (!StudioLink.Execute(TEXT("studio.project.workspace.locales.length"), OutMessage))
+    {
+        return false;
+    }
+
+    int NumStudioLocales = FCString::Atoi(*OutMessage);
+    StudioLocales.Reserve(NumStudioLocales);
+
+    for (int i = 0; i < NumStudioLocales; ++i)
+    {
+        FFMODProjectLocale Locale{};
+        FString Message = FString::Printf(TEXT("studio.project.workspace.locales[%d].name"), i);
+
+        if (!StudioLink.Execute(*Message, Locale.LocaleName))
+        {
+            return false;
+        }
+
+        Message = FString::Printf(TEXT("studio.project.workspace.locales[%d].localeCode"), i);
+
+        if (!StudioLink.Execute(*Message, Locale.LocaleCode))
+        {
+            return false;
+        }
+
+        StudioLocales.Push(Locale);
+    }
+
+    return true;
+}
+
 void FFMODStudioEditorModule::ValidateFMOD()
 {
     int ProblemsFound = 0;
@@ -500,7 +560,7 @@ void FFMODStudioEditorModule::ValidateFMOD()
         ProblemsFound++;
     }
 
-    if (StudioVersion != DLLVersion)
+    if (Connected && StudioVersion != DLLVersion)
     {
         FText VersionMessage =
             FText::Format(LOCTEXT("SetStudioBuildStudio_Version",
@@ -518,7 +578,8 @@ void FFMODStudioEditorModule::ValidateFMOD()
         ProblemsFound++;
     }
 
-    const UFMODSettings &Settings = *GetDefault<UFMODSettings>();
+    UFMODSettings& Settings = *GetMutableDefault<UFMODSettings>();
+
     FString FullBankPath = Settings.BankOutputDirectory.Path;
 
     if (FPaths::IsRelative(FullBankPath))
@@ -629,6 +690,52 @@ void FFMODStudioEditorModule::ValidateFMOD()
                 IFMODStudioModule::Get().RefreshSettings();
             }
         }
+
+        if (StudioVersion >= MakeVersion(2, 0, 0))
+        {
+            // Check whether Studio project locales match those setup in UE4
+            TArray<FFMODProjectLocale> StudioLocales;
+
+            if (GetStudioLocales(StudioLink, StudioLocales))
+            {
+                bool bAllMatch = true;
+
+                if (StudioLocales.Num() == Settings.Locales.Num())
+                {
+                    for (const FFMODProjectLocale& StudioLocale : StudioLocales)
+                    {
+                        bool bMatch = false;
+
+                        for (const FFMODProjectLocale& Locale : Settings.Locales)
+                        {
+                            if (Locale.LocaleCode == StudioLocale.LocaleCode && Locale.LocaleName == StudioLocale.LocaleName)
+                            {
+                                bMatch = true;
+                                break;
+                            }
+                        }
+
+                        if (!bMatch)
+                        {
+                            bAllMatch = false;
+                            break;
+                        }
+                    }
+                }
+                else
+                {
+                    bAllMatch = false;
+                }
+
+                if (!bAllMatch)
+                {
+                    ProblemsFound++;
+                    FText Message = LOCTEXT("LocalesMismatch",
+                        "The project locales do not match those defined in the FMOD Studio Project.\n");
+                    FMessageDialog::Open(EAppMsgType::Ok, Message);
+                }
+            }
+        }
     }
 
     bool bAnyBankFiles = false;
@@ -646,7 +753,7 @@ void FFMODStudioEditorModule::ValidateFMOD()
     else
     {
         TArray<FString> BankFiles;
-        Settings.GetAllBankPaths(BankFiles, true);
+        IFMODStudioModule::Get().GetAllBankPaths(BankFiles, true);
 
         if (BankFiles.Num() != 0)
         {
@@ -751,25 +858,64 @@ void FFMODStudioEditorModule::ValidateFMOD()
     UProjectPackagingSettings *PackagingSettings = Cast<UProjectPackagingSettings>(UProjectPackagingSettings::StaticClass()->GetDefaultObject());
     bool bPackagingFound = false;
 
-    for (int i = 0; i < PackagingSettings->DirectoriesToAlwaysStageAsUFS.Num(); ++i)
+    for (int i = 0; i < PackagingSettings->DirectoriesToAlwaysStageAsNonUFS.Num(); ++i)
     {
         // We allow subdirectory references, such as "FMOD/Mobile"
-        if (PackagingSettings->DirectoriesToAlwaysStageAsUFS[i].Path.StartsWith(Settings.BankOutputDirectory.Path))
+        if (PackagingSettings->DirectoriesToAlwaysStageAsNonUFS[i].Path.StartsWith(Settings.BankOutputDirectory.Path))
         {
             bPackagingFound = true;
             break;
         }
     }
 
-    if (!bPackagingFound)
+    int OldPackagingIndex = -1;
+
+    for (int i = 0; i < PackagingSettings->DirectoriesToAlwaysStageAsUFS.Num(); ++i)
+    {
+        if (PackagingSettings->DirectoriesToAlwaysStageAsUFS[i].Path.StartsWith(Settings.BankOutputDirectory.Path))
+        {
+            OldPackagingIndex = i;
+            break;
+        }
+    }
+
+    if (OldPackagingIndex >= 0)
     {
         ProblemsFound++;
-        if (EAppReturnType::Yes ==
-            FMessageDialog::Open(EAppMsgType::YesNo,
-                LOCTEXT("PackagingFMOD_Ask",
-                    "FMOD has not been added to the \"Additional Non-Asset Directories to Package\" list.\n\nDo you want add it now?")))
+
+        FText message = bPackagingFound ?
+            LOCTEXT("PackagingFMOD_Both",
+                "FMOD has been added to both the \"Additional Non-Asset Directories to Copy\" and the \"Additional Non-Asset Directories to Package\" "
+                "lists. It is recommended to remove FMOD from the \"Additional Non-Asset Directories to Package\" list.\n\n"
+                "Do you want to remove it now?") :
+            LOCTEXT("PackagingFMOD_AskMove",
+                "FMOD has been added to the \"Additional Non-Asset Directories to Package\" list. "
+                "Packaging FMOD content may lead to deadlocks at runtime. "
+                "It is recommended to move FMOD to the \"Additional Non-Asset Directories to Copy\" list.\n\n"
+                "Do you want to move it now?");
+
+        if (EAppReturnType::Yes == FMessageDialog::Open(EAppMsgType::YesNo, message))
         {
-            PackagingSettings->DirectoriesToAlwaysStageAsUFS.Add(Settings.BankOutputDirectory);
+            PackagingSettings->DirectoriesToAlwaysStageAsUFS.RemoveAt(OldPackagingIndex);
+
+            if (!bPackagingFound)
+            {
+                PackagingSettings->DirectoriesToAlwaysStageAsNonUFS.Add(Settings.BankOutputDirectory);
+            }
+
+            PackagingSettings->UpdateDefaultConfigFile();
+        }
+    }
+    else if (!bPackagingFound)
+    {
+        ProblemsFound++;
+
+        FText message = LOCTEXT("PackagingFMOD_Ask",
+            "FMOD has not been added to the \"Additional Non-Asset Directories to Copy\" list.\n\nDo you want add it now?");
+
+        if (EAppReturnType::Yes == FMessageDialog::Open(EAppMsgType::YesNo, message))
+        {
+            PackagingSettings->DirectoriesToAlwaysStageAsNonUFS.Add(Settings.BankOutputDirectory);
             PackagingSettings->UpdateDefaultConfigFile();
         }
     }
@@ -789,6 +935,45 @@ void FFMODStudioEditorModule::ReloadBanks()
 {
     // Pretend settings have changed which will force a reload
     IFMODStudioModule::Get().RefreshSettings();
+}
+
+void FFMODStudioEditorModule::OnMainFrameLoaded(TSharedPtr<SWindow> InRootWindow, bool bIsNewProjectWindow)
+{
+    // Show a popup notification that allows the user to fix bad settings
+    const UFMODSettings& Settings = *GetDefault<UFMODSettings>();
+
+    if (Settings.Check() != UFMODSettings::Okay)
+    {
+        FNotificationInfo Info(LOCTEXT("BadSettingsPopupTitle", "FMOD Settings Problem Detected"));
+        Info.bFireAndForget = false;
+        Info.bUseLargeFont = true;
+        Info.bUseThrobber = false;
+        Info.FadeOutDuration = 0.5f;
+        Info.ButtonDetails.Add(FNotificationButtonInfo(LOCTEXT("BadSettingsPopupSettings", "Settings..."),
+            LOCTEXT("BadSettingsPopupSettingsTT", "Open the settings editor"),
+            FSimpleDelegate::CreateRaw(this, &FFMODStudioEditorModule::OnBadSettingsPopupSettingsClicked)));
+        Info.ButtonDetails.Add(FNotificationButtonInfo(LOCTEXT("BadSettingsPopupDismiss", "Dismiss"), 
+            LOCTEXT("BadSettingsPopupDismissTT", "Dismiss this notification"),
+            FSimpleDelegate::CreateRaw(this, &FFMODStudioEditorModule::OnBadSettingsPopupDismissClicked)));
+
+        BadSettingsNotification = FSlateNotificationManager::Get().AddNotification(Info);
+        BadSettingsNotification.Pin()->SetCompletionState(SNotificationItem::CS_Pending);
+    }
+}
+
+void FFMODStudioEditorModule::OnBadSettingsPopupSettingsClicked()
+{
+    if (ISettingsModule* SettingsModule = FModuleManager::GetModulePtr<ISettingsModule>("Settings"))
+    {
+        SettingsModule->ShowViewer("Project", "Plugins", "FMODStudio");
+    }
+
+    BadSettingsNotification.Pin()->ExpireAndFadeout();
+}
+
+void FFMODStudioEditorModule::OnBadSettingsPopupDismissClicked()
+{
+    BadSettingsNotification.Pin()->ExpireAndFadeout();
 }
 
 bool FFMODStudioEditorModule::Tick(float DeltaTime)
@@ -878,7 +1063,7 @@ void FFMODStudioEditorModule::TickTest(float DeltaTime)
             UProjectPackagingSettings *PackagingSettings =
                 Cast<UProjectPackagingSettings>(UProjectPackagingSettings::StaticClass()->GetDefaultObject());
             const UFMODSettings &Settings = *GetDefault<UFMODSettings>();
-            PackagingSettings->DirectoriesToAlwaysStageAsUFS.Add(Settings.BankOutputDirectory);
+            PackagingSettings->DirectoriesToAlwaysStageAsNonUFS.Add(Settings.BankOutputDirectory);
             PackagingSettings->UpdateDefaultConfigFile();
             break;
         }

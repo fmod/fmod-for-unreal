@@ -1,8 +1,11 @@
 // Copyright (c), Firelight Technologies Pty, Ltd. 2012-2019.
 
 #include "FMODSettings.h"
-#include "HAL/FileManager.h"
 #include "Misc/Paths.h"
+
+#if WITH_EDITOR
+#include "Settings/ProjectPackagingSettings.h"
+#endif
 
 //////////////////////////////////////////////////////////////////////////
 // UPaperRuntimeSettings
@@ -49,7 +52,7 @@ FString UFMODSettings::GetFullBankPath() const
     }
     else
     {
-#if PLATFORM_IOS || PLATFORM_ANDROID
+#if PLATFORM_IOS || PLATFORM_TVOS || PLATFORM_ANDROID
         FString PlatformName = "Mobile";
 #elif PLATFORM_PS4
         FString PlatformName = "PS4";
@@ -80,27 +83,51 @@ FString UFMODSettings::GetMasterStringsBankFilename() const
     return MasterBankName + TEXT(".strings.bank");
 }
 
-void UFMODSettings::GetAllBankPaths(TArray<FString> &Paths, bool IncludeMasterBank) const
+#if WITH_EDITOR
+UFMODSettings::EProblem UFMODSettings::Check() const
 {
-    FString BankDir = GetFullBankPath();
-    FString SearchDir = BankDir;
-
-    TArray<FString> AllFiles;
-    IFileManager::Get().FindFilesRecursive(AllFiles, *SearchDir, TEXT("*.bank"), true, false, false);
-
-    for (FString &CurFile : AllFiles)
+    if (!IsBankPathSet())
     {
-        bool Skip = false;
+        return BankPathNotSet;
+    }
 
-        if (!IncludeMasterBank)
-        {
-            FString CurFilename = FPaths::GetCleanFilename(CurFile);
-            Skip = (CurFilename == GetMasterBankFilename() || CurFilename == GetMasterAssetsBankFilename() || CurFilename == GetMasterStringsBankFilename());
-        }
+    UProjectPackagingSettings* PackagingSettings = Cast<UProjectPackagingSettings>(UProjectPackagingSettings::StaticClass()->GetDefaultObject());
+    bool bAddedToNonUFS = false;
+    bool bAddedToUFS = false;
 
-        if (!Skip)
+    for (int i = 0; i < PackagingSettings->DirectoriesToAlwaysStageAsNonUFS.Num(); ++i)
+    {
+        if (PackagingSettings->DirectoriesToAlwaysStageAsNonUFS[i].Path.StartsWith(BankOutputDirectory.Path))
         {
-            Paths.Push(CurFile);
+            bAddedToNonUFS = true;
+            break;
         }
     }
+
+    for (int i = 0; i < PackagingSettings->DirectoriesToAlwaysStageAsUFS.Num(); ++i)
+    {
+        if (PackagingSettings->DirectoriesToAlwaysStageAsUFS[i].Path.StartsWith(BankOutputDirectory.Path))
+        {
+            bAddedToUFS = true;
+            break;
+        }
+    }
+
+    if (bAddedToUFS && bAddedToNonUFS)
+    {
+        return AddedToBoth;
+    }
+
+    if (bAddedToUFS)
+    {
+        return AddedToUFS;
+    }
+ 
+    if (!bAddedToNonUFS)
+    {
+        return NotPackaged;
+    }
+
+    return Okay;
 }
+#endif // WITH_EDITOR

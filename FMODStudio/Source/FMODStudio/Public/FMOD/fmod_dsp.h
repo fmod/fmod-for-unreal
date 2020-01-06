@@ -115,20 +115,20 @@ typedef FMOD_RESULT (F_CALL *FMOD_DSP_PAN_GETROLLOFFGAIN_FUNC)            (FMOD_
 /*
     DSP Structures
 */
-typedef struct FMOD_DSP_BUFFER_ARRAY
+struct FMOD_DSP_BUFFER_ARRAY
 {
     int                numbuffers;
     int               *buffernumchannels;
     FMOD_CHANNELMASK  *bufferchannelmask;
     float            **buffers;
     FMOD_SPEAKERMODE   speakermode;
-} FMOD_DSP_BUFFER_ARRAY;
+};
 
-typedef struct FMOD_COMPLEX
+struct FMOD_COMPLEX
 {
     float real;
     float imag;
-} FMOD_COMPLEX;
+};
 
 typedef struct FMOD_DSP_PARAMETER_FLOAT_MAPPING_PIECEWISE_LINEAR
 {

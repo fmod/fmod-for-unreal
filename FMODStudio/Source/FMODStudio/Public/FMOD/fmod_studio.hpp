@@ -231,6 +231,9 @@ namespace Studio
 
         FMOD_RESULT F_API triggerCue();
 
+        // Monitoring
+        FMOD_RESULT F_API getCPUUsage(unsigned int *exclusive, unsigned int *inclusive) const;
+
         // Callbacks
         FMOD_RESULT F_API setCallback(FMOD_STUDIO_EVENT_CALLBACK callback, FMOD_STUDIO_EVENT_CALLBACK_TYPE callbackmask = FMOD_STUDIO_EVENT_CALLBACK_ALL);
         FMOD_RESULT F_API getUserData(void **userdata) const;
@@ -268,6 +271,8 @@ namespace Studio
         FMOD_RESULT F_API lockChannelGroup();
         FMOD_RESULT F_API unlockChannelGroup();
         FMOD_RESULT F_API getChannelGroup(FMOD::ChannelGroup **group) const;
+
+        FMOD_RESULT F_API getCPUUsage(unsigned int *exclusive, unsigned int *inclusive) const;
     };
 
     class VCA

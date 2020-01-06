@@ -241,17 +241,24 @@ class FMODSTUDIO_API UFMODBlueprintStatics : public UBlueprintFunctionLibrary
     UFUNCTION(BlueprintCallable, Category = "Audio|FMOD|EventInstance", meta = (UnsafeDuringActorConstruction = "true"))
     static void EventInstanceSetProperty(FFMODEventInstance EventInstance, EFMODEventProperty::Type Property, float Value);
 
-    /** Plays a FMOD Event Instance.
+    /** Plays an FMOD Event Instance.
 	 * @param EventInstance - Event instance
 	 */
     UFUNCTION(BlueprintCallable, Category = "Audio|FMOD|EventInstance", meta = (UnsafeDuringActorConstruction = "true"))
     static void EventInstancePlay(FFMODEventInstance EventInstance);
 
-    /** Stops a FMOD Event Instance.
+    /** Stop an FMOD Event Instance.
 	 * @param EventInstance - Event instance
+     * @param Release - Whether to release the Event Instance
 	 */
     UFUNCTION(BlueprintCallable, Category = "Audio|FMOD|EventInstance", meta = (UnsafeDuringActorConstruction = "true"))
-    static void EventInstanceStop(FFMODEventInstance EventInstance);
+    static void EventInstanceStop(FFMODEventInstance EventInstance, bool Release = false);
+
+    /** Release an FMOD Event Instance.
+    * @param EventInstance - Event instance
+    */
+    UFUNCTION(BlueprintCallable, Category = "Audio|FMOD|EventInstance", meta = (UnsafeDuringActorConstruction = "true"))
+    static void EventInstanceRelease(FFMODEventInstance EventInstance);
 
     /** Trigger a cue on an FMOD Event Instance.
 	 * @param EventInstance - Event instance
@@ -290,4 +297,9 @@ class FMODSTUDIO_API UFMODBlueprintStatics : public UBlueprintFunctionLibrary
 	*/
     UFUNCTION(BlueprintCallable, Category = "Audio|FMOD")
     static void MixerResume();
+
+    /** Set the active locale for subsequent bank loads.
+    */
+    UFUNCTION(BlueprintCallable, Category = "Audio|FMOD")
+    static void SetLocale(const FString& Locale);
 };

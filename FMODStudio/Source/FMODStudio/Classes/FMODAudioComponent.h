@@ -70,7 +70,8 @@ struct FFMODAttenuationDetails
     float MaximumDistance;
 
     FFMODAttenuationDetails()
-        : MinimumDistance(1.0f)
+        : bOverrideAttenuation(false)
+        , MinimumDistance(1.0f)
         , MaximumDistance(10.0f)
     {}
 };
@@ -309,6 +310,7 @@ private:
     virtual void OnRegister() override;
 #endif
     virtual void OnUnregister() override;
+    virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
     virtual void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
 // End ActorComponent interface.
 

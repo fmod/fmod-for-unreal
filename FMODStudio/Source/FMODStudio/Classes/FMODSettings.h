@@ -70,6 +70,30 @@ struct FCustomPoolSizes
     }
 };
 
+USTRUCT()
+struct FFMODProjectLocale
+{
+    GENERATED_USTRUCT_BODY()
+
+    /**
+    * Human readable locale name, displayed in Blueprints.
+    */
+    UPROPERTY(config, EditAnywhere, Category = Localization)
+    FString LocaleName;
+
+    /**
+    * Locale code. Must correspond to project locale codes in FMOD Studio project.
+    */
+    UPROPERTY(config, EditAnywhere, Category = Localization)
+    FString LocaleCode;
+
+    /**
+    * Default locale at startup. Only one locale should be marked as default.
+    */
+    UPROPERTY(config, EditAnywhere, Category = Localization)
+    bool bDefault;
+};
+
 UCLASS(config = Engine, defaultconfig)
 class FMODSTUDIO_API UFMODSettings : public UObject
 {
@@ -109,6 +133,12 @@ public:
     /** Project Output Format, should match the mode set up for the Studio project. */
     UPROPERTY(config, EditAnywhere, Category = Basic)
     TEnumAsByte<EFMODSpeakerMode::Type> OutputFormat;
+
+    /**
+    * Locales for localized banks. These should match the project locales configured in the FMOD Studio project.
+    */
+    UPROPERTY(config, EditAnywhere, Category = Localization)
+    TArray<FFMODProjectLocale> Locales;
 
     /**
 	 * Whether to enable vol0virtual, which means voices with low volume will automatically go virtual to save CPU.
@@ -283,6 +313,17 @@ public:
     /** Get the master strings bank filename. */
     FString GetMasterStringsBankFilename() const;
 
-    /** Get all banks in our bank directory excluding the master and strings bank. */
-    void GetAllBankPaths(TArray<FString> &Paths, bool IncludeMasterBank = false) const;
+#if WITH_EDITOR
+    /** Check the settings for any configuration issues. */
+    enum EProblem
+    {
+        Okay,
+        BankPathNotSet,
+        AddedToUFS,
+        NotPackaged,
+        AddedToBoth
+    };
+
+    EProblem Check() const;
+#endif // WITH_EDITOR
 };

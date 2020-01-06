@@ -221,6 +221,7 @@ public:
     virtual UFMODAsset *FindAssetByName(const FString &Name) override;
     virtual UFMODEvent *FindEventByName(const FString &Name) override;
     virtual FString GetBankPath(const UFMODBank &Bank) override;
+    virtual void GetAllBankPaths(TArray<FString> &Paths, bool IncludeMasterBank) const override;
 
     FSimpleMulticastDelegate BanksReloadedDelegate;
     virtual FSimpleMulticastDelegate &BanksReloadedEvent() override { return BanksReloadedDelegate; }
@@ -244,6 +245,8 @@ public:
     virtual void LogError(int result, const char *function) override;
 
     virtual bool AreBanksLoaded() override;
+
+    virtual bool SetLocale(const FString& Locale) override;
 
     void ResetInterpolation();
 
@@ -422,7 +425,7 @@ FString FFMODStudioModule::GetDllPath(const TCHAR *ShortName, bool bExplicitPath
 
 bool FFMODStudioModule::LoadLibraries()
 {
-#if PLATFORM_IOS || PLATFORM_ANDROID || PLATFORM_LINUX || PLATFORM_MAC || PLATFORM_SWITCH
+#if PLATFORM_IOS || PLATFORM_TVOS || PLATFORM_ANDROID || PLATFORM_LINUX || PLATFORM_MAC || PLATFORM_SWITCH
     return true; // Nothing to do on those platforms
 #elif PLATFORM_HTML5
     UE_LOG(LogFMOD, Error, TEXT("FMOD Studio not supported on HTML5"));
@@ -469,7 +472,7 @@ void FFMODStudioModule::StartupModule()
         verifyfmod(FMOD::Debug_Initialize(FMOD_DEBUG_LEVEL_WARNING, FMOD_DEBUG_MODE_CALLBACK, FMODLogCallback));
 
         const UFMODSettings &Settings = *GetDefault<UFMODSettings>();
-#if PLATFORM_IOS || PLATFORM_ANDROID
+#if PLATFORM_IOS || PLATFORM_TVOS || PLATFORM_ANDROID
         int size = Settings.MemoryPoolSizes.Mobile;
 #elif PLATFORM_PS4
         int size = Settings.MemoryPoolSizes.PS4;
@@ -632,7 +635,7 @@ void FFMODStudioModule::CreateStudioSystem(EFMODSystemContext::Type Type)
         advSettings.vol0virtualvol = Settings.Vol0VirtualLevel;
         InitFlags |= FMOD_INIT_VOL0_BECOMES_VIRTUAL;
     }
-#if PLATFORM_IOS || PLATFORM_ANDROID || PLATFORM_SWITCH
+#if PLATFORM_IOS || PLATFORM_TVOS || PLATFORM_ANDROID || PLATFORM_SWITCH
     advSettings.maxFADPCMCodecs = Settings.RealChannelCount;
 #elif PLATFORM_PS4
     advSettings.maxAT9Codecs = Settings.RealChannelCount;
@@ -1049,6 +1052,25 @@ void FFMODStudioModule::RefreshSettings()
     {
         const UFMODSettings &Settings = *GetDefault<UFMODSettings>();
         BankUpdateNotifier.SetFilePath(Settings.GetFullBankPath() / AssetTable.GetMasterStringsBankPath());
+
+        // Initialize ActiveLocale based on settings
+        FString LocaleCode = "";
+
+        if (Settings.Locales.Num() > 0)
+        {
+            LocaleCode = Settings.Locales[0].LocaleCode;
+
+            for (int32 i = 0; i < Settings.Locales.Num(); ++i)
+            {
+                if (Settings.Locales[i].bDefault)
+                {
+                    LocaleCode = Settings.Locales[i].LocaleCode;
+                    break;
+                }
+            }
+        }
+
+        AssetTable.SetLocale(LocaleCode);
     }
 }
 
@@ -1126,6 +1148,11 @@ FString FFMODStudioModule::GetBankPath(const UFMODBank &Bank)
     }
 
     return BankPath;
+}
+
+void FFMODStudioModule::GetAllBankPaths(TArray<FString> &Paths, bool IncludeMasterBank) const
+{
+    AssetTable.GetAllBankPaths(Paths, IncludeMasterBank);
 }
 
 void FFMODStudioModule::SetSystemPaused(bool paused)
@@ -1222,6 +1249,23 @@ bool FFMODStudioModule::AreBanksLoaded()
     return bBanksLoaded;
 }
 
+bool FFMODStudioModule::SetLocale(const FString& LocaleName)
+{
+    const UFMODSettings &Settings = *GetDefault<UFMODSettings>();
+
+    for (const FFMODProjectLocale& Locale : Settings.Locales)
+    {
+        if (Locale.LocaleName == LocaleName)
+        {
+            AssetTable.SetLocale(Locale.LocaleCode);
+            return true;
+        }
+    }
+
+    UE_LOG(LogFMOD, Error, TEXT("No project locale named '%s' has been defined."), *LocaleName);
+    return false;
+}
+
 void FFMODStudioModule::LoadBanks(EFMODSystemContext::Type Type)
 {
     const UFMODSettings &Settings = *GetDefault<UFMODSettings>();
@@ -1292,7 +1336,7 @@ void FFMODStudioModule::LoadBanks(EFMODSystemContext::Type Type)
             {
                 UE_LOG(LogFMOD, Verbose, TEXT("Loading all banks"));
                 TArray<FString> BankFiles;
-                Settings.GetAllBankPaths(BankFiles);
+                AssetTable.GetAllBankPaths(BankFiles, false);
                 for (const FString &OtherFile : BankFiles)
                 {
                     if (Settings.SkipLoadBankName.Len() && OtherFile.Contains(Settings.SkipLoadBankName))
@@ -1358,7 +1402,7 @@ void FFMODStudioModule::LoadBanks(EFMODSystemContext::Type Type)
                 {
                     ErrorMessage = UTF8_TO_TCHAR(FMOD_ErrorString(Entry.Result));
                 }
-                UE_LOG(LogFMOD, Warning, TEXT("Failed to bank: %s (%s)"), *Entry.Name, *ErrorMessage);
+                UE_LOG(LogFMOD, Warning, TEXT("Failed to load bank: %s (%s)"), *Entry.Name, *ErrorMessage);
                 FailedBankLoads[Type].Add(FString::Printf(TEXT("%s (%s)"), *FPaths::GetBaseFilename(Entry.Name), *ErrorMessage));
             }
         }

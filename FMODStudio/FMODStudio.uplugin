@@ -2,8 +2,8 @@
     "FileVersion" : 3,
 	
 	"FriendlyName" : "FMOD Studio Integration",
-	"Version" : 20001,
-	"VersionName" : "2.00.01",
+	"Version" : 20006,
+	"VersionName" : "2.00.06",
 	"CreatedBy" : "Firelight Technologies",
 	"CreatedByURL" : "http://fmod.com",
 	"Description" : "FMOD Studio Integration.",
@@ -15,11 +15,11 @@
 		{
 			"Name": "FMODStudio",
 			"Type": "CookedOnly",
-			"LoadingPhase": "PreEarlyLoadingScreen"
+			"LoadingPhase": "PreLoadingScreen"
 		},
 		{
 			"Name": "FMODStudio",
-			"Type": "Editor",
+			"Type": "Runtime",
 			"LoadingPhase": "PreDefault"
 		},
 		{

@@ -310,16 +310,36 @@ void UFMODAudioComponent::OnUnregister()
 {
     // Route OnUnregister event.
     Super::OnUnregister();
+}
 
-    // Don't stop audio and clean up component if owner has been destroyed (default behaviour). This function gets
-    // called from AActor::ClearComponents when an actor gets destroyed which is not usually what we want for one-
-    // shot sounds.
-    AActor *Owner = GetOwner();
-    if (!Owner || bStopWhenOwnerDestroyed)
+void UFMODAudioComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+    bool shouldStop = false;
+
+    switch (EndPlayReason)
     {
-        Stop();
+        case EEndPlayReason::Destroyed:
+        case EEndPlayReason::RemovedFromWorld:
+        {
+            AActor *Owner = GetOwner();
+            if (!Owner || bStopWhenOwnerDestroyed)
+                shouldStop = true;
+            break;
+        }
+        case EEndPlayReason::EndPlayInEditor:
+        case EEndPlayReason::LevelTransition:
+        case EEndPlayReason::Quit:
+        {
+            shouldStop = true;
+            break;
+        }
     }
 
+    if (shouldStop)
+    {
+        Stop();
+        OnEventStopped.Broadcast();
+    }
     Release();
 }
 
@@ -652,6 +672,8 @@ void UFMODAudioComponent::Stop()
     {
         StudioInstance->stop(FMOD_STUDIO_STOP_ALLOWFADEOUT);
     }
+
+    wasOccluded = false;
 }
 
 void UFMODAudioComponent::Release()

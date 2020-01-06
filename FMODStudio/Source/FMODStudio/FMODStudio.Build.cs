@@ -43,6 +43,7 @@ namespace UnrealBuildTool.Rules
             {
                 PrivateDependencyModuleNames.Add("AssetRegistry");
                 PrivateDependencyModuleNames.Add("UnrealEd");
+                PrivateDependencyModuleNames.Add("Settings");
             }
 
             DynamicallyLoadedModuleNames.AddRange(
@@ -139,6 +140,11 @@ namespace UnrealBuildTool.Rules
                         break;
                     case UnrealTargetPlatform.IOS:
                         linkExtension = "_iphoneos.a";
+                        libPrefix = "lib";
+                        bAddRuntimeDependencies = false;
+                        break;
+                    case UnrealTargetPlatform.TVOS:
+                        linkExtension = "_appletvos.a";
                         libPrefix = "lib";
                         bAddRuntimeDependencies = false;
                         break;
