@@ -26,7 +26,7 @@ public:
     virtual UClass *GetSupportedClass() const override;
     virtual bool HasActions(const TArray<UObject *> &InObjects) const override { return true; }
     virtual void GetActions(const TArray<UObject *> &InObjects, FMenuBuilder &MenuBuilder) override;
-    virtual void AssetsActivated(const TArray<UObject *> &InObjects, EAssetTypeActivationMethod::Type ActivationType) override;
+    virtual bool AssetsActivatedOverride(const TArray<UObject *> &InObjects, EAssetTypeActivationMethod::Type ActivationType) override;
     virtual void OpenAssetEditor(
         const TArray<UObject *> &InObjects, TSharedPtr<class IToolkitHost> EditWithinLevelEditor = TSharedPtr<IToolkitHost>()) override;
     virtual bool CanFilter() override { return false; }

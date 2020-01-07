@@ -66,7 +66,7 @@ bool FAssetTypeActions_FMODEvent::CanExecutePlayCommand(TArray<TWeakObjectPtr<UF
     return Objects.Num() == 1;
 }
 
-void FAssetTypeActions_FMODEvent::AssetsActivated(const TArray<UObject *> &InObjects, EAssetTypeActivationMethod::Type ActivationType)
+bool FAssetTypeActions_FMODEvent::AssetsActivatedOverride(const TArray<UObject *> &InObjects, EAssetTypeActivationMethod::Type ActivationType)
 {
     if (ActivationType == EAssetTypeActivationMethod::Previewed)
     {
@@ -80,11 +80,9 @@ void FAssetTypeActions_FMODEvent::AssetsActivated(const TArray<UObject *> &InObj
                 break;
             }
         }
+        return true;
     }
-    else
-    {
-        FAssetTypeActions_Base::AssetsActivated(InObjects, ActivationType);
-    }
+    return false;
 }
 
 void FAssetTypeActions_FMODEvent::ExecuteEdit(TArray<TWeakObjectPtr<UFMODEvent>> Objects)
@@ -94,7 +92,7 @@ void FAssetTypeActions_FMODEvent::ExecuteEdit(TArray<TWeakObjectPtr<UFMODEvent>>
         auto Object = (*ObjIt).Get();
         if (IsValid(Object))
         {
-            FAssetEditorManager::Get().OpenEditorForAsset(Object);
+            GEditor->GetEditorSubsystem<UAssetEditorSubsystem>()->OpenEditorForAsset(Object);
         }
     }
 }

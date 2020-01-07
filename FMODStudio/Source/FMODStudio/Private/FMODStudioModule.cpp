@@ -404,10 +404,10 @@ FString FFMODStudioModule::GetDllPath(const TCHAR *ShortName, bool bExplicitPath
     const TCHAR *DirPrefix = (bExplicitPath ? TEXT("/app0/prx/") : TEXT(""));
     return FString::Printf(TEXT("%s%s%s.prx"), DirPrefix, LibPrefixName, ShortName);
 #elif PLATFORM_XBOXONE
-    return FString::Printf(TEXT("%s.dll"), ShortName);
+    return FString::Printf(TEXT("%s/XBoxOne/%s.dll"), *BaseLibPath, ShortName);
 #elif PLATFORM_ANDROID
     return FString::Printf(TEXT("%s%s.so"), LibPrefixName, ShortName);
-#elif PLATFORM_LINUX
+#elif PLATFORM_LINUX || PLATFORM_QUAIL
     return FString::Printf(TEXT("%s%s.so"), LibPrefixName, ShortName);
 #elif PLATFORM_WINDOWS
 #if PLATFORM_64BITS
@@ -425,11 +425,8 @@ FString FFMODStudioModule::GetDllPath(const TCHAR *ShortName, bool bExplicitPath
 
 bool FFMODStudioModule::LoadLibraries()
 {
-#if PLATFORM_IOS || PLATFORM_TVOS || PLATFORM_ANDROID || PLATFORM_LINUX || PLATFORM_MAC || PLATFORM_SWITCH
+#if PLATFORM_IOS || PLATFORM_TVOS || PLATFORM_ANDROID || PLATFORM_LINUX || PLATFORM_MAC || PLATFORM_SWITCH || PLATFORM_QUAIL
     return true; // Nothing to do on those platforms
-#elif PLATFORM_HTML5
-    UE_LOG(LogFMOD, Error, TEXT("FMOD Studio not supported on HTML5"));
-    return false; // Explicitly don't support this
 #else
     UE_LOG(LogFMOD, Verbose, TEXT("FFMODStudioModule::LoadLibraries"));
 
@@ -659,9 +656,9 @@ void FFMODStudioModule::CreateStudioSystem(EFMODSystemContext::Type Type)
     advStudioSettings.cbsize = sizeof(advStudioSettings);
     advStudioSettings.studioupdateperiod = Settings.StudioUpdatePeriod;
 
-	if (!Settings.EncryptionKey.IsEmpty())
+	if (!Settings.StudioBankKey.IsEmpty())
 	{
-		advStudioSettings.encryptionkey = TCHAR_TO_UTF8(*Settings.EncryptionKey);
+		advStudioSettings.encryptionkey = TCHAR_TO_UTF8(*Settings.StudioBankKey);
 	}
 
     verifyfmod(StudioSystem[Type]->setAdvancedSettings(&advStudioSettings));

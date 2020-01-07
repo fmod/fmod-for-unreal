@@ -6,6 +6,7 @@
 #include "FMODStudioModule.h"
 #include "FMODEvent.h"
 #include "fmod_studio.hpp"
+#include "UnrealEd/Public/Editor.h"
 #include "Widgets/Input/SButton.h"
 #include "PropertyEditor/Public/DetailLayoutBuilder.h"
 #include "PropertyEditor/Public/DetailCategoryBuilder.h"
@@ -75,7 +76,7 @@ FReply FFMODAudioComponentDetails::OnEditSoundClicked()
         UFMODEvent *Event = AudioComponent.Get()->Event.Get();
         if (Event)
         {
-            FAssetEditorManager::Get().OpenEditorForAsset(Event);
+            GEditor->GetEditorSubsystem<UAssetEditorSubsystem>()->OpenEditorForAsset(Event);
         }
     }
 

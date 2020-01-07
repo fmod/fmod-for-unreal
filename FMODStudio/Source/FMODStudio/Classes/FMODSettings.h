@@ -268,8 +268,8 @@ public:
 	/*
     * Specify the key for loading sounds from encrypted banks.
 	*/
-	UPROPERTY(config, EditAnywhere, Category = Advanced)
-	FString EncryptionKey;
+	UPROPERTY(config, EditAnywhere, Category = Advanced, meta = (DisplayName = "Encryption Key"))
+	FString StudioBankKey;
 
     /**
 	* Force wav writer output, for debugging only.  Setting this will prevent normal sound output!

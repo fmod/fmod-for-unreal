@@ -159,6 +159,12 @@ namespace UnrealBuildTool.Rules
                 dllExtension = ".so";
                 libPrefix = "lib";
             }
+            else if (Target.Platform.ToString() == "Stadia")
+            {
+                linkExtension = ".so";
+                dllExtension = ".so";
+                libPrefix = "lib";
+            }
             else
             {
                     //extName = ".a";

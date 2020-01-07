@@ -1089,7 +1089,7 @@ void FFMODStudioEditorModule::TickTest(float DeltaTime)
         case 6:
         {
             // Finish test
-            GIsRequestingExit = true;
+            RequestEngineExit("Test");
             break;
         }
     }
