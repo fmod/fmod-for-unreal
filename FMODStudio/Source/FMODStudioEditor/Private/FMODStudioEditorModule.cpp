@@ -45,6 +45,7 @@
 #include "Misc/MessageDialog.h"
 #include "HAL/FileManager.h"
 #include "Interfaces/IMainFrameModule.h"
+#include "Developer/Toolmenus/Public/ToolMenus.h"
 
 #include "fmod_studio.hpp"
 
@@ -201,7 +202,7 @@ public:
     bool Tick(float DeltaTime);
 
     /** Add extensions to menu */
-    void AddHelpMenuExtension(FMenuBuilder &MenuBuilder);
+    void RegisterHelpMenuEntries();
     void AddFileMenuExtension(FMenuBuilder &MenuBuilder);
 
     /** Show FMOD version */
@@ -252,7 +253,7 @@ public:
 
     TSharedPtr<IComponentAssetBroker> AssetBroker;
 
-    /** The extender to pass to the level editor to extend it's window menu */
+    /** The extender to pass to the level editor to extend its window menu */
     TSharedPtr<FExtender> MainMenuExtender;
 
     /** Asset type actions for events (edit, play, stop) */
@@ -315,17 +316,15 @@ void FFMODStudioEditorModule::StartupModule()
 
     // Need to load the editor module since it gets created after us, and we can't re-order ourselves otherwise our asset registration stops working!
     // It only works if we are running the editor, not a commandlet
-    if (!IsRunningCommandlet())
+    if (!IsRunningCommandlet() && !IsRunningGame() && FSlateApplication::IsInitialized())
     {
-        MainMenuExtender = MakeShareable(new FExtender);
-        MainMenuExtender->AddMenuExtension(
-            "HelpBrowse", EExtensionHook::After, NULL, FMenuExtensionDelegate::CreateRaw(this, &FFMODStudioEditorModule::AddHelpMenuExtension));
-        MainMenuExtender->AddMenuExtension(
-            "FileLoadAndSave", EExtensionHook::After, NULL, FMenuExtensionDelegate::CreateRaw(this, &FFMODStudioEditorModule::AddFileMenuExtension));
-
         FLevelEditorModule *LevelEditor = FModuleManager::LoadModulePtr<FLevelEditorModule>(TEXT("LevelEditor"));
         if (LevelEditor)
         {
+            RegisterHelpMenuEntries();
+            MainMenuExtender = MakeShareable(new FExtender);
+            MainMenuExtender->AddMenuExtension("FileLoadAndSave", EExtensionHook::After, NULL,
+                FMenuExtensionDelegate::CreateRaw(this, &FFMODStudioEditorModule::AddFileMenuExtension));
             LevelEditor->GetMenuExtensibilityManager()->AddExtender(MainMenuExtender);
         }
     }
@@ -363,35 +362,53 @@ void FFMODStudioEditorModule::StartupModule()
     MainFrameModule.OnMainFrameCreationFinished().AddRaw(this, &FFMODStudioEditorModule::OnMainFrameLoaded);
 }
 
-void FFMODStudioEditorModule::AddHelpMenuExtension(FMenuBuilder &MenuBuilder)
+void FFMODStudioEditorModule::RegisterHelpMenuEntries()
 {
-    MenuBuilder.BeginSection("FMODHelp", LOCTEXT("FMODHelpLabel", "FMOD Help"));
-    MenuBuilder.AddMenuEntry(LOCTEXT("FMODVersionMenuEntryTitle", "About FMOD Studio"),
-        LOCTEXT("FMODVersionMenuEntryToolTip", "Shows the informationa about FMOD Studio."), FSlateIcon(),
-        FUIAction(FExecuteAction::CreateRaw(this, &FFMODStudioEditorModule::ShowVersion)));
+    FToolMenuOwnerScoped OwnerScoped(this);
+    UToolMenu* HelpMenu = UToolMenus::Get()->ExtendMenu("LevelEditor.MainMenu.Help");
+    FToolMenuSection& Section = HelpMenu->AddSection("FMODHelp", LOCTEXT("FMODHelpLabel", "FMOD Help"),
+        FToolMenuInsert("HelpBrowse", EToolMenuInsertType::Default));
+    Section.AddEntry(FToolMenuEntry::InitMenuEntry(
+        NAME_None,
+        LOCTEXT("FMODVersionMenuEntryTitle", "About FMOD Studio"),
+        LOCTEXT("FMODVersionMenuEntryToolTip", "Shows the information about FMOD Studio."),
+        FSlateIcon(),
+        FUIAction(FExecuteAction::CreateRaw(this, &FFMODStudioEditorModule::ShowVersion))
+    ));
 
 #if PLATFORM_WINDOWS
-    MenuBuilder.AddMenuEntry(LOCTEXT("FMODHelpCHMTitle", "FMOD Documentation..."),
+    Section.AddEntry(FToolMenuEntry::InitMenuEntry(
+        NAME_None,
+        LOCTEXT("FMODHelpCHMTitle", "FMOD Documentation..."),
         LOCTEXT("FMODHelpCHMToolTip", "Opens the local FMOD documentation."),
         FSlateIcon(FEditorStyle::GetStyleSetName(), "LevelEditor.BrowseAPIReference"),
-        FUIAction(FExecuteAction::CreateRaw(this, &FFMODStudioEditorModule::OpenIntegrationDocs)));
+        FUIAction(FExecuteAction::CreateRaw(this, &FFMODStudioEditorModule::OpenIntegrationDocs))
+    ));
 #endif
 
-    MenuBuilder.AddMenuEntry(LOCTEXT("FMODHelpOnlineTitle", "FMOD Online Documentation..."),
+    Section.AddEntry(FToolMenuEntry::InitMenuEntry(
+        NAME_None,
+        LOCTEXT("FMODHelpOnlineTitle", "FMOD Online Documentation..."),
         LOCTEXT("FMODHelpOnlineToolTip", "Go to the online FMOD documentation."),
         FSlateIcon(FEditorStyle::GetStyleSetName(), "LevelEditor.BrowseDocumentation"),
-        FUIAction(FExecuteAction::CreateRaw(this, &FFMODStudioEditorModule::OpenAPIDocs)));
+        FUIAction(FExecuteAction::CreateRaw(this, &FFMODStudioEditorModule::OpenAPIDocs))
+    ));
 
-    MenuBuilder.AddMenuEntry(LOCTEXT("FMODHelpVideosTitle", "FMOD Tutorial Videos..."),
+    Section.AddEntry(FToolMenuEntry::InitMenuEntry(
+        NAME_None,
+        LOCTEXT("FMODHelpVideosTitle", "FMOD Tutorial Videos..."),
         LOCTEXT("FMODHelpVideosToolTip", "Go to the online FMOD tutorial videos."),
         FSlateIcon(FEditorStyle::GetStyleSetName(), "LevelEditor.Tutorials"),
-        FUIAction(FExecuteAction::CreateRaw(this, &FFMODStudioEditorModule::OpenVideoTutorials)));
+        FUIAction(FExecuteAction::CreateRaw(this, &FFMODStudioEditorModule::OpenVideoTutorials))
+    ));
 
-    MenuBuilder.AddMenuEntry(LOCTEXT("FMODSetStudioBuildTitle", "Validate FMOD"),
-        LOCTEXT("FMODSetStudioBuildToolTip", "Verifies that FMOD and FMOD Studio are working as expected."), FSlateIcon(),
-        FUIAction(FExecuteAction::CreateRaw(this, &FFMODStudioEditorModule::ValidateFMOD)));
-
-    MenuBuilder.EndSection();
+    Section.AddEntry(FToolMenuEntry::InitMenuEntry(
+        NAME_None,
+        LOCTEXT("FMODSetStudioBuildTitle", "Validate FMOD"),
+        LOCTEXT("FMODSetStudioBuildToolTip", "Verifies that FMOD and FMOD Studio are working as expected."),
+        FSlateIcon(),
+        FUIAction(FExecuteAction::CreateRaw(this, &FFMODStudioEditorModule::ValidateFMOD))
+    ));
 }
 
 void FFMODStudioEditorModule::AddFileMenuExtension(FMenuBuilder &MenuBuilder)

@@ -54,7 +54,8 @@ namespace UnrealBuildTool.Rules
                     "MainFrame",
                     "MovieScene",
                     "MovieSceneTracks",
-                    "MovieSceneTools"
+                    "MovieSceneTools",
+                    "ToolMenus"
                 }
                 );
         }
