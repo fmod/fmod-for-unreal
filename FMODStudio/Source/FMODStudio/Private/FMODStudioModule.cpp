@@ -1193,7 +1193,11 @@ void FFMODStudioModule::ShutdownModule()
     DestroyStudioSystem(EFMODSystemContext::Runtime);
     DestroyStudioSystem(EFMODSystemContext::Editor);
 
-    ReleaseFMODFileSystem();
+   // If libraries are not loaded, skip this release
+	if(StudioLibHandle && LowLevelLibHandle)
+	{
+		ReleaseFMODFileSystem();
+	}
 
     if (MemPool)
         FMemory::Free(MemPool);
