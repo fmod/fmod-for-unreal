@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2019.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2020.
 using System.IO;
 
 namespace UnrealBuildTool.Rules
@@ -13,8 +13,8 @@ namespace UnrealBuildTool.Rules
         {
             PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
             PrivatePCHHeaderFile = "Private/FMODStudioEditorPrivatePCH.h";
-            
-            bFasterWithoutUnity = true;
+
+            bUseUnity = false;
 
             PrivateIncludePaths.AddRange(
                 new string[] {

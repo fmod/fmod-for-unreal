@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2019.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2020.
 
 #pragma once
 
@@ -218,9 +218,19 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Audio|FMOD|Components")
     void SetParameter(FName Name, float Value);
 
-    /** Get parameter value from the Event. */
+    /** Will be deprecated in FMOD 2.01, use `GetParameterValue(FName, float, float)` instead.
+     * Get parameter value from the Event.
+    */
     UFUNCTION(BlueprintCallable, Category = "Audio|FMOD|Components")
     float GetParameter(FName Name);
+
+    /** Get parameter value from the Event.
+     * @param Name - Name of parameter
+     * @param UserValue - Parameter value as set from the public API.
+     * @param FinalValue - Final combined parameter value.
+    */
+    UFUNCTION(BlueprintCallable, Category = "Audio|FMOD|Components")
+    void GetParameterValue(FName Name, float &UserValue, float &FinalValue);
 
     /** Set a property of the Event. */
     UFUNCTION(BlueprintCallable, Category = "Audio|FMOD|Components")
@@ -357,6 +367,6 @@ private:
 
     // Direct assignment of programmer sound from other C++ code.
     FMOD::Sound *ProgrammerSound;
-
+    bool NeedDestroyProgrammerSoundCallback;
     int32 EventLength;
 };

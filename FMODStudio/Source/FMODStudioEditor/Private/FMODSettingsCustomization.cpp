@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2019.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2020.
 
 #include "FMODSettingsCustomization.h"
 

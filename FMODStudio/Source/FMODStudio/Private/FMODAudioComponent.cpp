@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2019.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2020.
 
 #include "FMODAudioComponent.h"
 #include "FMODStudioModule.h"
@@ -47,6 +47,8 @@ UFMODAudioComponent::UFMODAudioComponent(const FObjectInitializer &ObjectInitial
     {
         StoredProperties[i] = -1.0f;
     }
+
+    NeedDestroyProgrammerSoundCallback = false;
 }
 
 FString UFMODAudioComponent::GetDetailedInfoInternal(void) const
@@ -453,6 +455,22 @@ FMOD_RESULT F_CALLBACK UFMODAudioComponent_EventCallback(FMOD_STUDIO_EVENT_CALLB
     return FMOD_OK;
 }
 
+void UFMODAudioComponent_ReleaseProgrammerSound(FMOD_STUDIO_PROGRAMMER_SOUND_PROPERTIES *props)
+{
+    if (props->sound)
+    {
+        UE_LOG(LogFMOD, Verbose, TEXT("Destroying programmer sound"));
+        FMOD_RESULT Result = ((FMOD::Sound *)props->sound)->release();
+        verifyfmod(Result);
+    }
+}
+
+FMOD_RESULT F_CALLBACK UFMODAudioComponent_EventCallbackDestroyProgrammerSound(FMOD_STUDIO_EVENT_CALLBACK_TYPE type, FMOD_STUDIO_EVENTINSTANCE *event, void *parameters)
+{
+    UFMODAudioComponent_ReleaseProgrammerSound((FMOD_STUDIO_PROGRAMMER_SOUND_PROPERTIES *)parameters);
+    return FMOD_OK;
+}
+
 void UFMODAudioComponent::EventCallbackAddMarker(FMOD_STUDIO_TIMELINE_MARKER_PROPERTIES *props)
 {
     FScopeLock Lock(&CallbackLock);
@@ -512,6 +530,7 @@ void UFMODAudioComponent::EventCallbackCreateProgrammerSound(FMOD_STUDIO_PROGRAM
                 UE_LOG(LogFMOD, Verbose, TEXT("Creating programmer sound from file '%s'"), *SoundPath);
                 props->sound = (FMOD_SOUND *)Sound;
                 props->subsoundIndex = -1;
+                NeedDestroyProgrammerSoundCallback = true;
             }
             else
             {
@@ -533,6 +552,7 @@ void UFMODAudioComponent::EventCallbackCreateProgrammerSound(FMOD_STUDIO_PROGRAM
 
                     props->sound = (FMOD_SOUND *)Sound;
                     props->subsoundIndex = SoundInfo.subsoundindex;
+                    NeedDestroyProgrammerSoundCallback = true;
                 }
                 else
                 {
@@ -549,11 +569,10 @@ void UFMODAudioComponent::EventCallbackCreateProgrammerSound(FMOD_STUDIO_PROGRAM
 
 void UFMODAudioComponent::EventCallbackDestroyProgrammerSound(FMOD_STUDIO_PROGRAMMER_SOUND_PROPERTIES *props)
 {
-    if (props->sound && ProgrammerSound == nullptr)
+    if (NeedDestroyProgrammerSoundCallback)
     {
-        UE_LOG(LogFMOD, Verbose, TEXT("Destroying programmer sound"));
-        FMOD_RESULT Result = ((FMOD::Sound *)props->sound)->release();
-        verifyfmod(Result);
+        UFMODAudioComponent_ReleaseProgrammerSound(props);
+        NeedDestroyProgrammerSoundCallback = false;
     }
 }
 
@@ -692,7 +711,17 @@ void UFMODAudioComponent::ReleaseEventInstance()
 {
     if (StudioInstance)
     {
-        StudioInstance->setCallback(nullptr);
+        if (NeedDestroyProgrammerSoundCallback)
+        {
+            // We need a callback to destroy a programmer sound
+            StudioInstance->setCallback(UFMODAudioComponent_EventCallbackDestroyProgrammerSound, FMOD_STUDIO_EVENT_CALLBACK_DESTROY_PROGRAMMER_SOUND);
+        }
+        else
+        {
+            // We don't want any more callbacks
+            StudioInstance->setCallback(nullptr);
+        }
+
         StudioInstance->release();
         StudioInstance = nullptr;
     }
@@ -858,4 +887,23 @@ float UFMODAudioComponent::GetParameter(FName Name)
         }
     }
     return Value;
+}
+
+void UFMODAudioComponent::GetParameterValue(FName Name, float &UserValue, float &FinalValue)
+{
+    if (!bDefaultParameterValuesCached)
+    {
+        CacheDefaultParameterValues();
+    }
+
+    float *CachedValue = ParameterCache.Find(Name);
+    if (StudioInstance)
+    {
+        FMOD_RESULT Result = StudioInstance->getParameterByName(TCHAR_TO_UTF8(*Name.ToString()), &UserValue, &FinalValue);
+        if (Result != FMOD_OK)
+        {
+            UserValue = FinalValue = 0;
+            UE_LOG(LogFMOD, Warning, TEXT("Failed to get parameter %s"), *Name.ToString());
+        }
+    }
 }

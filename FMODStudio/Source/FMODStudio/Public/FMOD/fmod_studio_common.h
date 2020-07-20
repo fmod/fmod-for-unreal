@@ -1,6 +1,6 @@
 /* ======================================================================================== */
 /* FMOD Studio API - Common C/C++ header file.                                              */
-/* Copyright (c), Firelight Technologies Pty, Ltd. 2004-2019.                               */
+/* Copyright (c), Firelight Technologies Pty, Ltd. 2004-2020.                               */
 /*                                                                                          */
 /* This header defines common enumerations, structs and callbacks that are shared between   */
 /* the C and C++ interfaces.                                                                */
@@ -36,6 +36,7 @@ typedef unsigned int FMOD_STUDIO_INITFLAGS;
 #define FMOD_STUDIO_INIT_SYNCHRONOUS_UPDATE                 0x00000004
 #define FMOD_STUDIO_INIT_DEFERRED_CALLBACKS                 0x00000008
 #define FMOD_STUDIO_INIT_LOAD_FROM_UPDATE                   0x00000010
+#define FMOD_STUDIO_INIT_MEMORY_TRACKING                    0x00000020
 
 typedef unsigned int FMOD_STUDIO_PARAMETER_FLAGS;
 #define FMOD_STUDIO_PARAMETER_READONLY                      0x00000001
@@ -136,6 +137,7 @@ typedef enum FMOD_STUDIO_EVENT_PROPERTY
     FMOD_STUDIO_EVENT_PROPERTY_SCHEDULE_LOOKAHEAD,
     FMOD_STUDIO_EVENT_PROPERTY_MINIMUM_DISTANCE,
     FMOD_STUDIO_EVENT_PROPERTY_MAXIMUM_DISTANCE,
+    FMOD_STUDIO_EVENT_PROPERTY_COOLDOWN,
     FMOD_STUDIO_EVENT_PROPERTY_MAX,
 
     FMOD_STUDIO_EVENT_PROPERTY_FORCEINT = 65536     /* Makes sure this enum is signed 32bit. */
@@ -303,6 +305,13 @@ typedef struct FMOD_STUDIO_COMMAND_INFO
     unsigned int                instancehandle;
     unsigned int                outputhandle;
 } FMOD_STUDIO_COMMAND_INFO;
+
+typedef struct FMOD_STUDIO_MEMORY_USAGE
+{
+    int exclusive;
+    int inclusive;
+    int sampledata;
+} FMOD_STUDIO_MEMORY_USAGE;
 
 /*
     FMOD Studio callbacks.

@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2019.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2020.
 
 #include "FMODBlueprintStatics.h"
 #include "FMODAudioComponent.h"
@@ -372,6 +372,20 @@ float UFMODBlueprintStatics::GetGlobalParameterByName(FName Name)
     return Value;
 }
 
+void UFMODBlueprintStatics::GetGlobalParameterValueByName(FName Name, float &UserValue, float &FinalValue)
+{
+    FMOD::Studio::System *StudioSystem = IFMODStudioModule::Get().GetStudioSystem(EFMODSystemContext::Runtime);
+    if (StudioSystem != nullptr)
+    {
+        FMOD_RESULT Result = StudioSystem->getParameterByName(TCHAR_TO_UTF8(*Name.ToString()), &UserValue, &FinalValue);
+        if (Result != FMOD_OK)
+        {
+            UserValue = FinalValue = 0.0f;
+            UE_LOG(LogFMOD, Warning, TEXT("Failed to get event instance parameter %s"), *Name.ToString());
+        }
+    }
+}
+
 bool UFMODBlueprintStatics::EventInstanceIsValid(FFMODEventInstance EventInstance)
 {
     if (EventInstance.Instance)
@@ -441,6 +455,19 @@ float UFMODBlueprintStatics::EventInstanceGetParameter(FFMODEventInstance EventI
         }
     }
     return Value;
+}
+
+void UFMODBlueprintStatics::EventInstanceGetParameterValue(FFMODEventInstance EventInstance, FName Name, float &UserValue, float &FinalValue)
+{
+    if (EventInstance.Instance)
+    {
+        FMOD_RESULT Result = EventInstance.Instance->getParameterByName(TCHAR_TO_UTF8(*Name.ToString()), &UserValue, &FinalValue);
+        if (Result != FMOD_OK)
+        {
+            UserValue = FinalValue = 0.0f;
+            UE_LOG(LogFMOD, Warning, TEXT("Failed to get event instance parameter %s"), *Name.ToString());
+        }
+    }
 }
 
 void UFMODBlueprintStatics::EventInstanceSetProperty(FFMODEventInstance EventInstance, EFMODEventProperty::Type Property, float Value)

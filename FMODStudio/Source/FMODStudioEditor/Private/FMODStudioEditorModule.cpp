@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2019.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2020.
 
 #include "FMODStudioEditorModule.h"
 #include "FMODStudioModule.h"
@@ -45,7 +45,7 @@
 #include "Misc/MessageDialog.h"
 #include "HAL/FileManager.h"
 #include "Interfaces/IMainFrameModule.h"
-#include "Developer/ToolMenus/Public/ToolMenus.h"
+#include "ToolMenus.h"
 
 #include "fmod_studio.hpp"
 
@@ -371,7 +371,7 @@ void FFMODStudioEditorModule::RegisterHelpMenuEntries()
     Section.AddEntry(FToolMenuEntry::InitMenuEntry(
         NAME_None,
         LOCTEXT("FMODVersionMenuEntryTitle", "About FMOD Studio"),
-        LOCTEXT("FMODVersionMenuEntryToolTip", "Shows the information about FMOD Studio."),
+        LOCTEXT("FMODVersionMenuEntryToolTip", "Shows FMOD Studio version information."),
         FSlateIcon(),
         FUIAction(FExecuteAction::CreateRaw(this, &FFMODStudioEditorModule::ShowVersion))
     ));
@@ -441,11 +441,20 @@ FString VersionToString(unsigned int Version)
     unsigned int ProductVersion = (Version & 0xffff0000) >> 16;
     unsigned int MajorVersion = (Version & 0x0000ff00) >> 8;
     unsigned int MinorVersion = (Version & 0x000000ff);
-    return FString::Printf(TEXT("%d.%02d.%02d"), ProductVersion, MajorVersion, MinorVersion);
+    return FString::Printf(TEXT("%x.%02x.%02x"), ProductVersion, MajorVersion, MinorVersion);
 }
 
 unsigned int MakeVersion(unsigned int ProductVersion, unsigned int MajorVersion, unsigned int MinorVersion)
 {
+    auto EncodeAsHex = [](unsigned int Value) -> unsigned int
+    {
+        return 16 * (Value / 10) + Value % 10;
+    };
+
+    ProductVersion = EncodeAsHex(ProductVersion);
+    MajorVersion = EncodeAsHex(MajorVersion);
+    MinorVersion = EncodeAsHex(MinorVersion);
+
     return ((ProductVersion & 0xffff) << 16) | ((MajorVersion & 0xff) << 8) | (MinorVersion & 0xff);
 }
 

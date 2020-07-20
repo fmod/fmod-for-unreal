@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2019.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2020.
 
 #include "Sequencer/FMODChannelEditors.h"
 #include "ISequencerChannelInterface.h"
@@ -7,6 +7,7 @@
 #include "MovieSceneTimeHelpers.h"
 #include "MovieSceneToolHelpers.h"
 #include "ScopedTransaction.h"
+#include "EditorWidgets/Public/SEnumCombobox.h"
 #include "EditorStyleSet.h"
 
 class SFMODEventControlKeyEditor : public SCompoundWidget
@@ -24,7 +25,7 @@ public:
 
         ChildSlot[MovieSceneToolHelpers::MakeEnumComboBox(InEnum,
             TAttribute<int32>::Create(TAttribute<int32>::FGetter::CreateSP(this, &SFMODEventControlKeyEditor::OnGetCurrentValueAsInt)),
-            FOnEnumSelectionChanged::CreateSP(this, &SFMODEventControlKeyEditor::OnChangeKey))];
+            SEnumComboBox::FOnEnumSelectionChanged::CreateSP(this, &SFMODEventControlKeyEditor::OnChangeKey))];
     }
 
 private:

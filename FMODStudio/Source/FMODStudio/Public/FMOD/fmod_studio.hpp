@@ -1,6 +1,6 @@
 /* ======================================================================================== */
 /* FMOD Studio API - C++ header file.                                                       */
-/* Copyright (c), Firelight Technologies Pty, Ltd. 2004-2019.                               */
+/* Copyright (c), Firelight Technologies Pty, Ltd. 2004-2020.                               */
 /*                                                                                          */
 /* Use this header in conjunction with fmod_studio_common.h (which contains all the         */
 /* constants / callbacks) to develop using the C++ language.                                */
@@ -97,7 +97,6 @@ namespace Studio
         FMOD_RESULT F_API unloadAll();
 
         // General functionality
-        FMOD_RESULT F_API getCPUUsage(FMOD_STUDIO_CPU_USAGE *usage) const;
         FMOD_RESULT F_API getBufferUsage(FMOD_STUDIO_BUFFER_USAGE *usage) const;
         FMOD_RESULT F_API resetBufferUsage();
         FMOD_RESULT F_API registerPlugin(const FMOD_DSP_DESCRIPTION *description);
@@ -119,6 +118,9 @@ namespace Studio
         FMOD_RESULT F_API getUserData(void **userdata) const;
         FMOD_RESULT F_API setUserData(void *userdata);
 
+        // Monitoring
+        FMOD_RESULT F_API getCPUUsage(FMOD_STUDIO_CPU_USAGE *usage) const;
+        FMOD_RESULT F_API getMemoryUsage(FMOD_STUDIO_MEMORY_USAGE *memoryusage) const;
     };
 
     class EventDescription
@@ -233,6 +235,7 @@ namespace Studio
 
         // Monitoring
         FMOD_RESULT F_API getCPUUsage(unsigned int *exclusive, unsigned int *inclusive) const;
+        FMOD_RESULT F_API getMemoryUsage(FMOD_STUDIO_MEMORY_USAGE *memoryusage) const;
 
         // Callbacks
         FMOD_RESULT F_API setCallback(FMOD_STUDIO_EVENT_CALLBACK callback, FMOD_STUDIO_EVENT_CALLBACK_TYPE callbackmask = FMOD_STUDIO_EVENT_CALLBACK_ALL);
@@ -272,7 +275,9 @@ namespace Studio
         FMOD_RESULT F_API unlockChannelGroup();
         FMOD_RESULT F_API getChannelGroup(FMOD::ChannelGroup **group) const;
 
+        // Monitoring
         FMOD_RESULT F_API getCPUUsage(unsigned int *exclusive, unsigned int *inclusive) const;
+        FMOD_RESULT F_API getMemoryUsage(FMOD_STUDIO_MEMORY_USAGE *memoryusage) const;
     };
 
     class VCA

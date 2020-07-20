@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2019.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2020.
 
 #pragma once
 
@@ -185,11 +185,20 @@ class FMODSTUDIO_API UFMODBlueprintStatics : public UBlueprintFunctionLibrary
     UFUNCTION(BlueprintCallable, Category = "Audio|FMOD", meta = (UnsafeDuringActorConstruction = "true"))
     static void SetGlobalParameterByName(FName Name, float Value);
 
-    /** Get a global parameter from the System.
+    /** Will be deprecated in FMOD 2.01, use `GetGlobalParameterValueByName(FName, float, float)` instead.
+     * Get a global parameter from the System.
      * @param Name - Name of parameter
      */
     UFUNCTION(BlueprintCallable, Category = "Audio|FMOD", meta = (UnsafeDuringActorConstruction = "true"))
     static float GetGlobalParameterByName(FName Name);
+
+     /** Get a global parameter from the System.
+     * @param Name - Name of parameter
+     * @param UserValue - Parameter value as set from the public API.
+     * @param FinalValue - Final combined parameter value.
+     */
+    UFUNCTION(BlueprintCallable, Category = "Audio|FMOD", meta = (UnsafeDuringActorConstruction = "true"))
+    static void GetGlobalParameterValueByName(FName Name, float &UserValue, float &FinalValue);
 
     /** Returns whether this FMOD Event Instance is valid.  The instance will be invalidated when the sound stops.
 	 * @param EventInstance - Event instance
@@ -226,13 +235,22 @@ class FMODSTUDIO_API UFMODBlueprintStatics : public UBlueprintFunctionLibrary
     UFUNCTION(BlueprintCallable, Category = "Audio|FMOD|EventInstance", meta = (UnsafeDuringActorConstruction = "true"))
     static void EventInstanceSetParameter(FFMODEventInstance EventInstance, FName Name, float Value);
 
-    /** Get a parameter on an FMOD Event Instance.
+    /** Will be deprecated in FMOD 2.01, use `EventInstanceGetParameterValue(FFMODEventInstance, FName, float, float)` instead.
+     * Get a parameter on an FMOD Event Instance.
 	 * @param EventInstance - Event instance
 	 * @param Name - Name of parameter
 	 */
     UFUNCTION(BlueprintCallable, Category = "Audio|FMOD|EventInstance", meta = (UnsafeDuringActorConstruction = "true"))
     static float EventInstanceGetParameter(FFMODEventInstance EventInstance, FName Name);
 
+     /** Get a parameter on an FMOD Event Instance.
+	 * @param EventInstance - Event instance
+	 * @param Name - Name of parameter
+     * @param UserValue - Parameter value as set from the public API.
+     * @param FinalValue - Final combined parameter value.
+	 */
+    UFUNCTION(BlueprintCallable, Category = "Audio|FMOD|EventInstance", meta = (UnsafeDuringActorConstruction = "true"))
+    static void EventInstanceGetParameterValue(FFMODEventInstance EventInstance, FName Name, float &UserValue, float &FinalValue);
     /** Set an FMOD event property on an FMOD Event Instance.
 	* @param EventInstance - Event instance
 	* @param Property - Property to set

@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2019.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2020.
 
 #include "FMODStudioModule.h"
 #include "FMODSettings.h"
@@ -30,7 +30,9 @@
 #include "fmod_errors.h"
 #include "FMODStudioPrivatePCH.h"
 
-#if PLATFORM_PS4
+#ifdef FMOD_PLATFORM_HEADER
+#include "FMODPlatform.h"
+#elif PLATFORM_PS4
 #include "FMODPlatformLoadDll_PS4.h"
 #elif PLATFORM_XBOXONE
 #include "FMODPlatformLoadDll_XBoxOne.h"
@@ -398,7 +400,9 @@ void *FFMODStudioModule::LoadDll(const TCHAR *ShortName)
 FString FFMODStudioModule::GetDllPath(const TCHAR *ShortName, bool bExplicitPath, bool bUseLibPrefix)
 {
     const TCHAR *LibPrefixName = (bUseLibPrefix ? TEXT("lib") : TEXT(""));
-#if PLATFORM_MAC
+#ifdef FMOD_PLATFORM_HEADER
+    return FMODPlatform_GetDllPath(ShortName, bExplicitPath, bUseLibPrefix);
+#elif PLATFORM_MAC
     return FString::Printf(TEXT("%s/Mac/%s%s.dylib"), *BaseLibPath, LibPrefixName, ShortName);
 #elif PLATFORM_PS4
     const TCHAR *DirPrefix = (bExplicitPath ? TEXT("/app0/prx/") : TEXT(""));
@@ -407,7 +411,7 @@ FString FFMODStudioModule::GetDllPath(const TCHAR *ShortName, bool bExplicitPath
     return FString::Printf(TEXT("%s/XBoxOne/%s.dll"), *BaseLibPath, ShortName);
 #elif PLATFORM_ANDROID
     return FString::Printf(TEXT("%s%s.so"), LibPrefixName, ShortName);
-#elif PLATFORM_LINUX || PLATFORM_QUAIL
+#elif PLATFORM_LINUX
     return FString::Printf(TEXT("%s%s.so"), LibPrefixName, ShortName);
 #elif PLATFORM_WINDOWS
 #if PLATFORM_64BITS
@@ -425,7 +429,7 @@ FString FFMODStudioModule::GetDllPath(const TCHAR *ShortName, bool bExplicitPath
 
 bool FFMODStudioModule::LoadLibraries()
 {
-#if PLATFORM_IOS || PLATFORM_TVOS || PLATFORM_ANDROID || PLATFORM_LINUX || PLATFORM_MAC || PLATFORM_SWITCH || PLATFORM_QUAIL
+#if PLATFORM_IOS || PLATFORM_TVOS || PLATFORM_ANDROID || PLATFORM_LINUX || PLATFORM_MAC || PLATFORM_SWITCH || defined(FMOD_DONT_LOAD_LIBRARIES)
     return true; // Nothing to do on those platforms
 #else
     UE_LOG(LogFMOD, Verbose, TEXT("FFMODStudioModule::LoadLibraries"));
@@ -469,6 +473,9 @@ void FFMODStudioModule::StartupModule()
         verifyfmod(FMOD::Debug_Initialize(FMOD_DEBUG_LEVEL_WARNING, FMOD_DEBUG_MODE_CALLBACK, FMODLogCallback));
 
         const UFMODSettings &Settings = *GetDefault<UFMODSettings>();
+
+//#ifdef FMOD_PLATFORM_HEADER
+//        int size = FMODPlatform_MemoryPoolSize();
 #if PLATFORM_IOS || PLATFORM_TVOS || PLATFORM_ANDROID
         int size = Settings.MemoryPoolSizes.Mobile;
 #elif PLATFORM_PS4
@@ -632,7 +639,9 @@ void FFMODStudioModule::CreateStudioSystem(EFMODSystemContext::Type Type)
         advSettings.vol0virtualvol = Settings.Vol0VirtualLevel;
         InitFlags |= FMOD_INIT_VOL0_BECOMES_VIRTUAL;
     }
-#if PLATFORM_IOS || PLATFORM_TVOS || PLATFORM_ANDROID || PLATFORM_SWITCH
+#ifdef FMOD_PLATFORM_HEADER
+    FMODPlatform_SetRealChannelCount(&advSettings);
+#elif PLATFORM_IOS || PLATFORM_TVOS || PLATFORM_ANDROID || PLATFORM_SWITCH
     advSettings.maxFADPCMCodecs = Settings.RealChannelCount;
 #elif PLATFORM_PS4
     advSettings.maxAT9Codecs = Settings.RealChannelCount;
@@ -656,10 +665,10 @@ void FFMODStudioModule::CreateStudioSystem(EFMODSystemContext::Type Type)
     advStudioSettings.cbsize = sizeof(advStudioSettings);
     advStudioSettings.studioupdateperiod = Settings.StudioUpdatePeriod;
 
-	if (!Settings.StudioBankKey.IsEmpty())
-	{
-		advStudioSettings.encryptionkey = TCHAR_TO_UTF8(*Settings.StudioBankKey);
-	}
+    if (!Settings.StudioBankKey.IsEmpty())
+    {
+        advStudioSettings.encryptionkey = TCHAR_TO_UTF8(*Settings.StudioBankKey);
+    }
 
     verifyfmod(StudioSystem[Type]->setAdvancedSettings(&advStudioSettings));
 
@@ -1193,7 +1202,10 @@ void FFMODStudioModule::ShutdownModule()
     DestroyStudioSystem(EFMODSystemContext::Runtime);
     DestroyStudioSystem(EFMODSystemContext::Editor);
 
-    ReleaseFMODFileSystem();
+    if (StudioLibHandle && LowLevelLibHandle)
+    {
+        ReleaseFMODFileSystem();
+    }
 
     if (MemPool)
         FMemory::Free(MemPool);
@@ -1304,7 +1316,7 @@ void FFMODStudioModule::LoadBanks(EFMODSystemContext::Type Type)
             BankEntries.Add(NamedBankEntry(MasterBankPath, MasterBank, Result));
         }
 
-        if (Result == FMOD_OK && !AssetTable.GetMasterAssetsBankPath().IsEmpty())
+        if (Result == FMOD_OK)
         {
             FMOD::Studio::Bank *MasterAssetsBank = nullptr;
             FString MasterAssetsBankPath = Settings.GetFullBankPath() / AssetTable.GetMasterAssetsBankPath();

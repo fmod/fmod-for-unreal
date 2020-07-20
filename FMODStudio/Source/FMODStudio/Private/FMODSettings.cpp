@@ -1,10 +1,14 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2019.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2020.
 
 #include "FMODSettings.h"
 #include "Misc/Paths.h"
 
 #if WITH_EDITOR
 #include "Settings/ProjectPackagingSettings.h"
+#endif
+
+#ifdef FMOD_PLATFORM_HEADER
+#include "FMODPlatform.h"
 #endif
 
 //////////////////////////////////////////////////////////////////////////
@@ -52,7 +56,9 @@ FString UFMODSettings::GetFullBankPath() const
     }
     else
     {
-#if PLATFORM_IOS || PLATFORM_TVOS || PLATFORM_ANDROID
+#ifdef FMOD_PLATFORM_HEADER
+        FString PlatformName = FMODPlatform_PlatformName();
+#elif PLATFORM_IOS || PLATFORM_TVOS || PLATFORM_ANDROID
         FString PlatformName = "Mobile";
 #elif PLATFORM_PS4
         FString PlatformName = "PS4";
