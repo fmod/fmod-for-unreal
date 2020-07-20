@@ -1316,7 +1316,7 @@ void FFMODStudioModule::LoadBanks(EFMODSystemContext::Type Type)
             BankEntries.Add(NamedBankEntry(MasterBankPath, MasterBank, Result));
         }
 
-        if (Result == FMOD_OK)
+        if (Result == FMOD_OK && !AssetTable.GetMasterAssetsBankPath().IsEmpty())
         {
             FMOD::Studio::Bank *MasterAssetsBank = nullptr;
             FString MasterAssetsBankPath = Settings.GetFullBankPath() / AssetTable.GetMasterAssetsBankPath();
