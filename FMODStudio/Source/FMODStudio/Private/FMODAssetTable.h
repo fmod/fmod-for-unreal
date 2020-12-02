@@ -35,19 +35,15 @@ public:
     void GetAllBankPaths(TArray<FString> &BankPaths, bool IncludeMasterBank) const;
 
 private:
-    void AddAsset(const FGuid &AssetGuid, const FString &AssetFullName);
-    void GetAllBankPathsFromDisk(const FString &BankDir, TArray<FString> &Paths);
-    void BuildBankPathLookup();
-    FString GetBankPathByGuid(const FGuid& Guid) const;
-
-private:
-    FMOD::Studio::System *StudioSystem;
-    TMap<FGuid, TWeakObjectPtr<UFMODAsset>> GuidMap;
-    TMap<FName, TWeakObjectPtr<UFMODAsset>> NameMap;
-    TMap<FString, TWeakObjectPtr<UFMODAsset>> FullNameLookup;
-    FString MasterBankPath;
-    FString MasterStringsBankPath;
-    FString MasterAssetsBankPath;
+    struct AssetCreateInfo
+    {
+        UClass *Class;
+        FGuid Guid;
+        FString StudioPath;
+        FString AssetName;
+        FString PackagePath;
+        FString Path;
+    };
 
     struct BankLocalization
     {
@@ -57,6 +53,19 @@ private:
 
     typedef TArray<BankLocalization> BankLocalizations;
 
+    FString GetAssetClassName(UClass *AssetClass);
+    bool MakeAssetCreateInfo(const FGuid &AssetGuid, const FString &StudioPath, AssetCreateInfo *CreateInfo);
+    UFMODAsset *CreateAsset(const AssetCreateInfo& CreateInfo);
+    void DeleteAsset(UObject *Asset);
+    void GetAllBankPathsFromDisk(const FString &BankDir, TArray<FString> &Paths);
+    void BuildBankPathLookup();
+    FString GetBankPathByGuid(const FGuid& Guid) const;
+
+    FMOD::Studio::System *StudioSystem;
+    TMap<FString, TWeakObjectPtr<UFMODAsset>> NameLookup;
+    FString MasterBankPath;
+    FString MasterStringsBankPath;
+    FString MasterAssetsBankPath;
     TMap<FGuid, BankLocalizations> BankPathLookup;
     FString ActiveLocale;
 };

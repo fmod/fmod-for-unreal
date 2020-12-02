@@ -17,6 +17,8 @@
 #include "Misc/App.h"
 #include "Misc/CommandLine.h"
 #include "Misc/CoreDelegates.h"
+#include "Engine/Engine.h"
+#include "Engine/LocalPlayer.h"
 #include "Engine/GameViewportClient.h"
 #include "GameFramework/PlayerController.h"
 #include "Containers/Ticker.h"
@@ -118,7 +120,7 @@ struct FFMODSnapshotEntry
 class FFMODStudioSystemClockSink : public IMediaClockSink
 {
 public:
-    DECLARE_DELEGATE_RetVal(void, FUpdateListenerPosition);
+    DECLARE_DELEGATE(FUpdateListenerPosition);
 
     FFMODStudioSystemClockSink(FMOD::Studio::System *SystemIn)
         : System(SystemIn)
@@ -200,7 +202,8 @@ public:
 
     bool Tick(float DeltaTime);
 
-    void UpdateViewportPosition();
+    void UpdateListeners();
+    void UpdateWorldListeners(UWorld *World, int *ListenerIndex);
 
     virtual FMOD::Studio::System *GetStudioSystem(EFMODSystemContext::Type Context) override;
     virtual FMOD::Studio::EventDescription *GetEventDescription(const UFMODEvent *Event, EFMODSystemContext::Type Type) override;
@@ -208,7 +211,7 @@ public:
     virtual void StopAuditioningInstance() override;
 
     virtual void SetListenerPosition(int ListenerIndex, UWorld *World, const FTransform &ListenerTransform, float DeltaSeconds) override;
-    virtual void FinishSetListenerPosition(int ListenerCount, float DeltaSeconds) override;
+    virtual void FinishSetListenerPosition(int ListenerCount) override;
 
     virtual const FFMODListener &GetNearestListener(const FVector &Location) override;
 
@@ -695,7 +698,7 @@ void FFMODStudioModule::CreateStudioSystem(EFMODSystemContext::Type Type)
 
         if (Type == EFMODSystemContext::Runtime)
         {
-            ClockSinks[Type]->SetUpdateListenerPositionDelegate(FTimerDelegate::CreateRaw(this, &FFMODStudioModule::UpdateViewportPosition));
+            ClockSinks[Type]->SetUpdateListenerPositionDelegate(FFMODStudioSystemClockSink::FUpdateListenerPosition::CreateRaw(this, &FFMODStudioModule::UpdateListeners));
         }
 
         MediaModule->GetClock().AddSink(ClockSinks[Type].ToSharedRef());
@@ -818,52 +821,74 @@ bool FFMODStudioModule::Tick(float DeltaTime)
     return true;
 }
 
-void FFMODStudioModule::UpdateViewportPosition()
+void FFMODStudioModule::UpdateListeners()
 {
+    int ListenerIndex = 0;
+    bListenerMoved = false;
+
+#if WITH_EDITOR
     if (bSimulating)
     {
         return;
     }
-    int ListenerIndex = 0;
 
-    UWorld *ViewportWorld = nullptr;
-    if (GEngine && GEngine->GameViewport)
+    if (GEngine)
     {
-        ViewportWorld = GEngine->GameViewport->GetWorld();
-    }
-
-    bool bCameraCut = false; // Not sure how to get View->bCameraCut from here
-    float DeltaSeconds = ((bCameraCut || !ViewportWorld) ? 0.f : ViewportWorld->GetDeltaSeconds());
-
-    bListenerMoved = false;
-
-    if (IsValid(ViewportWorld))
-    {
-        for (FConstPlayerControllerIterator Iterator = ViewportWorld->GetPlayerControllerIterator(); Iterator; ++Iterator)
+        // Every PIE session has its own world and local player controller(s), iterate all of them
+        for (auto ContextIt = GEngine->GetWorldContexts().CreateConstIterator(); ContextIt; ++ContextIt)
         {
-            APlayerController *PlayerController = Iterator->Get();
-            if (PlayerController)
+            const FWorldContext &PieContext = *ContextIt;
+            if (PieContext.WorldType != EWorldType::PIE)
             {
-                ULocalPlayer *LocalPlayer = PlayerController->GetLocalPlayer();
-                if (LocalPlayer)
-                {
-                    FVector Location;
-                    FVector ProjFront;
-                    FVector ProjRight;
-                    PlayerController->GetAudioListenerPosition(/*out*/ Location, /*out*/ ProjFront, /*out*/ ProjRight);
-                    FVector ProjUp = FVector::CrossProduct(ProjFront, ProjRight);
+                continue;
+            }
 
-                    FTransform ListenerTransform(FRotationMatrix::MakeFromXY(ProjFront, ProjRight));
-                    ListenerTransform.SetTranslation(Location);
-                    ListenerTransform.NormalizeRotation();
-
-                    SetListenerPosition(ListenerIndex, ViewportWorld, ListenerTransform, DeltaSeconds);
-
-                    ListenerIndex++;
-                }
+            if (PieContext.GameViewport)
+            {
+                UpdateWorldListeners(PieContext.GameViewport->GetWorld(), &ListenerIndex);
             }
         }
-        FinishSetListenerPosition(ListenerIndex, DeltaSeconds);
+    }
+#else
+    if (GEngine && GEngine->GameViewport)
+    {
+        UpdateWorldListeners(GEngine->GameViewport->GetWorld(), &ListenerIndex);
+    }
+#endif
+
+    FinishSetListenerPosition(ListenerIndex);
+}
+
+void FFMODStudioModule::UpdateWorldListeners(UWorld *World, int *ListenerIndex)
+{
+    if (!World)
+    {
+        return;
+    }
+
+    float DeltaSeconds = World->GetDeltaSeconds();
+
+    for (auto Iterator = GEngine->GetLocalPlayerIterator(World); Iterator; ++Iterator)
+    {
+        ULocalPlayer *LocalPlayer = *Iterator;
+
+        if (LocalPlayer && LocalPlayer->PlayerController)
+        {
+            APlayerController *PlayerController = LocalPlayer->PlayerController;
+            FVector Location;
+            FVector ProjFront;
+            FVector ProjRight;
+            PlayerController->GetAudioListenerPosition(Location, ProjFront, ProjRight);
+            FVector ProjUp = FVector::CrossProduct(ProjFront, ProjRight);
+
+            FTransform ListenerTransform(FRotationMatrix::MakeFromXY(ProjFront, ProjRight));
+            ListenerTransform.SetTranslation(Location);
+            ListenerTransform.NormalizeRotation();
+
+            SetListenerPosition(*ListenerIndex, World, ListenerTransform, DeltaSeconds);
+
+            (*ListenerIndex)++;
+        }
     }
 }
 
@@ -902,6 +927,14 @@ void FFMODStudioModule::SetListenerPosition(int ListenerIndex, UWorld *World, co
     FMOD::Studio::System *System = IFMODStudioModule::Get().GetStudioSystem(EFMODSystemContext::Runtime);
     if (System && ListenerIndex < MAX_LISTENERS)
     {
+        // Expand number of listeners dynamically
+        if (ListenerIndex >= ListenerCount)
+        {
+            Listeners[ListenerIndex] = FFMODListener();
+            ListenerCount = ListenerIndex + 1;
+            verifyfmod(System->setNumListeners(ListenerCount));
+        }
+
         FVector ListenerPos = ListenerTransform.GetTranslation();
 
         FInteriorSettings *InteriorSettings =
@@ -927,21 +960,12 @@ void FFMODStudioModule::SetListenerPosition(int ListenerIndex, UWorld *World, co
         Attributes.forward = FMODUtils::ConvertUnitVector(Forward);
         Attributes.up = FMODUtils::ConvertUnitVector(Up);
         Attributes.velocity = FMODUtils::ConvertWorldVector(Listeners[ListenerIndex].Velocity);
-
-        // Expand number of listeners dynamically
-        if (ListenerIndex >= ListenerCount)
-        {
-            Listeners[ListenerIndex] = FFMODListener();
-            ListenerCount = ListenerIndex + 1;
-            verifyfmod(System->setNumListeners(ListenerCount));
-        }
         verifyfmod(System->setListenerAttributes(ListenerIndex, &Attributes));
-
         bListenerMoved = true;
     }
 }
 
-void FFMODStudioModule::FinishSetListenerPosition(int NumListeners, float DeltaSeconds)
+void FFMODStudioModule::FinishSetListenerPosition(int NumListeners)
 {
     FMOD::Studio::System *System = IFMODStudioModule::Get().GetStudioSystem(EFMODSystemContext::Runtime);
     if (!System || NumListeners < 1)

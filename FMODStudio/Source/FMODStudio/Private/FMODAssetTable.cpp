@@ -15,9 +15,10 @@
 #include "HAL/FileManager.h"
 #include "Misc/Paths.h"
 #include "UObject/Package.h"
+#include "AssetRegistryModule.h"
 
 #if WITH_EDITOR
-#include "AssetRegistryModule.h"
+#include "ObjectTools.h"
 #endif
 
 FFMODAssetTable::FFMODAssetTable()
@@ -55,7 +56,7 @@ void FFMODAssetTable::Destroy()
 
 UFMODAsset *FFMODAssetTable::FindByName(const FString &Name) const
 {
-    const TWeakObjectPtr<UFMODAsset> *FoundAsset = FullNameLookup.Find(Name);
+    const TWeakObjectPtr<UFMODAsset> *FoundAsset = NameLookup.Find(Name);
     if (FoundAsset)
     {
         return FoundAsset->Get();
@@ -81,6 +82,7 @@ void FFMODAssetTable::Refresh()
 
         FMOD::Studio::Bank *StudioStringBank;
         FMOD_RESULT StringResult = StudioSystem->loadBankFile(TCHAR_TO_UTF8(*StringPath), FMOD_STUDIO_LOAD_BANK_NORMAL, &StudioStringBank);
+
         if (StringResult == FMOD_OK)
         {
             TArray<char> RawBuffer;
@@ -88,33 +90,81 @@ void FFMODAssetTable::Refresh()
 
             int Count = 0;
             verifyfmod(StudioStringBank->getStringCount(&Count));
+
+            // Enumerate all of the names in the strings bank and gather the information required to create the UE4 assets for each object
+            TArray<AssetCreateInfo> AssetCreateInfos;
+            AssetCreateInfos.Reserve(Count);
+
             for (int StringIdx = 0; StringIdx < Count; ++StringIdx)
             {
-                FMOD_RESULT Result;
                 FMOD::Studio::ID Guid = { 0 };
+
                 while (true)
                 {
                     int ActualSize = 0;
-                    Result = StudioStringBank->getStringInfo(StringIdx, &Guid, RawBuffer.GetData(), RawBuffer.Num(), &ActualSize);
+                    FMOD_RESULT Result = StudioStringBank->getStringInfo(StringIdx, &Guid, RawBuffer.GetData(), RawBuffer.Num(), &ActualSize);
+
                     if (Result == FMOD_ERR_TRUNCATED)
                     {
                         RawBuffer.SetNum(ActualSize);
                     }
                     else
                     {
+                        verifyfmod(Result);
                         break;
                     }
                 }
-                verifyfmod(Result);
+
                 FString AssetName(UTF8_TO_TCHAR(RawBuffer.GetData()));
                 FGuid AssetGuid = FMODUtils::ConvertGuid(Guid);
+
                 if (!AssetName.IsEmpty())
                 {
-                    AddAsset(AssetGuid, AssetName);
+                    AssetCreateInfo CreateInfo = {};
+
+                    if (MakeAssetCreateInfo(AssetGuid, AssetName, &CreateInfo))
+                    {
+                        AssetCreateInfos.Add(CreateInfo);
+                    }
                 }
             }
+
             verifyfmod(StudioStringBank->unload());
             verifyfmod(StudioSystem->update());
+
+            // Create new asset map - move existing assets over if they still match
+            TMap<FString, TWeakObjectPtr<UFMODAsset>> NewNameLookup;
+
+            for (const AssetCreateInfo &CreateInfo : AssetCreateInfos)
+            {
+                TWeakObjectPtr<UFMODAsset> Asset;
+                NameLookup.RemoveAndCopyValue(CreateInfo.StudioPath, Asset);
+
+                if (Asset.IsValid() && Asset->GetClass() == CreateInfo.Class && Asset->AssetGuid == CreateInfo.Guid)
+                {
+                    NewNameLookup.Add(CreateInfo.StudioPath, Asset);
+                }
+                else
+                {
+                    // Clean up existing asset (if there was one)
+                    if (Asset.IsValid())
+                    {
+                        DeleteAsset(Asset.Get());
+                    }
+
+                    UFMODAsset *NewAsset = CreateAsset(CreateInfo);
+                    NewNameLookup.Add(CreateInfo.StudioPath, NewAsset);
+                    FAssetRegistryModule::AssetCreated(NewAsset);
+                }
+            }
+
+            // Everything left in the name lookup was removed
+            for (auto& Entry : NameLookup)
+            {
+                DeleteAsset(Entry.Value.Get());
+            }
+
+            NameLookup = NewNameLookup;
         }
         else
         {
@@ -123,173 +173,237 @@ void FFMODAssetTable::Refresh()
     }
 }
 
-void FFMODAssetTable::AddAsset(const FGuid &AssetGuid, const FString &AssetFullName)
+FString FFMODAssetTable::GetAssetClassName(UClass* AssetClass)
 {
-    FString AssetPath = AssetFullName;
-    FString AssetType = "";
-    FString AssetFileName = "asset";
+    FString ClassName("");
 
-    int DelimIndex;
-    if (AssetPath.FindChar(':', DelimIndex))
+    if (AssetClass == UFMODEvent::StaticClass())
     {
-        AssetType = AssetPath.Left(DelimIndex);
-        AssetPath = AssetPath.Right(AssetPath.Len() - DelimIndex - 1);
+        ClassName = TEXT("Events");
     }
+    else if (AssetClass == UFMODSnapshot::StaticClass())
+    {
+        ClassName = TEXT("Snapshots");
+    }
+    else if (AssetClass == UFMODBank::StaticClass())
+    {
+        ClassName = TEXT("Banks");
+    }
+    else if (AssetClass == UFMODBus::StaticClass())
+    {
+        ClassName = TEXT("Buses");
+    }
+    else if (AssetClass == UFMODVCA::StaticClass())
+    {
+        ClassName = TEXT("VCAs");
+    }
+    else if (AssetClass == UFMODSnapshotReverb::StaticClass())
+    {
+        ClassName = TEXT("Reverbs");
+    }
+    return ClassName;
+}
 
-    FString FormattedAssetType = "";
-    UClass *AssetClass = UFMODAsset::StaticClass();
+bool FFMODAssetTable::MakeAssetCreateInfo(const FGuid &AssetGuid, const FString &StudioPath, AssetCreateInfo *CreateInfo)
+{
+    CreateInfo->StudioPath = StudioPath;
+    CreateInfo->Guid = AssetGuid;
+
+    FString AssetType;
+    FString AssetPath;
+    StudioPath.Split(TEXT(":"), &AssetType, &AssetPath, ESearchCase::CaseSensitive, ESearchDir::FromStart);
+
     if (AssetType.Equals(TEXT("event")))
     {
-        FormattedAssetType = TEXT("Events");
-        AssetClass = UFMODEvent::StaticClass();
+        CreateInfo->Class = UFMODEvent::StaticClass();
     }
     else if (AssetType.Equals(TEXT("snapshot")))
     {
-        FormattedAssetType = TEXT("Snapshots");
-        AssetClass = UFMODSnapshot::StaticClass();
+        CreateInfo->Class = UFMODSnapshot::StaticClass();
     }
     else if (AssetType.Equals(TEXT("bank")))
     {
-        FormattedAssetType = TEXT("Banks");
-        AssetClass = UFMODBank::StaticClass();
+        CreateInfo->Class = UFMODBank::StaticClass();
     }
     else if (AssetType.Equals(TEXT("bus")))
     {
-        FormattedAssetType = TEXT("Buses");
-        AssetClass = UFMODBus::StaticClass();
+        CreateInfo->Class = UFMODBus::StaticClass();
     }
     else if (AssetType.Equals(TEXT("vca")))
     {
-        FormattedAssetType = TEXT("VCAs");
-        AssetClass = UFMODVCA::StaticClass();
+        CreateInfo->Class = UFMODVCA::StaticClass();
     }
     else if (AssetType.Equals(TEXT("parameter")))
     {
-        return;
+        return false;
     }
     else
     {
         UE_LOG(LogFMOD, Warning, TEXT("Unknown asset type: %s"), *AssetType);
+        CreateInfo->Class = UFMODAsset::StaticClass();
     }
 
-    if (AssetPath.FindLastChar('/', DelimIndex))
+    AssetPath.Split(TEXT("/"), &(CreateInfo->Path), &(CreateInfo->AssetName), ESearchCase::CaseSensitive, ESearchDir::FromEnd);
+
+    if (CreateInfo->AssetName.IsEmpty() || CreateInfo->AssetName.Contains(TEXT(".strings")))
     {
-        AssetFileName = AssetPath.Right(AssetPath.Len() - DelimIndex - 1);
-        AssetPath = AssetPath.Left(AssetPath.Len() - AssetFileName.Len() - 1);
+        return false;
     }
-    else
+    return true;
+}
+
+
+// These SanitizeXXX functions are copied from ObjectTools - we currently use this at runtime and ObjectTools is not available. If we start
+// serializing our generated assets when cooking then we can revert to using the versions in ObjectTools and remove these local copies.
+static FString SanitizeInvalidChars(const FString &InObjectName, const FString &InvalidChars)
+{
+    FString SanitizedName;
+
+    // See if the name contains invalid characters.
+    FString Char;
+    for (int32 CharIdx = 0; CharIdx < InObjectName.Len(); ++CharIdx)
     {
-        // No path part, all name
-        AssetFileName = AssetPath;
-        AssetPath = TEXT("");
-    }
+        Char = InObjectName.Mid(CharIdx, 1);
 
-    if (AssetFileName.IsEmpty() || AssetFileName.Contains(TEXT(".strings")))
-    {
-        UE_LOG(LogFMOD, Log, TEXT("Skipping asset: %s"), *AssetFullName);
-        return;
-    }
-
-    AssetPath = AssetPath.Replace(TEXT(" "), TEXT("_"));
-    FString AssetShortName = AssetFileName.Replace(TEXT(" "), TEXT("_"));
-    AssetShortName = AssetShortName.Replace(TEXT("."), TEXT("_"));
-
-    const UFMODSettings &Settings = *GetDefault<UFMODSettings>();
-
-    FString FolderPath = Settings.ContentBrowserPrefix;
-    FolderPath += FormattedAssetType;
-    FolderPath += AssetPath;
-
-    FString AssetPackagePath = FolderPath + TEXT("/") + AssetShortName;
-
-    FName AssetPackagePathName(*AssetPackagePath);
-
-    TWeakObjectPtr<UFMODAsset> &ExistingNameAsset = NameMap.FindOrAdd(AssetPackagePathName);
-    TWeakObjectPtr<UFMODAsset> &ExistingGuidAsset = GuidMap.FindOrAdd(AssetGuid);
-    TWeakObjectPtr<UFMODAsset> &ExistingFullNameLookupAsset = FullNameLookup.FindOrAdd(AssetFullName);
-
-    UFMODAsset *AssetNameObject = ExistingNameAsset.Get();
-    if (AssetNameObject == nullptr)
-    {
-        UE_LOG(LogFMOD, Log, TEXT("Constructing asset: %s"), *AssetPackagePath);
-
-        EObjectFlags NewObjectFlags = RF_Standalone | RF_Public /* | RF_Transient */;
-        if (IsRunningDedicatedServer())
+        if (InvalidChars.Contains(*Char))
         {
-            NewObjectFlags |= RF_MarkAsRootSet;
-        }
-
-        UPackage *NewPackage = CreatePackage(nullptr, *AssetPackagePath);
-        if (IsValid(NewPackage))
-        {
-            if (!GEventDrivenLoaderEnabled)
-            {
-                NewPackage->SetPackageFlags(PKG_CompiledIn);
-            }
-
-            AssetNameObject = NewObject<UFMODAsset>(NewPackage, AssetClass, FName(*AssetShortName), NewObjectFlags);
-            AssetNameObject->AssetGuid = AssetGuid;
-            AssetNameObject->bShowAsAsset = true;
-            AssetNameObject->FileName = AssetFileName;
-
-#if WITH_EDITOR
-            FAssetRegistryModule &AssetRegistryModule = FModuleManager::LoadModuleChecked<FAssetRegistryModule>(TEXT("AssetRegistry"));
-            AssetRegistryModule.Get().AddPath(*FolderPath);
-            FAssetRegistryModule::AssetCreated(AssetNameObject);
-#endif
+            SanitizedName += TEXT("_");
         }
         else
         {
-            UE_LOG(LogFMOD, Warning, TEXT("Failed to construct package for asset %s"), *AssetPackagePath);
+            SanitizedName += Char;
         }
+    }
 
-        if (AssetClass == UFMODSnapshot::StaticClass())
+    return SanitizedName;
+}
+
+static FString SanitizeObjectName(const FString &InObjectName)
+{
+    return SanitizeInvalidChars(InObjectName, INVALID_OBJECTNAME_CHARACTERS);
+}
+
+UFMODAsset *FFMODAssetTable::CreateAsset(const AssetCreateInfo& CreateInfo)
+{
+    FString SanitizedAssetName;
+    FText OutReason;
+
+    if (FName::IsValidXName(CreateInfo.AssetName, INVALID_OBJECTNAME_CHARACTERS, &OutReason))
+    {
+        SanitizedAssetName = CreateInfo.AssetName;
+    }
+    else
+    {
+        SanitizedAssetName = SanitizeObjectName(CreateInfo.AssetName);
+        UE_LOG(LogFMOD, Warning, TEXT("'%s' cannot be used as a UE4 asset name. %s. Using '%s' instead."), *CreateInfo.AssetName,
+            *OutReason.ToString(), *SanitizedAssetName);
+    }
+
+    const UFMODSettings &Settings = *GetDefault<UFMODSettings>();
+    FString Folder = Settings.ContentBrowserPrefix + GetAssetClassName(CreateInfo.Class) + CreateInfo.Path;
+    FString PackagePath = FString::Printf(TEXT("%s/%s"), *Folder, *SanitizedAssetName);
+    FString SanitizedPackagePath;
+
+    if (FName::IsValidXName(PackagePath, INVALID_LONGPACKAGE_CHARACTERS, &OutReason))
+    {
+        SanitizedPackagePath = PackagePath;
+    }
+    else
+    {
+        SanitizedPackagePath = SanitizeInvalidChars(PackagePath, INVALID_OBJECTPATH_CHARACTERS);
+        UE_LOG(LogFMOD, Warning, TEXT("'%s' cannot be used as a UE4 asset path. %s. Using '%s' instead."), *PackagePath, *OutReason.ToString(),
+            *SanitizedPackagePath);
+    }
+
+    UE_LOG(LogFMOD, Log, TEXT("Constructing asset: %s"), *SanitizedPackagePath);
+
+    UFMODAsset *Asset = nullptr;
+    EObjectFlags NewObjectFlags = RF_Standalone | RF_Public;
+
+    if (IsRunningDedicatedServer())
+    {
+        NewObjectFlags |= RF_MarkAsRootSet;
+    }
+
+    UPackage *NewPackage = CreatePackage(nullptr, *SanitizedPackagePath);
+    EPackageFlags NewPackageFlags = GEventDrivenLoaderEnabled ? PKG_None : PKG_CompiledIn;
+
+    if (IsValid(NewPackage))
+    {
+        NewPackage->SetPackageFlags(NewPackageFlags);
+        Asset = NewObject<UFMODAsset>(NewPackage, CreateInfo.Class, FName(*SanitizedAssetName), NewObjectFlags);
+
+        if (IsValid(Asset))
         {
-            FString ReverbFolderPath = Settings.ContentBrowserPrefix;
-            ReverbFolderPath += TEXT("Reverbs");
-            ReverbFolderPath += AssetPath;
+            FAssetRegistryModule::AssetCreated(Asset);
+            Asset->AssetGuid = CreateInfo.Guid;
+        }
+    }
+    
+    if (!IsValid(Asset))
+    {
+        UE_LOG(LogFMOD, Warning, TEXT("Failed to construct asset: %s"), *SanitizedPackagePath);
+    }
 
-            FString ReverbAssetPackagePath = ReverbFolderPath + TEXT("/") + AssetShortName;
+    if (CreateInfo.Class == UFMODSnapshot::StaticClass())
+    {
+        FString OldPrefix = Settings.ContentBrowserPrefix + GetAssetClassName(Asset->GetClass());
+        FString NewPrefix = Settings.ContentBrowserPrefix + GetAssetClassName(UFMODSnapshotReverb::StaticClass());
+        UObject *Outer = Asset->GetOuter() ? Asset->GetOuter() : Asset;
+        FString ReverbPackagePath = Outer->GetPathName().Replace(*OldPrefix, *NewPrefix);
 
-            UPackage *ReverbPackage = CreatePackage(nullptr, *ReverbAssetPackagePath);
-            if (ReverbPackage)
+        UE_LOG(LogFMOD, Log, TEXT("Constructing snapshot reverb asset: %s"), *ReverbPackagePath);
+
+        UPackage *ReverbPackage = CreatePackage(nullptr, *ReverbPackagePath);
+        UFMODSnapshotReverb *AssetReverb = nullptr;
+
+        if (IsValid(ReverbPackage))
+        {
+            ReverbPackage->SetPackageFlags(NewPackageFlags);
+            AssetReverb = NewObject<UFMODSnapshotReverb>(ReverbPackage, UFMODSnapshotReverb::StaticClass(), FName(*SanitizedAssetName), NewObjectFlags);
+
+            if (IsValid(AssetReverb))
             {
-                if (!GEventDrivenLoaderEnabled)
-                {
-                    ReverbPackage->SetPackageFlags(PKG_CompiledIn);
-                }
-                UFMODSnapshotReverb *AssetReverb = NewObject<UFMODSnapshotReverb>(
-                    ReverbPackage, UFMODSnapshotReverb::StaticClass(), FName(*AssetShortName), NewObjectFlags);
-                AssetReverb->AssetGuid = AssetGuid;
-                AssetReverb->bShowAsAsset = true;
-
-#if WITH_EDITOR
-                FAssetRegistryModule &AssetRegistryModule = FModuleManager::LoadModuleChecked<FAssetRegistryModule>(TEXT("AssetRegistry"));
-                AssetRegistryModule.Get().AddPath(*ReverbFolderPath);
                 FAssetRegistryModule::AssetCreated(AssetReverb);
-#endif
+                AssetReverb->AssetGuid = CreateInfo.Guid;
             }
         }
+
+        if (!IsValid(AssetReverb))
+        {
+            UE_LOG(LogFMOD, Warning, TEXT("Failed to construct snapshot reverb asset: %s"), *ReverbPackagePath);
+        }
     }
 
-    UFMODAsset *AssetGuidObject = ExistingGuidAsset.Get();
-    if (IsValid(AssetGuidObject) && AssetGuidObject != AssetNameObject)
-    {
-        FString OldPath = AssetGuidObject->GetPathName();
-        UE_LOG(LogFMOD, Log, TEXT("Hiding old asset '%s'"), *OldPath);
+    return Asset;
+}
 
-        // We had an asset with the same guid but it must have been renamed
-        // We just hide the old asset from the asset table
-        AssetGuidObject->bShowAsAsset = false;
-
+void FFMODAssetTable::DeleteAsset(UObject *Asset)
+{
 #if WITH_EDITOR
-        FAssetRegistryModule::AssetRenamed(AssetNameObject, OldPath);
-#endif
-    }
+    if (Asset)
+    {
+        TArray<UObject *> ObjectsToDelete;
+        ObjectsToDelete.Add(Asset);
 
-    ExistingNameAsset = AssetNameObject;
-    ExistingGuidAsset = AssetNameObject;
-    ExistingFullNameLookupAsset = AssetNameObject;
+        if (Asset->GetClass() == UFMODSnapshot::StaticClass())
+        {
+            // Also delete the reverb asset
+            const UFMODSettings &Settings = *GetDefault<UFMODSettings>();
+            FString OldPrefix = Settings.ContentBrowserPrefix + GetAssetClassName(Asset->GetClass());
+            FString NewPrefix = Settings.ContentBrowserPrefix + GetAssetClassName(UFMODSnapshotReverb::StaticClass());
+            FString ReverbName = Asset->GetPathName().Replace(*OldPrefix, *NewPrefix);
+            UObject *Reverb = StaticFindObject(UFMODSnapshotReverb::StaticClass(), nullptr, *ReverbName);
+
+            if (Reverb)
+            {
+                ObjectsToDelete.Add(Reverb);
+            }
+        }
+
+        ObjectTools::ForceDeleteObjects(ObjectsToDelete, false);
+    }
+#endif
 }
 
 FString FFMODAssetTable::GetBankPathByGuid(const FGuid& Guid) const
@@ -335,7 +449,7 @@ FString FFMODAssetTable::GetBankPath(const UFMODBank &Bank) const
 
     if (BankPath.IsEmpty())
     {
-        UE_LOG(LogFMOD, Warning, TEXT("Could not find disk file for bank %s"), *Bank.FileName);
+        UE_LOG(LogFMOD, Warning, TEXT("Could not find disk file for bank %s"), *Bank.GetName());
     }
 
     return BankPath;
