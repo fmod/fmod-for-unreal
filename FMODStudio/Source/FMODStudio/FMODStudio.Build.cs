@@ -80,6 +80,7 @@ namespace UnrealBuildTool.Rules
             string libPrefix = "";
             string libPath = FMODLibDir;
 
+            bool bCopyToOutput = false;
             bool bAddRuntimeDependencies = true;
             bool bAddDelayLoad = false;
 
@@ -121,6 +122,8 @@ namespace UnrealBuildTool.Rules
                 {
                     linkExtension = "_vc.lib";
                     dllExtension = ".dll";
+                    bCopyToOutput = true;
+                    bAddRuntimeDependencies = false;
                 }
                 else if (Target.Platform == UnrealTargetPlatform.PS4)
                 {
@@ -198,7 +201,12 @@ namespace UnrealBuildTool.Rules
                 PublicAdditionalLibraries.Add(fmodStudioLibPath);
             }
 
-            if (bAddRuntimeDependencies)
+            if (bCopyToOutput)
+            {
+                RuntimeDependencies.Add("$(TargetOutputDir)/" + fmodDllName, fmodDllPath);
+                RuntimeDependencies.Add("$(TargetOutputDir)/" + fmodStudioDllName, fmodStudioDllPath);
+            }
+            else if (bAddRuntimeDependencies)
             {
                 RuntimeDependencies.Add(fmodDllPath);
                 RuntimeDependencies.Add(fmodStudioDllPath);
