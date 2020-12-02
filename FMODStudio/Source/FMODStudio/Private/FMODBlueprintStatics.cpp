@@ -132,7 +132,7 @@ void UFMODBlueprintStatics::LoadBank(class UFMODBank *Bank, bool bBlocking, bool
     FMOD::Studio::System *StudioSystem = IFMODStudioModule::Get().GetStudioSystem(EFMODSystemContext::Runtime);
     if (StudioSystem != nullptr && IsValid(Bank))
     {
-        UE_LOG(LogFMOD, Log, TEXT("LoadBank %s"), *Bank->FileName);
+        UE_LOG(LogFMOD, Log, TEXT("LoadBank %s"), *Bank->GetName());
 
         FString BankPath = IFMODStudioModule::Get().GetBankPath(*Bank);
         FMOD::Studio::Bank *bank = nullptr;
@@ -141,7 +141,7 @@ void UFMODBlueprintStatics::LoadBank(class UFMODBank *Bank, bool bBlocking, bool
 
         if (result != FMOD_OK)
         {
-            UE_LOG(LogFMOD, Error, TEXT("Failed to load bank %s: %s"), *Bank->FileName, UTF8_TO_TCHAR(FMOD_ErrorString(result)));
+            UE_LOG(LogFMOD, Error, TEXT("Failed to load bank %s: %s"), *Bank->GetName(), UTF8_TO_TCHAR(FMOD_ErrorString(result)));
         }
 
         if (result == FMOD_OK)
@@ -156,7 +156,7 @@ void UFMODBlueprintStatics::UnloadBank(class UFMODBank *Bank)
     FMOD::Studio::System *StudioSystem = IFMODStudioModule::Get().GetStudioSystem(EFMODSystemContext::Runtime);
     if (StudioSystem != nullptr && IsValid(Bank))
     {
-        UE_LOG(LogFMOD, Log, TEXT("UnloadBank %s"), *Bank->FileName);
+        UE_LOG(LogFMOD, Log, TEXT("UnloadBank %s"), *Bank->GetName());
 
         FMOD::Studio::ID guid = FMODUtils::ConvertGuid(Bank->AssetGuid);
         FMOD::Studio::Bank *bank = nullptr;

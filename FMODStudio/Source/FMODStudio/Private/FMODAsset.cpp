@@ -10,6 +10,11 @@ UFMODAsset::UFMODAsset(const FObjectInitializer &ObjectInitializer)
 {
 }
 
+bool UFMODAsset::IsAsset() const
+{
+    return this != GetClass()->GetDefaultObject();
+}
+
 /** Get tags to show in content view */
 void UFMODAsset::GetAssetRegistryTags(TArray<FAssetRegistryTag> &OutTags) const
 {
