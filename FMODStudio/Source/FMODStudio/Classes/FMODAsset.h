@@ -18,14 +18,8 @@ class FMODSTUDIO_API UFMODAsset : public UObject
     UPROPERTY()
     FGuid AssetGuid;
 
-    /** Whether to show in the content window */
-    UPROPERTY()
-    bool bShowAsAsset;
-
-    FString FileName;
-
-    /** Force this to be an asset */
-    virtual bool IsAsset() const override { return bShowAsAsset; }
+    /** Non default instances of UFMODAsset are assets */
+    virtual bool IsAsset() const override;
 
     /** Get tags to show in content view */
     virtual void GetAssetRegistryTags(TArray<FAssetRegistryTag> &OutTags) const override;

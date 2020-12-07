@@ -7,6 +7,11 @@ UFMODSnapshotReverb::UFMODSnapshotReverb(const FObjectInitializer &ObjectInitial
 {
 }
 
+bool UFMODSnapshotReverb::IsAsset() const
+{
+    return this != GetClass()->GetDefaultObject();
+}
+
 #if WITH_EDITORONLY_DATA
 void UFMODSnapshotReverb::PostEditChangeProperty(FPropertyChangedEvent &PropertyChangedEvent)
 {
