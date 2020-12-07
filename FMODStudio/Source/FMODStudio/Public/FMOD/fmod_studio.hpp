@@ -85,8 +85,8 @@ namespace Studio
         // Listener control
         FMOD_RESULT F_API getNumListeners(int *numlisteners);
         FMOD_RESULT F_API setNumListeners(int numlisteners);
-        FMOD_RESULT F_API getListenerAttributes(int listener, FMOD_3D_ATTRIBUTES *attributes) const;
-        FMOD_RESULT F_API setListenerAttributes(int listener, const FMOD_3D_ATTRIBUTES *attributes);
+        FMOD_RESULT F_API getListenerAttributes(int listener, FMOD_3D_ATTRIBUTES *attributes, FMOD_VECTOR *attenuationposition = 0) const;
+        FMOD_RESULT F_API setListenerAttributes(int listener, const FMOD_3D_ATTRIBUTES *attributes, const FMOD_VECTOR *attenuationposition = 0);
         FMOD_RESULT F_API getListenerWeight(int listener, float *weight);
         FMOD_RESULT F_API setListenerWeight(int listener, float weight);
 

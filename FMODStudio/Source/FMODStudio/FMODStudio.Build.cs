@@ -17,7 +17,8 @@ namespace UnrealBuildTool.Rules
 
         protected virtual bool ConsoleRuntimeDependencies	{ get { return true; } }
         protected virtual bool ConsoleDelayLoad				{ get { return false; } }
-        protected virtual bool LinkDebugFiles				{ get { return false; } }
+
+        protected virtual string CopyThirdPartyPath			{ get { return null; } }
 
         public FMODStudio(ReadOnlyTargetRules Target) : base(Target)
         {
@@ -81,7 +82,6 @@ namespace UnrealBuildTool.Rules
 
             bool bAddRuntimeDependencies = true;
             bool bAddDelayLoad = false;
-            bool bLinkDebugFiles = false;
 
             if (libPath == null)
             {
@@ -163,7 +163,6 @@ namespace UnrealBuildTool.Rules
 
                 bAddRuntimeDependencies = ConsoleRuntimeDependencies;
                 bAddDelayLoad = ConsoleDelayLoad;
-                bLinkDebugFiles = LinkDebugFiles;
             }
 
             // Collapse the directory path, otherwise MacOS has issues with plugin paths.
@@ -211,10 +210,16 @@ namespace UnrealBuildTool.Rules
                 }
             }
 
-            if (bLinkDebugFiles)
+            if (CopyThirdPartyPath != null)
             {
-                RuntimeDependencies.Add(fmodDllPath + ".debug", StagedFileType.DebugNonUFS);
-                RuntimeDependencies.Add(fmodStudioDllPath + ".debug", StagedFileType.DebugNonUFS);
+                string destPath = System.IO.Path.Combine(Target.UEThirdPartyBinariesDirectory, CopyThirdPartyPath);
+                System.IO.Directory.CreateDirectory(destPath);
+
+                string fmodDllDest = System.IO.Path.Combine(destPath, fmodDllName);
+                string fmodStudioDllDest = System.IO.Path.Combine(destPath, fmodStudioDllName);
+
+                CopyFile(fmodDllPath, fmodDllDest);
+                CopyFile(fmodStudioDllPath, fmodStudioDllDest);
             }
 
             if (bAddDelayLoad)

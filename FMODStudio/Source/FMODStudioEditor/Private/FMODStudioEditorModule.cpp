@@ -174,9 +174,6 @@ public:
         : bSimulating(false)
         , bIsInPIE(false)
         , bRegisteredComponentVisualizers(false)
-        , bRunningTest(false)
-        , TestDelay(0.0f)
-        , TestStep(0)
     {
     }
 
@@ -229,8 +226,6 @@ public:
     void OnBadSettingsPopupSettingsClicked();
     void OnBadSettingsPopupDismissClicked();
 
-    void TickTest(float DeltaTime);
-
     TArray<FName> RegisteredComponentClassNames;
     void RegisterComponentVisualizer(FName ComponentClassName, TSharedPtr<FComponentVisualizer> Visualizer);
 
@@ -267,9 +262,6 @@ public:
     bool bSimulating;
     bool bIsInPIE;
     bool bRegisteredComponentVisualizers;
-    bool bRunningTest;
-    float TestDelay;
-    int TestStep;
 };
 
 IMPLEMENT_MODULE(FFMODStudioEditorModule, FMODStudioEditor)
@@ -351,11 +343,6 @@ void FFMODStudioEditorModule::StartupModule()
 
     // This module is loaded after FMODStudioModule
     HandleBanksReloadedDelegateHandle = IFMODStudioModule::Get().BanksReloadedEvent().AddRaw(this, &FFMODStudioEditorModule::HandleBanksReloaded);
-
-    if (FParse::Param(FCommandLine::Get(), TEXT("fmodtest")))
-    {
-        bRunningTest = true;
-    }
 
     // Register a callback to validate settings on startup
     IMainFrameModule& MainFrameModule = FModuleManager::LoadModuleChecked<IMainFrameModule>(TEXT("MainFrame"));
@@ -1012,11 +999,6 @@ bool FFMODStudioEditorModule::Tick(float DeltaTime)
         bRegisteredComponentVisualizers = true;
     }
 
-    if (bRunningTest)
-    {
-        TickTest(DeltaTime);
-    }
-
     // Update listener position for Editor sound system
     FMOD::Studio::System *StudioSystem = IFMODStudioModule::Get().GetStudioSystem(EFMODSystemContext::Editor);
     if (StudioSystem)
@@ -1038,87 +1020,6 @@ bool FFMODStudioEditorModule::Tick(float DeltaTime)
     }
 
     return true;
-}
-
-void FFMODStudioEditorModule::TickTest(float DeltaTime)
-{
-    TestDelay -= DeltaTime;
-    if (TestDelay > 0.0f)
-    {
-        return; // Still waiting
-    }
-
-    // Default time to next step
-    TestDelay = 1.0f;
-    TestStep++;
-
-    UE_LOG(LogFMOD, Log, TEXT("Test step %d"), TestStep);
-
-    switch (TestStep)
-    {
-        case 1:
-        {
-            // Spawn event in level
-            FString EventPath;
-            if (FParse::Value(FCommandLine::Get(), TEXT("spawnevent="), EventPath))
-            {
-                UFMODEvent *FoundEvent = IFMODStudioModule::Get().FindEventByName(EventPath);
-                if (FoundEvent)
-                {
-                    UActorFactory *ActorFactory = FActorFactoryAssetProxy::GetFactoryForAssetObject(FoundEvent);
-                    if (ActorFactory)
-                    {
-                        AActor *NewActor = ActorFactory->CreateActor(FoundEvent, GWorld->GetCurrentLevel(), FTransform());
-                        UE_LOG(LogFMOD, Log, TEXT("Placing '%s' in world: New actor %p"), *EventPath, NewActor);
-                    }
-                    else
-                    {
-                        UE_LOG(LogFMOD, Error, TEXT("Failed to find factory for event: '%s'"), *EventPath);
-                    }
-                }
-                else
-                {
-                    UE_LOG(LogFMOD, Error, TEXT("Failed to find event: '%s'"), *EventPath);
-                }
-            }
-            break;
-        }
-        case 2:
-        {
-            // Save FMOD directory to package
-            UProjectPackagingSettings *PackagingSettings =
-                Cast<UProjectPackagingSettings>(UProjectPackagingSettings::StaticClass()->GetDefaultObject());
-            const UFMODSettings &Settings = *GetDefault<UFMODSettings>();
-            PackagingSettings->DirectoriesToAlwaysStageAsNonUFS.Add(Settings.BankOutputDirectory);
-            PackagingSettings->UpdateDefaultConfigFile();
-            break;
-        }
-        case 3:
-        {
-            // Save map
-            FEditorFileUtils::SaveDirtyPackages(false, true, false, true, false, false);
-            break;
-        }
-        case 4:
-        {
-            // Begin PIE
-            UWorld *EditorWorld = GEditor->GetEditorWorldContext().World();
-            GEditor->PlayInEditor(EditorWorld, false);
-            break;
-        }
-        case 5:
-        {
-            // Extra delay
-            TestDelay = 10.0f;
-            break;
-        }
-        case 6:
-        {
-            // Finish test
-            RequestEngineExit("Test");
-            break;
-        }
-    }
 }
 
 void FFMODStudioEditorModule::BeginPIE(bool simulating)
@@ -1179,7 +1080,7 @@ void FFMODStudioEditorModule::ViewportDraw(UCanvas *Canvas, APlayerController *)
         ListenerTransform.NormalizeRotation();
 
         IFMODStudioModule::Get().SetListenerPosition(0, World, ListenerTransform, 0.0f);
-        IFMODStudioModule::Get().FinishSetListenerPosition(1, 0.0f);
+        IFMODStudioModule::Get().FinishSetListenerPosition(1);
     }
 }
 

@@ -54,8 +54,8 @@ FMOD_RESULT F_API FMOD_Studio_System_LookupID(FMOD_STUDIO_SYSTEM *system, const 
 FMOD_RESULT F_API FMOD_Studio_System_LookupPath(FMOD_STUDIO_SYSTEM *system, const FMOD_GUID *id, char *path, int size, int *retrieved);
 FMOD_RESULT F_API FMOD_Studio_System_GetNumListeners(FMOD_STUDIO_SYSTEM *system, int *numlisteners);
 FMOD_RESULT F_API FMOD_Studio_System_SetNumListeners(FMOD_STUDIO_SYSTEM *system, int numlisteners);
-FMOD_RESULT F_API FMOD_Studio_System_GetListenerAttributes(FMOD_STUDIO_SYSTEM *system, int index, FMOD_3D_ATTRIBUTES *attributes);
-FMOD_RESULT F_API FMOD_Studio_System_SetListenerAttributes(FMOD_STUDIO_SYSTEM *system, int index, FMOD_3D_ATTRIBUTES *attributes);
+FMOD_RESULT F_API FMOD_Studio_System_GetListenerAttributes(FMOD_STUDIO_SYSTEM *system, int index, FMOD_3D_ATTRIBUTES *attributes, FMOD_VECTOR *attenuationposition);
+FMOD_RESULT F_API FMOD_Studio_System_SetListenerAttributes(FMOD_STUDIO_SYSTEM *system, int index, const FMOD_3D_ATTRIBUTES *attributes, const FMOD_VECTOR *attenuationposition);
 FMOD_RESULT F_API FMOD_Studio_System_GetListenerWeight(FMOD_STUDIO_SYSTEM *system, int index, float *weight);
 FMOD_RESULT F_API FMOD_Studio_System_SetListenerWeight(FMOD_STUDIO_SYSTEM *system, int index, float weight);
 FMOD_RESULT F_API FMOD_Studio_System_LoadBankFile(FMOD_STUDIO_SYSTEM *system, const char *filename, FMOD_STUDIO_LOAD_BANK_FLAGS flags, FMOD_STUDIO_BANK **bank);
