@@ -43,7 +43,7 @@ UFMODEventControlSection::UFMODEventControlSection(const FObjectInitializer &Obj
 #endif
 }
 
-FMovieSceneEvalTemplatePtr UFMODEventControlSection::GenerateTemplate() const
+FMovieSceneEvalTemplatePtr UFMODEventControlSection::CreateTemplateForSection(const UMovieSceneSection& InSection) const
 {
-    return FFMODEventControlSectionTemplate(*this);
+    return FFMODEventControlSectionTemplate(*CastChecked<UFMODEventControlSection>(&InSection));
 }

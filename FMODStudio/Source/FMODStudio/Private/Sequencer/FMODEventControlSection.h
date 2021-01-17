@@ -8,6 +8,8 @@
 #include "MovieSceneClipboard.h"
 #include "MovieSceneSection.h"
 #include "Channels/MovieSceneByteChannel.h"
+#include "Compilation/IMovieSceneTrackTemplateProducer.h"
+
 #include "FMODEventControlSection.generated.h"
 
 /** Defines the types of FMOD event control keys. */
@@ -53,7 +55,9 @@ struct TMovieSceneChannelTraits<FFMODEventControlChannel> : TMovieSceneChannelTr
 
 /** FMOD Event control section */
 UCLASS(MinimalAPI)
-class UFMODEventControlSection : public UMovieSceneSection
+class UFMODEventControlSection
+    : public UMovieSceneSection
+    , public IMovieSceneTrackTemplateProducer
 {
     GENERATED_UCLASS_BODY()
 
@@ -63,8 +67,8 @@ public:
     FFMODEventControlChannel ControlKeys;
 
 protected:
-    //~ UMovieSceneSection interface
-    virtual FMovieSceneEvalTemplatePtr GenerateTemplate() const override;
+    // ~IMovieSceneTrackTemplateProducer interface
+    virtual FMovieSceneEvalTemplatePtr CreateTemplateForSection(const UMovieSceneSection& InSection) const override;
 };
 
 inline void AssignValue(FFMODEventControlChannel *InChannel, FKeyHandle InKeyHandle, EFMODEventControlKey InValue)

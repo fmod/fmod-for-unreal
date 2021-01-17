@@ -6,17 +6,23 @@
 #include "UObject/ObjectMacros.h"
 #include "Sections/MovieSceneParameterSection.h"
 #include "MovieSceneNameableTrack.h"
+#include "Compilation/IMovieSceneTrackTemplateProducer.h"
+
 #include "FMODEventParameterTrack.generated.h"
 
 /** Handles manipulation of event parameters in a movie scene. */
 UCLASS(MinimalAPI)
-class UFMODEventParameterTrack : public UMovieSceneNameableTrack
+class UFMODEventParameterTrack
+    : public UMovieSceneNameableTrack
+    , public IMovieSceneTrackTemplateProducer
 {
     GENERATED_UCLASS_BODY()
 
 public:
+    // ~IMovieSceneTrackTemplateProducer interface
+    virtual FMovieSceneEvalTemplatePtr CreateTemplateForSection(const UMovieSceneSection& InSection) const override;
+	
     // Begin UMovieSceneTrack interface
-    virtual FMovieSceneEvalTemplatePtr CreateTemplateForSection(const UMovieSceneSection &InSection) const override;
     virtual UMovieSceneSection *CreateNewSection() override;
     virtual void RemoveAllAnimationData() override;
     virtual bool HasSection(const UMovieSceneSection &Section) const override;

@@ -31,7 +31,7 @@ public:
 private:
     int32 OnGetCurrentValueAsInt() const
     {
-        using namespace MovieScene;
+        using namespace UE::MovieScene;
 
         FMovieSceneByteChannel *Channel = ChannelHandle.Get();
         ISequencer *Sequencer = WeakSequencer.Pin().Get();
@@ -40,7 +40,7 @@ private:
 
         if (Channel && Sequencer && OwningSection)
         {
-            const FFrameTime CurrentTime = MovieScene::ClampToDiscreteRange(Sequencer->GetLocalTime().Time, OwningSection->GetRange());
+            const FFrameTime CurrentTime = ClampToDiscreteRange(Sequencer->GetLocalTime().Time, OwningSection->GetRange());
             EvaluateChannel(Channel, CurrentTime, Result);
         }
 
@@ -49,7 +49,7 @@ private:
 
     void SetValue(uint8 InValue)
     {
-        using namespace MovieScene;
+        using namespace UE::MovieScene;
         using namespace Sequencer;
 
         UMovieSceneSection *OwningSection = WeakSection.Get();

@@ -325,7 +325,7 @@ UFMODAsset *FFMODAssetTable::CreateAsset(const AssetCreateInfo& CreateInfo)
         NewObjectFlags |= RF_MarkAsRootSet;
     }
 
-    UPackage *NewPackage = CreatePackage(nullptr, *SanitizedPackagePath);
+    UPackage *NewPackage = CreatePackage(*SanitizedPackagePath);
     EPackageFlags NewPackageFlags = GEventDrivenLoaderEnabled ? PKG_None : PKG_CompiledIn;
 
     if (IsValid(NewPackage))
@@ -354,7 +354,7 @@ UFMODAsset *FFMODAssetTable::CreateAsset(const AssetCreateInfo& CreateInfo)
 
         UE_LOG(LogFMOD, Log, TEXT("Constructing snapshot reverb asset: %s"), *ReverbPackagePath);
 
-        UPackage *ReverbPackage = CreatePackage(nullptr, *ReverbPackagePath);
+        UPackage *ReverbPackage = CreatePackage(*ReverbPackagePath);
         UFMODSnapshotReverb *AssetReverb = nullptr;
 
         if (IsValid(ReverbPackage))

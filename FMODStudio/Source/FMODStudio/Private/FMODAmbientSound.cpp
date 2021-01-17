@@ -19,7 +19,8 @@ AFMODAmbientSound::AFMODAmbientSound(const FObjectInitializer &ObjectInitializer
 
     RootComponent = AudioComponent;
 
-    SetReplicates(false);
+    bReplicates = false;
+
     SetHidden(true);
     SetCanBeDamaged(true);
 }
