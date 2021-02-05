@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2020.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2021.
 
 #pragma once
 
@@ -132,15 +132,12 @@ public:
     /**
 	 * Called to change the listener position for editor mode
 	 */
-    virtual void FinishSetListenerPosition(int NumListeners, float DeltaSeconds) = 0;
+    virtual void FinishSetListenerPosition(int NumListeners) = 0;
 
     /**
 	 * Return the audio settings for the listener nearest the given location
 	 */
     virtual const FFMODListener &GetNearestListener(const FVector &Location) = 0;
-
-    /** This event is fired after all banks were reloaded */
-    virtual FSimpleMulticastDelegate &BanksReloadedEvent() = 0;
 
     /** Return a list of banks that failed to load due to an error */
     virtual TArray<FString> GetFailedBankLoads(EFMODSystemContext::Type Context) = 0;
@@ -165,4 +162,9 @@ public:
 
     /** Set active locale. Locale must be the locale name of one of the configured project locales */
     virtual bool SetLocale(const FString& Locale) = 0;
+
+#if WITH_EDITOR
+    /** Called by the editor module when banks have been modified on disk */
+    virtual void ReloadBanks() = 0;
+#endif
 };
