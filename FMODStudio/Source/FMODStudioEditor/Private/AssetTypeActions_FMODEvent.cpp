@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2020.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2021.
 
 #include "AssetTypeActions_FMODEvent.h"
 #include "AssetTypeActions_Base.h"
@@ -17,13 +17,13 @@ FAssetTypeActions_FMODEvent::FAssetTypeActions_FMODEvent()
     : CurrentPreviewEventInstance(nullptr)
 {
     BeginPIEDelegateHandle = FEditorDelegates::BeginPIE.AddRaw(this, &FAssetTypeActions_FMODEvent::HandleBeginPIE);
-    IFMODStudioModule::Get().BanksReloadedEvent().AddRaw(this, &FAssetTypeActions_FMODEvent::HandleBanksReloaded);
+    IFMODStudioEditorModule::Get().BanksReloadedEvent().AddRaw(this, &FAssetTypeActions_FMODEvent::HandleBanksReloaded);
 }
 
 FAssetTypeActions_FMODEvent::~FAssetTypeActions_FMODEvent()
 {
     FEditorDelegates::BeginPIE.Remove(BeginPIEDelegateHandle);
-    IFMODStudioModule::Get().BanksReloadedEvent().RemoveAll(this);
+    IFMODStudioEditorModule::Get().BanksReloadedEvent().RemoveAll(this);
     IFMODStudioModule::Get().StopAuditioningInstance();
 }
 

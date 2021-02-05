@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2020.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2021.
 
 #include "FMODEventControlSection.h"
 #include "FMODEventControlSectionTemplate.h"
@@ -41,9 +41,4 @@ UFMODEventControlSection::UFMODEventControlSection(const FObjectInitializer &Obj
     ChannelProxy = MakeShared<FMovieSceneChannelProxy>(ControlKeys);
 
 #endif
-}
-
-FMovieSceneEvalTemplatePtr UFMODEventControlSection::GenerateTemplate() const
-{
-    return FFMODEventControlSectionTemplate(*this);
 }

@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2020.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2021.
 
 #pragma once
 
@@ -61,10 +61,6 @@ public:
     /** Channel containing the event control keys */
     UPROPERTY()
     FFMODEventControlChannel ControlKeys;
-
-protected:
-    //~ UMovieSceneSection interface
-    virtual FMovieSceneEvalTemplatePtr GenerateTemplate() const override;
 };
 
 inline void AssignValue(FFMODEventControlChannel *InChannel, FKeyHandle InKeyHandle, EFMODEventControlKey InValue)

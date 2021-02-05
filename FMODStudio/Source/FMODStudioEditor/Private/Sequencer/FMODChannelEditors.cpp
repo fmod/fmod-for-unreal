@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2020.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2021.
 
 #include "Sequencer/FMODChannelEditors.h"
 #include "ISequencerChannelInterface.h"
@@ -9,7 +9,7 @@
 #include "ScopedTransaction.h"
 #include "EditorWidgets/Public/SEnumCombobox.h"
 #include "EditorStyleSet.h"
-
+#if 0
 class SFMODEventControlKeyEditor : public SCompoundWidget
 {
 public:
@@ -31,8 +31,6 @@ public:
 private:
     int32 OnGetCurrentValueAsInt() const
     {
-        using namespace MovieScene;
-
         FMovieSceneByteChannel *Channel = ChannelHandle.Get();
         ISequencer *Sequencer = WeakSequencer.Pin().Get();
         UMovieSceneSection *OwningSection = WeakSection.Get();
@@ -40,7 +38,7 @@ private:
 
         if (Channel && Sequencer && OwningSection)
         {
-            const FFrameTime CurrentTime = MovieScene::ClampToDiscreteRange(Sequencer->GetLocalTime().Time, OwningSection->GetRange());
+            const FFrameTime CurrentTime = UE::MovieScene::ClampToDiscreteRange(Sequencer->GetLocalTime().Time, OwningSection->GetRange());
             EvaluateChannel(Channel, CurrentTime, Result);
         }
 
@@ -49,9 +47,6 @@ private:
 
     void SetValue(uint8 InValue)
     {
-        using namespace MovieScene;
-        using namespace Sequencer;
-
         UMovieSceneSection *OwningSection = WeakSection.Get();
         if (!OwningSection)
         {
@@ -144,6 +139,7 @@ TSharedRef<SWidget> CreateKeyEditor(const TMovieSceneChannelHandle<FMovieSceneBy
     UEnum *Enum = RawChannel->GetEnum();
     return SNew(SFMODEventControlKeyEditor, Channel, Section, InSequencer, Enum);
 }
+#endif
 
 TSharedPtr<FStructOnScope> GetKeyStruct(const TMovieSceneChannelHandle<FFMODEventControlChannel> &ChannelHandle, FKeyHandle InHandle)
 {

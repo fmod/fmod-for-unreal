@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2020.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2021.
 
 #include "FMODAudioComponent.h"
 #include "FMODStudioModule.h"
@@ -605,7 +605,7 @@ void UFMODAudioComponent::PlayInternal(EFMODSystemContext::Type Context)
     UE_LOG(LogFMOD, Verbose, TEXT("UFMODAudioComponent %p Play"), this);
 
     // Only play events in PIE/game, not when placing them in the editor
-    FMOD::Studio::EventDescription *EventDesc = GetStudioModule().GetEventDescription(Event.Get(), Context);
+    FMOD::Studio::EventDescription *EventDesc = GetStudioModule().GetEventDescription(Event, Context);
     if (EventDesc != nullptr)
     {
         EventDesc->getLength(&EventLength);
