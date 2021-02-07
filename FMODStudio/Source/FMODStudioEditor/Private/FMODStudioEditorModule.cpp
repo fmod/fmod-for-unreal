@@ -373,8 +373,11 @@ void FFMODStudioEditorModule::OnPostEngineInit()
 
 void FFMODStudioEditorModule::BuildAssets()
 {
-    AssetBuilder.ProcessBanks();
-    HandleSettingsSaved();
+    if (!IsRunningCommandlet())
+    {
+        AssetBuilder.ProcessBanks();
+        HandleSettingsSaved();
+    }
 }
 
 void FFMODStudioEditorModule::RegisterHelpMenuEntries()
