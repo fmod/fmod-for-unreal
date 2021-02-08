@@ -78,7 +78,7 @@ FString FFMODAssetTable::GetBankPathByGuid(const FGuid& Guid) const
         return BankPath;
     }
 
-    FString GUID = Guid.ToString();
+    FString GUID = Guid.ToString(EGuidFormats::DigitsWithHyphensInBraces);
     FName BankTableName(*GUID);
     FFMODLocalizedBankTable *BankTable = BankLookup->DataTable->FindRow<FFMODLocalizedBankTable>(BankTableName, nullptr, false);
 
