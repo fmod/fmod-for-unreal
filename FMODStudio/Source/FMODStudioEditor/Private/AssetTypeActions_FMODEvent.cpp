@@ -22,9 +22,12 @@ FAssetTypeActions_FMODEvent::FAssetTypeActions_FMODEvent()
 
 FAssetTypeActions_FMODEvent::~FAssetTypeActions_FMODEvent()
 {
-    FEditorDelegates::BeginPIE.Remove(BeginPIEDelegateHandle);
-    IFMODStudioEditorModule::Get().BanksReloadedEvent().RemoveAll(this);
-    IFMODStudioModule::Get().StopAuditioningInstance();
+    if (GIsRunning)
+    {
+        FEditorDelegates::BeginPIE.Remove(BeginPIEDelegateHandle);
+        IFMODStudioEditorModule::Get().BanksReloadedEvent().RemoveAll(this);
+        IFMODStudioModule::Get().StopAuditioningInstance();
+    }
 }
 
 UClass *FAssetTypeActions_FMODEvent::GetSupportedClass() const
