@@ -310,7 +310,7 @@ void UFMODAudioComponent::CacheDefaultParameterValues()
 
 void UFMODAudioComponent::OnUnregister()
 {
-    // Route OnUnregister event.
+    Release();
     Super::OnUnregister();
 }
 
