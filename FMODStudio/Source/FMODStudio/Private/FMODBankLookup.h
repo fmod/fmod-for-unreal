@@ -10,7 +10,7 @@ USTRUCT()
 struct FMODSTUDIO_API FFMODLocalizedBankRow : public FTableRowBase
 {
     GENERATED_BODY()
-    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    UPROPERTY(VisibleAnywhere, Category="FMOD|Internal|BankLookup")
     FString Path;
 };
 
@@ -18,7 +18,7 @@ USTRUCT()
 struct FMODSTUDIO_API FFMODLocalizedBankTable : public FTableRowBase
 {
     GENERATED_BODY()
-    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    UPROPERTY(VisibleAnywhere, Category="FMOD|Internal|BankLookup")
     UDataTable *Banks;
 };
 
@@ -28,15 +28,15 @@ class FMODSTUDIO_API UFMODBankLookup : public UObject
     GENERATED_BODY()
 
 public:
-    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    UPROPERTY(VisibleAnywhere, Category="FMOD|Internal|BankLookup")
     UDataTable *DataTable;
 
-    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    UPROPERTY(VisibleAnywhere, Category="FMOD|Internal|BankLookup")
     FString MasterBankPath;
 
-    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    UPROPERTY(VisibleAnywhere, Category="FMOD|Internal|BankLookup")
     FString MasterAssetsBankPath;
 
-    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    UPROPERTY(VisibleAnywhere, Category="FMOD|Internal|BankLookup")
     FString MasterStringsBankPath;
 };
