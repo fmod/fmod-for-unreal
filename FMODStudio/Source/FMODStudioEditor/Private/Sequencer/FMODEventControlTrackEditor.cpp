@@ -147,18 +147,21 @@ void FFMODEventControlTrackEditor::BuildObjectBindingTrackMenu(FMenuBuilder &Men
 
         MenuBuilder.AddMenuEntry(LOCTEXT("AddFMODEventControlTrack", "FMOD Event Control Track"),
             LOCTEXT("FMODEventControlTooltip", "Adds a track for controlling FMOD event."), FSlateIcon(),
-            FUIAction(FExecuteAction::CreateSP(this, &FFMODEventControlTrackEditor::AddControlKey, ObjectBindings[0])));
+            FUIAction(FExecuteAction::CreateSP(this, &FFMODEventControlTrackEditor::AddControlKey, ObjectBindings)));
     }
 }
 
-void FFMODEventControlTrackEditor::AddControlKey(const FGuid ObjectGuid)
+void FFMODEventControlTrackEditor::AddControlKey(TArray<FGuid> ObjectGuids)
 {
     TSharedPtr<ISequencer> SequencerPtr = GetSequencer();
-    UObject *Object = SequencerPtr.IsValid() ? SequencerPtr->FindSpawnedObjectOrTemplate(ObjectGuid) : nullptr;
-
-    if (IsValid(Object))
+    for (FGuid ObjectGuid : ObjectGuids)
     {
-        AnimatablePropertyChanged(FOnKeyProperty::CreateRaw(this, &FFMODEventControlTrackEditor::AddKeyInternal, Object));
+        UObject *Object = SequencerPtr.IsValid() ? SequencerPtr->FindSpawnedObjectOrTemplate(ObjectGuid) : nullptr;
+
+        if (Object)
+        {
+            AnimatablePropertyChanged(FOnKeyProperty::CreateRaw(this, &FFMODEventControlTrackEditor::AddKeyInternal, Object));
+        }
     }
 }
 
@@ -181,6 +184,7 @@ FKeyPropertyResult FFMODEventControlTrackEditor::AddKeyInternal(FFrameNumber Key
             UFMODEventControlTrack *EventTrack = Cast<UFMODEventControlTrack>(Track);
             EventTrack->AddNewSection(KeyTime);
             EventTrack->SetDisplayName(LOCTEXT("TrackName", "FMOD Event"));
+            KeyPropertyResult.bTrackModified = true;
         }
     }
 

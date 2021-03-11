@@ -23,7 +23,7 @@ public:
 
     static TSharedRef<ISequencerTrackEditor> CreateTrackEditor(TSharedRef<ISequencer> OwningSequencer);
 
-    void AddControlKey(const FGuid ObjectGuid);
+    void AddControlKey(TArray<FGuid> ObjectGuids);
 
     // Begin ISequencerTrackEditor interface
     virtual void BuildObjectBindingTrackMenu(FMenuBuilder &MenuBuilder, const TArray<FGuid> &ObjectBindings, const UClass *ObjectClass) override;

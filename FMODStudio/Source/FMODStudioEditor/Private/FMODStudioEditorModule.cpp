@@ -20,6 +20,7 @@
 #include "Sequencer/FMODEventParameterTrackEditor.h"
 #include "AssetTypeActions_FMODEvent.h"
 
+#include "AssetRegistryModule.h"
 #include "UnrealEd/Public/AssetSelection.h"
 #include "Slate/Public/Framework/Notifications/NotificationManager.h"
 #include "Slate/Public/Widgets/Notifications/SNotificationList.h"
@@ -359,11 +360,17 @@ void FFMODStudioEditorModule::OnPostEngineInit()
     OnTick = FTickerDelegate::CreateRaw(this, &FFMODStudioEditorModule::Tick);
     TickDelegateHandle = FTicker::GetCoreTicker().AddTicker(OnTick);
 
-    // Create assets
+    // Create asset builder
     AssetBuilder.Create();
-    BuildAssets();
 
-    // Pretend settings have updated to 
+    if (!IsRunningCommandlet())
+    {
+        // Build assets when asset registry has finished loading
+        FAssetRegistryModule& AssetRegistry = FModuleManager::LoadModuleChecked<FAssetRegistryModule>(AssetRegistryConstants::ModuleName);
+        AssetRegistry.Get().OnFilesLoaded().AddLambda([this]() { BuildAssets(); });
+    }
+
+    // Bind to bank update notifier to reload banks when they change on disk
     BankUpdateNotifier.BanksUpdatedEvent.AddRaw(this, &FFMODStudioEditorModule::ReloadBanks);
 
     // Register a callback to validate settings on startup
@@ -730,7 +737,6 @@ void FFMODStudioEditorModule::ValidateFMOD()
                 // Just try to do it again anyway
                 StudioLink.Execute(TEXT("studio.project.save()"), Result);
                 StudioLink.Execute(TEXT("studio.project.build()"), Result);
-                BuildAssets();
             }
         }
 
@@ -1023,7 +1029,7 @@ bool FFMODStudioEditorModule::Tick(float DeltaTime)
         bRegisteredComponentVisualizers = true;
     }
 
-    BankUpdateNotifier.Update();
+    BankUpdateNotifier.Update(DeltaTime);
 
     // Update listener position for Editor sound system
     FMOD::Studio::System *StudioSystem = IFMODStudioModule::Get().GetStudioSystem(EFMODSystemContext::Editor);
@@ -1180,7 +1186,7 @@ void FFMODStudioEditorModule::ShutdownModule()
 bool FFMODStudioEditorModule::HandleSettingsSaved()
 {
     const UFMODSettings &Settings = *GetDefault<UFMODSettings>();
-    BankUpdateNotifier.SetFilePath(Settings.GetFullBankPath() / AssetBuilder.GetMasterStringsBankPath());
+    BankUpdateNotifier.SetFilePath(Settings.GetFullBankPath());
     IFMODStudioModule::Get().RefreshSettings();
     return true;
 }

@@ -1,14 +1,13 @@
 // Copyright (c), Firelight Technologies Pty, Ltd. 2012-2021.
 
 #include "FMODEventControlSection.h"
-#include "FMODEventControlSectionTemplate.h"
 #include "Channels/MovieSceneChannelProxy.h"
 #include "UObject/SequencerObjectVersion.h"
 #include "UObject/Package.h"
 
 FFMODEventControlChannel::FFMODEventControlChannel()
 {
-    SetEnum(FindObject<UEnum>(ANY_PACKAGE, TEXT("EFMODEventControlKey")));
+    SetEnum(StaticEnum<EFMODEventControlKey>());
 }
 
 UFMODEventControlSection::UFMODEventControlSection(const FObjectInitializer &ObjectInitializer)
@@ -31,6 +30,8 @@ UFMODEventControlSection::UFMODEventControlSection(const FObjectInitializer &Obj
     {
         CompletionMode = EMovieSceneCompletionMode::ProjectDefault;
     }
+
+    EvalOptions.EnableAndSetCompletionMode(CompletionMode);
 
 #if WITH_EDITOR
 

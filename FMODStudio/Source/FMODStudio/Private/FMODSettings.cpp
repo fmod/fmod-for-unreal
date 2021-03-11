@@ -34,6 +34,7 @@ UFMODSettings::UFMODSettings(const FObjectInitializer &ObjectInitializer)
     StudioUpdatePeriod = 0;
     LiveUpdatePort = 9264;
     EditorLiveUpdatePort = 9265;
+    ReloadBanksDelay = 5;
     bMatchHardwareSampleRate = true;
     bLockAllBuses = false;
 }

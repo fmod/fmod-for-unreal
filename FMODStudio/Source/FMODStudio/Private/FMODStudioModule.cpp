@@ -35,6 +35,10 @@
 #include "FMODPlatform.h"
 #endif
 
+#if PLATFORM_IOS
+#include <AVFoundation/AVAudioSession.h>
+#endif
+
 #define LOCTEXT_NAMESPACE "FMODStudio"
 
 DEFINE_LOG_CATEGORY(LogFMOD);
@@ -242,6 +246,10 @@ public:
     virtual bool SetLocale(const FString& Locale) override;
 
     void ResetInterpolation();
+
+#if PLATFORM_IOS
+    void InitializeAudioSession();
+#endif
 
     /** The studio system handle. */
     FMOD::Studio::System *StudioSystem[EFMODSystemContext::Max];
@@ -657,6 +665,10 @@ void FFMODStudioModule::CreateStudioSystem(EFMODSystemContext::Type Type)
         // Add interrupt callbacks for Mobile
         FCoreDelegates::ApplicationWillDeactivateDelegate.AddRaw(this, &FFMODStudioModule::HandleApplicationWillDeactivate);
         FCoreDelegates::ApplicationHasReactivatedDelegate.AddRaw(this, &FFMODStudioModule::HandleApplicationHasReactivated);
+
+#if PLATFORM_IOS
+        InitializeAudioSession();
+#endif
     }
 
     IMediaModule *MediaModule = FModuleManager::LoadModulePtr<IMediaModule>("Media");
@@ -1466,5 +1478,52 @@ void FFMODStudioModule::StopAuditioningInstance()
         AuditioningInstance = nullptr;
     }
 }
+
+#if PLATFORM_IOS
+void FFMODStudioModule::InitializeAudioSession()
+{
+    static bool bSuspended = false;
+
+    [[NSNotificationCenter defaultCenter] addObserverForName:AVAudioSessionInterruptionNotification object:nil queue:nil usingBlock:^(NSNotification *notification)
+    {
+        bool began = [[notification.userInfo valueForKey:AVAudioSessionInterruptionTypeKey] intValue] == AVAudioSessionInterruptionTypeBegan;
+
+        if (began == bSuspended)
+        {
+            return;
+        }
+        if (@available(iOS 10.3, *))
+        {
+            if (began && [[notification.userInfo valueForKey:AVAudioSessionInterruptionWasSuspendedKey] boolValue])
+            {
+                return;
+            }
+        }
+
+        bSuspended = began;
+        if (!began)
+        {
+            [[AVAudioSession sharedInstance] setActive:TRUE error:nil];
+        }
+
+        AsyncTask(ENamedThreads::GameThread, [&]() { SetSystemPaused(began); });
+    }];
+
+    [[NSNotificationCenter defaultCenter] addObserverForName:UIApplicationDidBecomeActiveNotification object:nil queue:nil usingBlock:^(NSNotification *notification)
+    {
+#if PLATFORM_TVOS
+        AsyncTask(ENamedThreads::GameThread, [&]() { SetSystemPaused(true); });
+#else
+        if (!bSuspended)
+        {
+            return;
+        }
+#endif
+        [[AVAudioSession sharedInstance] setActive:TRUE error:nil];
+        AsyncTask(ENamedThreads::GameThread, [&]() { SetSystemPaused(false); });
+        bSuspended = false;
+    }];
+}
+#endif // PLATFORM_IOS
 
 #undef LOCTEXT_NAMESPACE

@@ -234,6 +234,14 @@ public:
     int32 EditorLiveUpdatePort;
 
     /**
+    * Delay in seconds before automatically reloading modified banks from disk. This can be extended if building
+    * banks takes a long time and UE4 tries to reload banks before building is completed.
+    * Set to 0 to disable automatic bank reloading.
+    */
+    UPROPERTY(config, EditAnywhere, Category = Advanced)
+    int32 ReloadBanksDelay;
+
+    /**
 	 * Extra plugin files to load.  
 	 * The plugin files should sit alongside the FMOD dynamic libraries in the ThirdParty directory.
 	 */

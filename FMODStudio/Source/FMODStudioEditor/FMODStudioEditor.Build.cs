@@ -40,22 +40,23 @@ namespace UnrealBuildTool.Rules
             PrivateDependencyModuleNames.AddRange(
                 new string[]
                 {
-                    "Slate",
-                    "SlateCore",
-                    "Settings",
+                    "AssetRegistry",
+                    "AssetTools",
                     "EditorStyle",
                     "LevelEditor",
-                    "AssetTools",
-                    "AssetRegistry",
-                    "PropertyEditor",
-                    "WorkspaceMenuStructure",
-                    "Sockets",
                     "LevelSequence",
                     "MainFrame",
                     "MovieScene",
                     "MovieSceneTracks",
                     "MovieSceneTools",
-                    "ToolMenus"
+                    "PropertyEditor",
+                    "Settings",
+                    "Slate",
+                    "SlateCore",
+                    "Sockets",
+                    "SourceControl",
+                    "ToolMenus",
+                    "WorkspaceMenuStructure",
                 }
                 );
         }
