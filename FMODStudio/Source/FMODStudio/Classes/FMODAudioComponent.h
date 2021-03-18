@@ -206,13 +206,25 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Audio|FMOD|Components")
     void SetVolume(float volume);
 
+    /** Gets the volume level. */
+    UFUNCTION(BlueprintCallable, Category = "Audio|FMOD|Components")
+    float GetVolume();
+
     /** Sets the pitch multiplier. */
     UFUNCTION(BlueprintCallable, Category = "Audio|FMOD|Components")
     void SetPitch(float pitch);
 
+    /** Gets the pitch multiplier. */
+    UFUNCTION(BlueprintCallable, Category = "Audio|FMOD|Components")
+    float GetPitch();
+
     /** Pause/Unpause an audio component. */
     UFUNCTION(BlueprintCallable, Category = "Audio|FMOD|Components")
     void SetPaused(bool paused);
+
+    /** Get Pause/Unpause state of an audio component. */
+    UFUNCTION(BlueprintCallable, Category = "Audio|FMOD|Components")
+    bool GetPaused();
 
     /** Set a parameter of the Event. */
     UFUNCTION(BlueprintCallable, Category = "Audio|FMOD|Components")
