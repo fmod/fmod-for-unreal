@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2020.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2021.
 
 #include "FMODAudioComponent.h"
 #include "FMODStudioModule.h"
@@ -310,7 +310,7 @@ void UFMODAudioComponent::CacheDefaultParameterValues()
 
 void UFMODAudioComponent::OnUnregister()
 {
-    // Route OnUnregister event.
+    Release();
     Super::OnUnregister();
 }
 

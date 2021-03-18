@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2020.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2021.
 
 #include "FMODStudioModule.h"
 #include "FMODSettings.h"
@@ -34,14 +34,6 @@
 
 #ifdef FMOD_PLATFORM_HEADER
 #include "FMODPlatform.h"
-#elif PLATFORM_PS4
-#include "FMODPlatformLoadDll_PS4.h"
-#elif PLATFORM_XBOXONE
-#include "FMODPlatformLoadDll_XBoxOne.h"
-#elif PLATFORM_SWITCH
-#include "FMODPlatformLoadDll_Switch.h"
-#else
-#include "FMODPlatformLoadDll_Generic.h"
 #endif
 
 #define LOCTEXT_NAMESPACE "FMODStudio"
@@ -385,7 +377,12 @@ void *FFMODStudioModule::LoadDll(const TCHAR *ShortName)
     void *Handle = nullptr;
     UE_LOG(LogFMOD, Log, TEXT("FFMODStudioModule::LoadDll: Loading %s"), *LibPath);
     // Unfortunately Unreal's platform loading code hasn't been implemented on all platforms so we wrap it
+#ifdef FMOD_PLATFORM_HEADER
     Handle = FMODPlatformLoadDll(*LibPath);
+#else
+    Handle = FPlatformProcess::GetDllHandle(*LibPath);
+#endif
+
 #if WITH_EDITOR
     if (!Handle && !FApp::IsUnattended())
     {
@@ -407,11 +404,6 @@ FString FFMODStudioModule::GetDllPath(const TCHAR *ShortName, bool bExplicitPath
     return FMODPlatform_GetDllPath(ShortName, bExplicitPath, bUseLibPrefix);
 #elif PLATFORM_MAC
     return FString::Printf(TEXT("%s/Mac/%s%s.dylib"), *BaseLibPath, LibPrefixName, ShortName);
-#elif PLATFORM_PS4
-    const TCHAR *DirPrefix = (bExplicitPath ? TEXT("/app0/prx/") : TEXT(""));
-    return FString::Printf(TEXT("%s%s%s.prx"), DirPrefix, LibPrefixName, ShortName);
-#elif PLATFORM_XBOXONE
-    return FString::Printf(TEXT("%s/XBoxOne/%s.dll"), *BaseLibPath, ShortName);
 #elif PLATFORM_ANDROID
     return FString::Printf(TEXT("%s%s.so"), LibPrefixName, ShortName);
 #elif PLATFORM_LINUX
@@ -432,7 +424,7 @@ FString FFMODStudioModule::GetDllPath(const TCHAR *ShortName, bool bExplicitPath
 
 bool FFMODStudioModule::LoadLibraries()
 {
-#if PLATFORM_IOS || PLATFORM_TVOS || PLATFORM_ANDROID || PLATFORM_LINUX || PLATFORM_MAC || PLATFORM_SWITCH || defined(FMOD_DONT_LOAD_LIBRARIES)
+#if PLATFORM_IOS || PLATFORM_TVOS || PLATFORM_ANDROID || PLATFORM_LINUX || PLATFORM_MAC || defined(FMOD_DONT_LOAD_LIBRARIES)
     return true; // Nothing to do on those platforms
 #else
     UE_LOG(LogFMOD, Verbose, TEXT("FFMODStudioModule::LoadLibraries"));
@@ -459,7 +451,7 @@ void FFMODStudioModule::StartupModule()
 {
     UE_LOG(LogFMOD, Log, TEXT("FFMODStudioModule startup"));
     BaseLibPath = IPluginManager::Get().FindPlugin(TEXT("FMODStudio"))->GetBaseDir() + TEXT("/Binaries");
-    UE_LOG(LogFMOD, Log, TEXT(" Lib path = '%s'"), *BaseLibPath);
+    UE_LOG(LogFMOD, Log, TEXT("Lib path = '%s'"), *BaseLibPath);
 
     if (FParse::Param(FCommandLine::Get(), TEXT("nosound")) || FApp::IsBenchmarking() || IsRunningDedicatedServer() || IsRunningCommandlet())
     {
@@ -477,16 +469,10 @@ void FFMODStudioModule::StartupModule()
 
         const UFMODSettings &Settings = *GetDefault<UFMODSettings>();
 
-//#ifdef FMOD_PLATFORM_HEADER
-//        int size = FMODPlatform_MemoryPoolSize();
-#if PLATFORM_IOS || PLATFORM_TVOS || PLATFORM_ANDROID
+#if defined(FMOD_PLATFORM_HEADER)
+        int size = FMODPlatform_MemoryPoolSize();
+#elif PLATFORM_IOS || PLATFORM_TVOS || PLATFORM_ANDROID
         int size = Settings.MemoryPoolSizes.Mobile;
-#elif PLATFORM_PS4
-        int size = Settings.MemoryPoolSizes.PS4;
-#elif PLATFORM_XBOXONE
-        int size = Settings.MemoryPoolSizes.XboxOne;
-#elif PLATFORM_SWITCH
-        int size = Settings.MemoryPoolSizes.Switch;
 #else
         int size = Settings.MemoryPoolSizes.Desktop;
 #endif
@@ -500,7 +486,9 @@ void FFMODStudioModule::StartupModule()
             verifyfmod(FMOD::Memory_Initialize(0, 0, FMODMemoryAlloc, FMODMemoryRealloc, FMODMemoryFree));
         }
 
+#if defined(FMOD_PLATFORM_HEADER)
         verifyfmod(FMODPlatformSystemSetup());
+#endif
 
         AcquireFMODFileSystem();
 
@@ -642,14 +630,10 @@ void FFMODStudioModule::CreateStudioSystem(EFMODSystemContext::Type Type)
         advSettings.vol0virtualvol = Settings.Vol0VirtualLevel;
         InitFlags |= FMOD_INIT_VOL0_BECOMES_VIRTUAL;
     }
-#ifdef FMOD_PLATFORM_HEADER
+#if defined(FMOD_PLATFORM_HEADER)
     FMODPlatform_SetRealChannelCount(&advSettings);
-#elif PLATFORM_IOS || PLATFORM_TVOS || PLATFORM_ANDROID || PLATFORM_SWITCH
+#elif PLATFORM_IOS || PLATFORM_TVOS || PLATFORM_ANDROID
     advSettings.maxFADPCMCodecs = Settings.RealChannelCount;
-#elif PLATFORM_PS4
-    advSettings.maxAT9Codecs = Settings.RealChannelCount;
-#elif PLATFORM_XBOXONE
-    advSettings.maxXMACodecs = Settings.RealChannelCount;
 #else
     advSettings.maxVorbisCodecs = Settings.RealChannelCount;
 #endif
@@ -838,14 +822,16 @@ void FFMODStudioModule::UpdateListeners()
         for (auto ContextIt = GEngine->GetWorldContexts().CreateConstIterator(); ContextIt; ++ContextIt)
         {
             const FWorldContext &PieContext = *ContextIt;
-            if (PieContext.WorldType != EWorldType::PIE)
-            {
-                continue;
-            }
 
-            if (PieContext.GameViewport)
+            // We need to update the listener for all PIE worlds and all standalone game worlds. Since this code is only built WITH_EDITOR
+            // EWorldType::Game means a standalone game world in this scope.
+
+            if (PieContext.WorldType == EWorldType::PIE || PieContext.WorldType == EWorldType::Game)
             {
-                UpdateWorldListeners(PieContext.GameViewport->GetWorld(), &ListenerIndex);
+                if (PieContext.GameViewport)
+                {
+                    UpdateWorldListeners(PieContext.GameViewport->GetWorld(), &ListenerIndex);
+                }
             }
         }
     }
