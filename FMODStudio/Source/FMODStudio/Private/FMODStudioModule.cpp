@@ -246,6 +246,19 @@ public:
 
     virtual bool SetLocale(const FString& Locale) override;
 
+	 virtual FDelegateHandle AddStudioInstanceWatcher(FStudioInstanceWatcherDelegate callback) override;
+	 virtual void RemoveStudioInstanceWatcher(FDelegateHandle callback) override;
+	 virtual FDelegateHandle AddStudioBankLoadWatcher(FStudioBankLoadWatcherDelegate callback) override;
+	 virtual void RemoveStudioBankLoadWatcher(FDelegateHandle callback) override;
+    virtual FDelegateHandle AddMixerPreSuspendWatcher(FMixerPreSuspendWatcherDelegate callback) override;
+    virtual void RemoveMixerPreSuspendWatcher(FDelegateHandle callback) override;
+    virtual FDelegateHandle AddMixerPostSuspendWatcher(FMixerPostSuspendWatcherDelegate callback) override;
+    virtual void RemoveMixerPostSuspendWatcher(FDelegateHandle callback) override;
+    virtual FDelegateHandle AddMixerPreResumeWatcher(FMixerPreResumeWatcherDelegate callback) override;
+    virtual void RemoveMixerPreResumeWatcher(FDelegateHandle callback) override;
+    virtual FDelegateHandle AddMixerPostResumeWatcher(FMixerPostResumeWatcherDelegate callback) override;
+    virtual void RemoveMixerPostResumeWatcherDelegate(FDelegateHandle callback) override;
+
     void ResetInterpolation();
 
 #if PLATFORM_IOS
@@ -315,6 +328,16 @@ public:
     void *MemPool;
 
     bool bLoadAllSampleData;
+
+	 /** Delegates that want to be informed when studio instances are created or destroyed */
+	 FStudioInstanceWatchers instanceWatchers;
+	 /** Delegates that want to be informed when banks are loaded and unloaded */
+	 FStudioBankLoadWatchers bankLoadWatchers;
+    /** Delegates that want to be informed when suspending or resuming */
+    FMixerPreSuspendWatchers  preSuspendWatchers;
+    FMixerPostSuspendWatchers postSuspendWatchers;
+    FMixerPreResumeWatchers   preResumeWatchers;
+    FMixerPostResumeWatchers  postResumeWatchers;
 };
 
 IMPLEMENT_MODULE(FFMODStudioModule, FMODStudio)
@@ -694,11 +717,15 @@ void FFMODStudioModule::CreateStudioSystem(EFMODSystemContext::Type Type)
 
         MediaModule->GetClock().AddSink(ClockSinks[Type].ToSharedRef());
     }
+    
+	instanceWatchers.Broadcast(Type, StudioSystem[Type]);
 }
 
 void FFMODStudioModule::DestroyStudioSystem(EFMODSystemContext::Type Type)
 {
     UE_LOG(LogFMOD, Verbose, TEXT("DestroyStudioSystem for context %s"), FMODSystemContextNames[Type]);
+
+ 	 instanceWatchers.Broadcast(Type, nullptr);
 
     if (ClockSinks[Type].IsValid())
     {
@@ -1179,7 +1206,12 @@ void FFMODStudioModule::SetSystemPaused(bool paused)
             // Resume mixer before making calls for Android in particular
             if (!paused)
             {
+                preResumeWatchers.Broadcast();
                 LowLevelSystem->mixerResume();
+            }
+            else
+            {
+                preSuspendWatchers.Broadcast();
             }
 
             FMOD::ChannelGroup *MasterChannelGroup = nullptr;
@@ -1189,6 +1221,11 @@ void FFMODStudioModule::SetSystemPaused(bool paused)
             if (paused)
             {
                 LowLevelSystem->mixerSuspend();
+                postSuspendWatchers.Broadcast();
+            }
+            else
+            {
+                postResumeWatchers.Broadcast();
             }
         }
 
@@ -1270,6 +1307,87 @@ bool FFMODStudioModule::SetLocale(const FString& LocaleName)
 
     UE_LOG(LogFMOD, Error, TEXT("No project locale named '%s' has been defined."), *LocaleName);
     return false;
+}
+
+FDelegateHandle FFMODStudioModule::AddStudioInstanceWatcher(FStudioInstanceWatcherDelegate callback)
+{
+	// let new watcher know about the current state...
+	for (int i = 0; i < EFMODSystemContext::Max; ++i)
+		callback.ExecuteIfBound((EFMODSystemContext::Type)i, StudioSystem[i]);
+	return instanceWatchers.Add(callback);
+}
+
+FDelegateHandle FFMODStudioModule::AddStudioBankLoadWatcher(FStudioBankLoadWatcherDelegate callback)
+{
+   // Tell the caller about banks that have already been loaded...
+   for (int t = EFMODSystemContext::Auditioning; t < EFMODSystemContext::Max; ++t)
+   {
+      FMOD::Studio::System* system = GetStudioSystem((EFMODSystemContext::Type)t);
+      if (!system) continue;
+
+      int numBanks;
+      verifyfmod(system->getBankCount(&numBanks));
+      if (numBanks == 0) continue;
+
+      FMOD::Studio::Bank** banks = new  FMOD::Studio::Bank*[numBanks];
+      verifyfmod(system->getBankList(banks, numBanks, &numBanks));
+      for (int i = 0; i < numBanks; ++i)
+      {
+         callback.ExecuteIfBound((EFMODSystemContext::Type)t, system, banks[i]);
+      }
+   }
+   return bankLoadWatchers.Add(callback);
+}
+
+FDelegateHandle FFMODStudioModule::AddMixerPreSuspendWatcher(FMixerPreSuspendWatcherDelegate callback)
+{
+    return preSuspendWatchers.Add(callback);
+}
+
+FDelegateHandle FFMODStudioModule::AddMixerPostSuspendWatcher(FMixerPostSuspendWatcherDelegate callback)
+{
+    return postSuspendWatchers.Add(callback);
+}
+
+FDelegateHandle FFMODStudioModule::AddMixerPreResumeWatcher(FMixerPreResumeWatcherDelegate callback)
+{
+    return preResumeWatchers.Add(callback);
+}
+
+FDelegateHandle FFMODStudioModule::AddMixerPostResumeWatcher(FMixerPostResumeWatcherDelegate callback)
+{
+    return postResumeWatchers.Add(callback);
+}
+
+void FFMODStudioModule::RemoveStudioInstanceWatcher(FDelegateHandle callback)
+{
+	instanceWatchers.Remove(callback);
+}
+
+
+void FFMODStudioModule::RemoveStudioBankLoadWatcher(FDelegateHandle callback)
+{
+   bankLoadWatchers.Remove(callback);
+}
+
+void FFMODStudioModule::RemoveMixerPreSuspendWatcher(FDelegateHandle callback)
+{
+    preSuspendWatchers.Remove(callback);
+}
+
+void FFMODStudioModule::RemoveMixerPostSuspendWatcher(FDelegateHandle callback)
+{
+    postSuspendWatchers.Remove(callback);
+}
+
+void FFMODStudioModule::RemoveMixerPreResumeWatcher(FDelegateHandle callback)
+{
+    preResumeWatchers.Remove(callback);
+}
+
+void FFMODStudioModule::RemoveMixerPostResumeWatcherDelegate(FDelegateHandle callback)
+{
+    postResumeWatchers.Remove(callback);
 }
 
 void FFMODStudioModule::LoadBanks(EFMODSystemContext::Type Type)
@@ -1403,6 +1521,8 @@ void FFMODStudioModule::LoadBanks(EFMODSystemContext::Type Type)
                 {
                     verifyfmod(Entry.Bank->loadSampleData());
                 }
+                 
+			       bankLoadWatchers.Broadcast(Type, StudioSystem[Type], Entry.Bank);
             }
             if (Entry.Bank == nullptr || Entry.Result != FMOD_OK)
             {
