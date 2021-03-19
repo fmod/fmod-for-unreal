@@ -325,5 +325,5 @@ class FMODSTUDIO_API UFMODBlueprintStatics : public UBlueprintFunctionLibrary
     /** Set the active locale for subsequent bank loads.
     */
     UFUNCTION(BlueprintCallable, Category = "Audio|FMOD")
-    static void SetLocale(const FString& Locale);
+    static bool SetLocale(const FString& Locale);
 };

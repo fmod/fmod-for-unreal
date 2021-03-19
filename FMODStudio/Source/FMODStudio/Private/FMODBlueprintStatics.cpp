@@ -685,7 +685,7 @@ void UFMODBlueprintStatics::MixerResume()
     }
 }
 
-void UFMODBlueprintStatics::SetLocale(const FString& Locale)
+bool UFMODBlueprintStatics::SetLocale(const FString& Locale)
 {
-    IFMODStudioModule::Get().SetLocale(Locale);
+    return IFMODStudioModule::Get().SetLocale(Locale);
 }

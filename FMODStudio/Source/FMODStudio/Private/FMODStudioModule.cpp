@@ -26,6 +26,7 @@
 #include "Runtime/Media/Public/IMediaClockSink.h"
 #include "Runtime/Media/Public/IMediaModule.h"
 #include "TimerManager.h"
+#include "Internationalization/Culture.h"
 
 #include "fmod_studio.hpp"
 #include "fmod_errors.h"
@@ -1265,6 +1266,9 @@ bool FFMODStudioModule::SetLocale(const FString& LocaleName)
 void FFMODStudioModule::LoadBanks(EFMODSystemContext::Type Type)
 {
     const UFMODSettings &Settings = *GetDefault<UFMODSettings>();
+
+    FCultureRef culture = FInternationalization::Get().GetCurrentLanguage();
+    SetLocale(culture.Get().GetTwoLetterISOLanguageName());
 
     FailedBankLoads[Type].Reset();
     if (Type == EFMODSystemContext::Auditioning || Type == EFMODSystemContext::Editor)
