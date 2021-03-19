@@ -184,6 +184,24 @@ public:
     UPROPERTY(config, EditAnywhere, Category = InitSettings)
     float Vol0VirtualLevel;
 
+	 /**
+	 * Scaling factor for doppler shift. Default = 1.0.
+	 */
+	 UPROPERTY(config, EditAnywhere, Category = InitSettings)
+	 float DopplerScale;
+
+	 /**
+	 * Relative distance factor to FMOD's units. Default = 1.0. (1.0 = 1 metre).
+	 */
+	 UPROPERTY(config, EditAnywhere, Category = InitSettings)
+	 float DistanceFactor;
+
+	 /**
+	 * Scaling factor for 3D sound rolloff or attenuation for FMOD_3D_INVERSEROLLOFF based sounds only (which is the default type). Default = 1.0.
+	 */
+	 UPROPERTY(config, EditAnywhere, Category = InitSettings)
+	 float RolloffScale;
+
     /**
 	 * Number of actual software voices that can be used at once.
 	 */

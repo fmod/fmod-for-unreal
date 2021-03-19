@@ -719,6 +719,8 @@ void FFMODStudioModule::CreateStudioSystem(EFMODSystemContext::Type Type)
         MediaModule->GetClock().AddSink(ClockSinks[Type].ToSharedRef());
     }
     
+	verifyfmod(lowLevelSystem->set3DSettings(Settings.DopplerScale, Settings.DistanceFactor, Settings.RolloffScale));
+
 	instanceWatchers.Broadcast(Type, StudioSystem[Type]);
 }
 

@@ -25,6 +25,9 @@ UFMODSettings::UFMODSettings(const FObjectInitializer &ObjectInitializer)
     bEnableLiveUpdate = true;
     bVol0Virtual = true;
     Vol0VirtualLevel = 0.0001f;
+	 DopplerScale = 1.0f;
+	 DistanceFactor = 1.0f;
+	 RolloffScale = 1.0f;
     RealChannelCount = 64;
     TotalChannelCount = 512;
     FileBufferSize = 2048;
