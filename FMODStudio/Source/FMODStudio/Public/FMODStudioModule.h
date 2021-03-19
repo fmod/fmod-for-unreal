@@ -200,4 +200,6 @@ public:
     virtual void RemoveMixerPreResumeWatcher(FDelegateHandle callback) = 0;
     virtual FDelegateHandle AddMixerPostResumeWatcher(FMixerPostResumeWatcherDelegate callback) = 0;
     virtual void RemoveMixerPostResumeWatcherDelegate(FDelegateHandle callback) = 0;
+
+    bool bIsShuttingDown = false;
 };

@@ -732,11 +732,13 @@ void FFMODStudioModule::DestroyStudioSystem(EFMODSystemContext::Type Type)
         // Calling through the shared ptr enforces thread safety with the media clock
         ClockSinks[Type]->OnDestroyStudioSystem();
 
-        IMediaModule *MediaModule = FModuleManager::LoadModulePtr<IMediaModule>("Media");
-
-        if (MediaModule != nullptr)
+        if (!bIsShuttingDown)
         {
-            MediaModule->GetClock().RemoveSink(ClockSinks[Type].ToSharedRef());
+            IMediaModule *MediaModule = FModuleManager::LoadModulePtr<IMediaModule>("Media");
+            if (MediaModule != nullptr)
+            {
+                MediaModule->GetClock().RemoveSink(ClockSinks[Type].ToSharedRef());
+            }
         }
 
         ClockSinks[Type].Reset();
@@ -1236,6 +1238,7 @@ void FFMODStudioModule::SetSystemPaused(bool paused)
 void FFMODStudioModule::ShutdownModule()
 {
     UE_LOG(LogFMOD, Verbose, TEXT("FFMODStudioModule shutdown"));
+    bIsShuttingDown = true;
 
     DestroyStudioSystem(EFMODSystemContext::Auditioning);
     DestroyStudioSystem(EFMODSystemContext::Runtime);
