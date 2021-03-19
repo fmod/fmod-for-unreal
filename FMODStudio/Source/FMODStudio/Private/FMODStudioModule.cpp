@@ -541,7 +541,6 @@ void FFMODStudioModule::CreateStudioSystem(EFMODSystemContext::Type Type)
     const UFMODSettings &Settings = *GetDefault<UFMODSettings>();
     bLoadAllSampleData = Settings.bLoadAllSampleData;
 
-    FMOD_SPEAKERMODE OutputMode = ConvertSpeakerMode(Settings.OutputFormat);
     FMOD_STUDIO_INITFLAGS StudioInitFlags = FMOD_STUDIO_INIT_NORMAL;
     FMOD_INITFLAGS InitFlags = FMOD_INIT_NORMAL;
 
@@ -592,8 +591,18 @@ void FFMODStudioModule::CreateStudioSystem(EFMODSystemContext::Type Type)
         InitData = (void *)WavWriterDestUTF8.Get();
     }
 
-    int SampleRate = Settings.SampleRate;
-    if (Settings.bMatchHardwareSampleRate)
+#if PLATFORM_PS4
+    const FFMODPerPlatformConfig& platformConfig = Settings.PS4PlatformSettings;
+#elif PLATFORM_XBOXONE
+    const FFMODPerPlatformConfig& platformConfig = Settings.XB1PlatformSettings;
+#elif PLATFORM_SWITCH
+    const FFMODPerPlatformConfig& platformConfig = Settings.SwitchPlatformSettings;
+#else
+    const FFMODPerPlatformConfig& platformConfig = Settings.DefaultPlatformSettings;
+#endif
+
+    int SampleRate = platformConfig.SampleRate;
+    if (platformConfig.bMatchHardwareSampleRate)
     {
         int DefaultSampleRate = 0;
         verifyfmod(lowLevelSystem->getSoftwareFormat(&DefaultSampleRate, 0, 0));
@@ -608,13 +617,13 @@ void FFMODStudioModule::CreateStudioSystem(EFMODSystemContext::Type Type)
         }
     }
 
-    verifyfmod(lowLevelSystem->setSoftwareFormat(SampleRate, OutputMode, 0));
+    verifyfmod(lowLevelSystem->setSoftwareFormat(SampleRate, ConvertSpeakerMode(platformConfig.OutputFormat), 0));
     verifyfmod(lowLevelSystem->setSoftwareChannels(Settings.RealChannelCount));
     AttachFMODFileSystem(lowLevelSystem, Settings.FileBufferSize);
 
-    if (Settings.DSPBufferLength > 0 && Settings.DSPBufferCount > 0)
+    if (platformConfig.DSPBufferLength > 0 && platformConfig.DSPBufferCount > 0)
     {
-        verifyfmod(lowLevelSystem->setDSPBufferSize(Settings.DSPBufferLength, Settings.DSPBufferCount));
+        verifyfmod(lowLevelSystem->setDSPBufferSize(platformConfig.DSPBufferLength, platformConfig.DSPBufferCount));
     }
 
     FMOD_ADVANCEDSETTINGS advSettings = { 0 };

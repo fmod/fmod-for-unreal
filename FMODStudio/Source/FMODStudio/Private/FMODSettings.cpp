@@ -19,7 +19,6 @@ UFMODSettings::UFMODSettings(const FObjectInitializer &ObjectInitializer)
 {
     MasterBankName = TEXT("Master");
     BankOutputDirectory.Path = TEXT("FMOD");
-    OutputFormat = EFMODSpeakerMode::Surround_5_1;
     ContentBrowserPrefix = TEXT("/Game/FMOD/");
     bLoadAllBanks = true;
     bLoadAllSampleData = false;
@@ -28,14 +27,11 @@ UFMODSettings::UFMODSettings(const FObjectInitializer &ObjectInitializer)
     Vol0VirtualLevel = 0.0001f;
     RealChannelCount = 64;
     TotalChannelCount = 512;
-    DSPBufferLength = 0;
-    DSPBufferCount = 0;
     FileBufferSize = 2048;
     StudioUpdatePeriod = 0;
     LiveUpdatePort = 9264;
     EditorLiveUpdatePort = 9265;
     ReloadBanksDelay = 5;
-    bMatchHardwareSampleRate = true;
     bLockAllBuses = false;
 }
 

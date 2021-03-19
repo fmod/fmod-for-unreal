@@ -94,6 +94,42 @@ struct FFMODProjectLocale
     bool bDefault;
 };
 
+USTRUCT()
+struct FFMODPerPlatformConfig
+{
+   GENERATED_USTRUCT_BODY()
+   /**
+    * Sample rate to use, or 0 to match system rate.
+   */
+
+   UPROPERTY(config, EditAnywhere, Category = InitSettings)
+   int32 SampleRate = 48000;
+
+   /** Project Output Format, should match the mode set up for the Studio project. */
+   UPROPERTY(config, EditAnywhere, Category = Basic)
+   TEnumAsByte<EFMODSpeakerMode::Type> OutputFormat = EFMODSpeakerMode::Surround_5_1;
+
+   /**
+   * Whether to match hardware sample rate where reasonable (44.1kHz to 48kHz).
+   */
+   UPROPERTY(config, EditAnywhere, Category = InitSettings)
+   bool bMatchHardwareSampleRate = true;
+
+   /**
+   * DSP mixer buffer length (eg. 512, 1024) or 0 for system default.
+   * When changing the Buffer Length, Buffer Count also needs to be set.
+   */
+   UPROPERTY(config, EditAnywhere, Category = InitSettings)
+   int32 DSPBufferLength = 0;
+
+   /**
+    * DSP mixer buffer count (eg. 2, 4) or 0 for system default.
+    * When changing the Buffer Count, Buffer Length also needs to be set.
+    */
+   UPROPERTY(config, EditAnywhere, Category = InitSettings)
+   int32 DSPBufferCount = 0;
+};
+
 UCLASS(config = Engine, defaultconfig)
 class FMODSTUDIO_API UFMODSettings : public UObject
 {
@@ -130,10 +166,6 @@ public:
     UPROPERTY(config, EditAnywhere, Category = Basic, meta = (RelativeToGameContentDir))
     FDirectoryPath BankOutputDirectory;
 
-    /** Project Output Format, should match the mode set up for the Studio project. */
-    UPROPERTY(config, EditAnywhere, Category = Basic)
-    TEnumAsByte<EFMODSpeakerMode::Type> OutputFormat;
-
     /**
     * Locales for localized banks. These should match the project locales configured in the FMOD Studio project.
     */
@@ -153,18 +185,6 @@ public:
     float Vol0VirtualLevel;
 
     /**
-	 * Sample rate to use, or 0 to match system rate.
-	 */
-    UPROPERTY(config, EditAnywhere, Category = InitSettings)
-    int32 SampleRate;
-
-    /**
-	* Whether to match hardware sample rate where reasonable (44.1kHz to 48kHz).
-	*/
-    UPROPERTY(config, EditAnywhere, Category = InitSettings)
-    bool bMatchHardwareSampleRate;
-
-    /**
 	 * Number of actual software voices that can be used at once.
 	 */
     UPROPERTY(config, EditAnywhere, Category = InitSettings)
@@ -176,19 +196,17 @@ public:
     UPROPERTY(config, EditAnywhere, Category = InitSettings)
     int32 TotalChannelCount;
 
-    /**
-	 * DSP mixer buffer length (eg. 512, 1024) or 0 for system default.
-	 * When changing the Buffer Length, Buffer Count also needs to be set.
-	 */
-    UPROPERTY(config, EditAnywhere, Category = InitSettings)
-    int32 DSPBufferLength;
-
-    /**
-	 * DSP mixer buffer count (eg. 2, 4) or 0 for system default.
-	 * When changing the Buffer Count, Buffer Length also needs to be set.
-	 */
-    UPROPERTY(config, EditAnywhere, Category = InitSettings)
-    int32 DSPBufferCount;
+    UPROPERTY(config, EditAnywhere, Category = PerPlatformSettings)
+    FFMODPerPlatformConfig DefaultPlatformSettings;
+    
+    UPROPERTY(config, EditAnywhere, Category = PerPlatformSettings)
+    FFMODPerPlatformConfig XB1PlatformSettings;
+    
+    UPROPERTY(config, EditAnywhere, Category = PerPlatformSettings)
+    FFMODPerPlatformConfig PS4PlatformSettings;
+    
+    UPROPERTY(config, EditAnywhere, Category = PerPlatformSettings)
+    FFMODPerPlatformConfig SwitchPlatformSettings;
 
     /**
 	 * File buffer size in bytes (2048 by default).
