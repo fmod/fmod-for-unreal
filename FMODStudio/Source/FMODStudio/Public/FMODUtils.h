@@ -9,6 +9,7 @@
 #include "Engine/Engine.h"
 
 #include "FMODStudioModule.h"
+#include "FMODAsset.h"
 
 #define verifyfmod(fn)                         \
     {                                          \
@@ -175,6 +176,12 @@ inline FString LookupNameFromGuid(FMOD::Studio::System *StudioSystem, const FMOD
 inline FString LookupNameFromGuid(FMOD::Studio::System *StudioSystem, const FGuid &Guid)
 {
     return LookupNameFromGuid(StudioSystem, ConvertGuid(Guid));
+}
+
+inline FString GetAssetPath(UFMODAsset* asset)
+{
+    FMOD::Studio::System *system = IFMODStudioModule::Get().GetStudioSystem(EFMODSystemContext::Runtime);
+    return LookupNameFromGuid(system, asset->AssetGuid);
 }
 
 inline FString ParameterTypeToString(FMOD_STUDIO_PARAMETER_TYPE Type)

@@ -178,6 +178,12 @@ class FMODSTUDIO_API UFMODBlueprintStatics : public UBlueprintFunctionLibrary
     UFUNCTION(BlueprintCallable, Category = "Audio|FMOD|VCA", meta = (UnsafeDuringActorConstruction = "true"))
     static void VCASetVolume(class UFMODVCA *Vca, float Volume);
 
+    /** Get volume on a VCA
+	 * @param Vca - VCA to use
+	 */
+    UFUNCTION(BlueprintCallable, Category = "Audio|FMOD|VCA", meta = (UnsafeDuringActorConstruction = "true"))
+    static float VCAGetVolume(class UFMODVCA *Vca);
+
     /** Set a global parameter from the System.
      * @param Name - Name of parameter
      * @param Value - Value of parameter
@@ -319,5 +325,5 @@ class FMODSTUDIO_API UFMODBlueprintStatics : public UBlueprintFunctionLibrary
     /** Set the active locale for subsequent bank loads.
     */
     UFUNCTION(BlueprintCallable, Category = "Audio|FMOD")
-    static void SetLocale(const FString& Locale);
+    static bool SetLocale(const FString& Locale);
 };

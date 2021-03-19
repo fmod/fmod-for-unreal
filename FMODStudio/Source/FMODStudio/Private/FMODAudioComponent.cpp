@@ -772,6 +772,19 @@ void UFMODAudioComponent::SetVolume(float Volume)
     }
 }
 
+float UFMODAudioComponent::GetVolume()
+{
+    if (!StudioInstance) return 0.0f;
+
+    float volume = 0.0f;
+    FMOD_RESULT Result = StudioInstance->getVolume(&volume);
+    if (Result != FMOD_OK)
+    {
+        UE_LOG(LogFMOD, Warning, TEXT("Failed to get volume"));
+    }
+    return volume;
+}
+
 void UFMODAudioComponent::SetPitch(float Pitch)
 {
     if (StudioInstance)
@@ -784,6 +797,19 @@ void UFMODAudioComponent::SetPitch(float Pitch)
     }
 }
 
+float UFMODAudioComponent::GetPitch()
+{
+    if (!StudioInstance) return 1.0f;
+
+    float pitch = 1.0f;
+    FMOD_RESULT Result = StudioInstance->getPitch(&pitch);
+    if (Result != FMOD_OK)
+    {
+        UE_LOG(LogFMOD, Warning, TEXT("Failed to get pitch"));
+    }
+    return pitch;
+}
+
 void UFMODAudioComponent::SetPaused(bool Paused)
 {
     if (StudioInstance)
@@ -794,6 +820,19 @@ void UFMODAudioComponent::SetPaused(bool Paused)
             UE_LOG(LogFMOD, Warning, TEXT("Failed to pause"));
         }
     }
+}
+
+bool UFMODAudioComponent::GetPaused()
+{
+    if (!StudioInstance) return false;
+
+    bool paused = false;
+    FMOD_RESULT Result = StudioInstance->getPaused(&paused);
+    if (Result != FMOD_OK)
+    {
+        UE_LOG(LogFMOD, Warning, TEXT("Failed to get paused"));
+    }
+    return paused;
 }
 
 void UFMODAudioComponent::SetParameter(FName Name, float Value)

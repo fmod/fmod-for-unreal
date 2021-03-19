@@ -56,11 +56,15 @@ struct FFMODEventKeyState : IPersistentEvaluationData
     FKeyHandle InvalidKeyHandle;
 };
 
+static FSharedPersistentDataKey FmodEventStateSharedKey(FMovieSceneSharedDataId::Allocate(), FMovieSceneEvaluationOperand());
+struct EventControlState : IPersistentEvaluationData { bool playing = false; };
+
 struct FFMODEventControlExecutionToken : IMovieSceneExecutionToken
 {
-    FFMODEventControlExecutionToken(EFMODEventControlKey InEventControlKey, FFrameTime InKeyTime)
+    FFMODEventControlExecutionToken(EFMODEventControlKey InEventControlKey, FFrameTime InKeyTime, bool InStartedOnTime)
         : EventControlKey(InEventControlKey)
         , KeyTime(InKeyTime)
+        , StartedOnTime(InStartedOnTime)
     {
     }
 
@@ -70,6 +74,7 @@ struct FFMODEventControlExecutionToken : IMovieSceneExecutionToken
     {
         for (TWeakObjectPtr<> &WeakObject : Player.FindBoundObjects(Operand))
         {
+   			EventControlState& eventControlSate = PersistentData.GetOrAdd<EventControlState>(FmodEventStateSharedKey);
             UFMODAudioComponent *AudioComponent = Cast<UFMODAudioComponent>(WeakObject.Get());
 
             if (!AudioComponent)
@@ -92,10 +97,19 @@ struct FFMODEventControlExecutionToken : IMovieSceneExecutionToken
                     EFMODSystemContext::Type SystemContext =
                         (GWorld && GWorld->WorldType == EWorldType::Editor) ? EFMODSystemContext::Editor : EFMODSystemContext::Runtime;
                     AudioComponent->PlayInternal(SystemContext);
+                    AudioComponent->SetPitch(Player.GetPlaybackSpeed());
+                    if (!StartedOnTime)
+                    {
+                       FFrameTime currentPos = Context.GetOffsetTime(-KeyTime);
+                       int32 timelineMs = (int32)(Context.GetFrameRate().AsSeconds(currentPos) * 1000.0);
+   					     AudioComponent->SetTimelinePosition(timelineMs);
+                    }
+                    eventControlSate.playing = true;
                 }
                 else if (EventControlKey == EFMODEventControlKey::Stop)
                 {
                     AudioComponent->Stop();
+                    eventControlSate.playing = false;
                 }
             }
         }
@@ -103,6 +117,7 @@ struct FFMODEventControlExecutionToken : IMovieSceneExecutionToken
 
     EFMODEventControlKey EventControlKey;
     FFrameTime KeyTime;
+    bool StartedOnTime;
 };
 
 FFMODEventControlSectionTemplate::FFMODEventControlSectionTemplate(const UFMODEventControlSection &Section)
@@ -118,10 +133,11 @@ void FFMODEventControlSectionTemplate::Evaluate(const FMovieSceneEvaluationOpera
 
     if (!bPlaying)
     {
-        ExecutionTokens.Add(FFMODEventControlExecutionToken(EFMODEventControlKey::Stop, FFrameTime(0)));
+       ExecutionTokens.Add(FFMODEventControlExecutionToken(EFMODEventControlKey::Stop, FFrameTime(0), true));
     }
     else
     {
+        const EventControlState* eventControlSate = PersistentData.Find<EventControlState>(FmodEventStateSharedKey);
         TRange<FFrameNumber> PlaybackRange = Context.GetFrameNumberRange();
         TMovieSceneChannelData<const uint8> ChannelData = ControlKeys.GetData();
 
@@ -130,9 +146,10 @@ void FFMODEventControlSectionTemplate::Evaluate(const FMovieSceneEvaluationOpera
         TArrayView<const uint8> Values = ChannelData.GetValues();
 
         const int32 LastKeyIndex = Algo::UpperBound(Times, PlaybackRange.GetUpperBoundValue()) - 1;
-        if (LastKeyIndex >= 0 && PlaybackRange.Contains(Times[LastKeyIndex]))
+        bool startedOnTime = LastKeyIndex >= 0 && PlaybackRange.Contains(Times[LastKeyIndex]);
+        if (startedOnTime || ((EFMODEventControlKey)Values[LastKeyIndex] == EFMODEventControlKey::Play && eventControlSate && !eventControlSate->playing))
         {
-            FFMODEventControlExecutionToken NewToken((EFMODEventControlKey)Values[LastKeyIndex], Times[LastKeyIndex]);
+            FFMODEventControlExecutionToken NewToken((EFMODEventControlKey)Values[LastKeyIndex], Times[LastKeyIndex], startedOnTime);
             ExecutionTokens.Add(MoveTemp(NewToken));
         }
     }

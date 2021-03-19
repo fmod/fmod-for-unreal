@@ -11,6 +11,7 @@ namespace Studio
 class System;
 class EventDescription;
 class EventInstance;
+class Bank;
 }
 }
 
@@ -40,6 +41,20 @@ enum Type
     Max
 };
 }
+
+DECLARE_MULTICAST_DELEGATE_TwoParams(FStudioInstanceWatchers, EFMODSystemContext::Type, FMOD::Studio::System*)
+typedef FStudioInstanceWatchers::FDelegate FStudioInstanceWatcherDelegate;
+DECLARE_MULTICAST_DELEGATE_ThreeParams(FStudioBankLoadWatchers, EFMODSystemContext::Type, FMOD::Studio::System*, FMOD::Studio::Bank*)
+typedef FStudioBankLoadWatchers::FDelegate FStudioBankLoadWatcherDelegate;
+
+DECLARE_MULTICAST_DELEGATE(FMixerPreSuspendWatchers)
+typedef FMixerPreSuspendWatchers::FDelegate FMixerPreSuspendWatcherDelegate;
+DECLARE_MULTICAST_DELEGATE(FMixerPostSuspendWatchers)
+typedef FMixerPostSuspendWatchers::FDelegate FMixerPostSuspendWatcherDelegate;
+DECLARE_MULTICAST_DELEGATE(FMixerPreResumeWatchers)
+typedef FMixerPreResumeWatchers::FDelegate FMixerPreResumeWatcherDelegate;
+DECLARE_MULTICAST_DELEGATE(FMixerPostResumeWatchers)
+typedef FMixerPostResumeWatchers::FDelegate FMixerPostResumeWatcherDelegate;
 
 /**
  * The public interface to this module
@@ -167,4 +182,26 @@ public:
     /** Called by the editor module when banks have been modified on disk */
     virtual void ReloadBanks() = 0;
 #endif
+
+    /** Support for delegates to be called when studio instances are created and destroyed */
+    virtual FDelegateHandle AddStudioInstanceWatcher(FStudioInstanceWatcherDelegate callback) = 0;
+    virtual void RemoveStudioInstanceWatcher(FDelegateHandle callback) = 0;
+
+    /** Support for delegates to be called when banks are loaded and unloaded */
+    virtual FDelegateHandle AddStudioBankLoadWatcher(FStudioBankLoadWatcherDelegate callback) = 0;
+    virtual void RemoveStudioBankLoadWatcher(FDelegateHandle callback) = 0;
+
+    /** Support for delegates to be called when platform suspend/resume callbacks will be handled */
+    virtual FDelegateHandle AddMixerPreSuspendWatcher(FMixerPreSuspendWatcherDelegate callback) = 0;
+    virtual void RemoveMixerPreSuspendWatcher(FDelegateHandle callback) = 0;
+    virtual FDelegateHandle AddMixerPostSuspendWatcher(FMixerPostSuspendWatcherDelegate callback) = 0;
+    virtual void RemoveMixerPostSuspendWatcher(FDelegateHandle callback) = 0;
+    virtual FDelegateHandle AddMixerPreResumeWatcher(FMixerPreResumeWatcherDelegate callback) = 0;
+    virtual void RemoveMixerPreResumeWatcher(FDelegateHandle callback) = 0;
+    virtual FDelegateHandle AddMixerPostResumeWatcher(FMixerPostResumeWatcherDelegate callback) = 0;
+    virtual void RemoveMixerPostResumeWatcherDelegate(FDelegateHandle callback) = 0;
+
+    bool bIsShuttingDown = false;
+    
+    virtual void DestroyStudioSystems() = 0;
 };
