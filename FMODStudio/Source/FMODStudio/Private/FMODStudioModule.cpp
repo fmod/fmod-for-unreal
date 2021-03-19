@@ -1364,6 +1364,10 @@ void FFMODStudioModule::LoadBanks(EFMODSystemContext::Type Type)
             // Optionally lock all buses to make sure they are created
             if (MasterBank && Settings.bLockAllBuses)
             {
+                // The attempt to lock all buses will fail if the bank load
+                // hasn't been processed, so wait...
+                StudioSystem[Type]->flushCommands();
+
                 UE_LOG(LogFMOD, Verbose, TEXT("Locking all buses"));
                 int BusCount = 0;
                 verifyfmod(MasterBank->getBusCount(&BusCount));
