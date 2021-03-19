@@ -344,6 +344,29 @@ void UFMODBlueprintStatics::VCASetVolume(class UFMODVCA *Vca, float Volume)
     }
 }
 
+float UFMODBlueprintStatics::VCAGetVolume(class UFMODVCA *Vca)
+{
+   float volume = -1.0f;
+
+   FMOD::Studio::System *StudioSystem = IFMODStudioModule::Get().GetStudioSystem(EFMODSystemContext::Runtime);
+   if (StudioSystem != nullptr && IsValid(Vca))
+   {
+      FMOD::Studio::ID guid = FMODUtils::ConvertGuid(Vca->AssetGuid);
+      FMOD::Studio::VCA *vca = nullptr;
+      FMOD_RESULT result = StudioSystem->getVCAByID(&guid, &vca);
+      if (result == FMOD_OK && vca != nullptr)
+      {
+         vca->getVolume(&volume);
+      }
+   }
+   if (volume < 0.0f)
+   {
+      UE_LOG(LogFMOD, Warning, TEXT("Failed to get vca volume"));
+      volume = 0.0f;
+   }
+   return volume;
+}
+
 void UFMODBlueprintStatics::SetGlobalParameterByName(FName Name, float Value)
 {
     FMOD::Studio::System *StudioSystem = IFMODStudioModule::Get().GetStudioSystem(EFMODSystemContext::Runtime);
