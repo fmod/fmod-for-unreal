@@ -202,4 +202,6 @@ public:
     virtual void RemoveMixerPostResumeWatcherDelegate(FDelegateHandle callback) = 0;
 
     bool bIsShuttingDown = false;
+    
+    virtual void DestroyStudioSystems() = 0;
 };

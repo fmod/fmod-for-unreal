@@ -195,6 +195,7 @@ public:
 
     void CreateStudioSystem(EFMODSystemContext::Type Type);
     void DestroyStudioSystem(EFMODSystemContext::Type Type);
+	 virtual void DestroyStudioSystems() override;
 
     bool Tick(float DeltaTime);
 
@@ -800,6 +801,13 @@ void FFMODStudioModule::DestroyStudioSystem(EFMODSystemContext::Type Type)
         verifyfmod(StudioSystem[Type]->release());
         StudioSystem[Type] = nullptr;
     }
+}
+
+void FFMODStudioModule::DestroyStudioSystems()
+{
+	DestroyStudioSystem(EFMODSystemContext::Auditioning);
+	DestroyStudioSystem(EFMODSystemContext::Runtime);
+	DestroyStudioSystem(EFMODSystemContext::Editor);
 }
 
 bool FFMODStudioModule::Tick(float DeltaTime)
