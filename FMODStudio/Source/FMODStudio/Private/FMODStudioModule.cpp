@@ -575,12 +575,6 @@ void FFMODStudioModule::CreateStudioSystem(EFMODSystemContext::Type Type)
         UE_LOG(LogFMOD, Verbose, TEXT("Enabling live update"));
         StudioInitFlags |= FMOD_STUDIO_INIT_LIVEUPDATE;
     }
-
-    if (Settings.bEnableMemoryTracking && Type == EFMODSystemContext::Runtime)
-    {
-        StudioInitFlags |= FMOD_STUDIO_INIT_MEMORY_TRACKING;
-    }
-
 #endif
     if (Type == EFMODSystemContext::Auditioning || Type == EFMODSystemContext::Editor)
     {
@@ -796,7 +790,7 @@ bool FFMODStudioModule::Tick(float DeltaTime)
 {
     if (GIsEditor)
     {
-        BankUpdateNotifier.Update(DeltaTime);
+        BankUpdateNotifier.Update();
     }
 
     if (ClockSinks[EFMODSystemContext::Auditioning].IsValid())
@@ -1093,7 +1087,7 @@ void FFMODStudioModule::RefreshSettings()
     if (GIsEditor)
     {
         const UFMODSettings &Settings = *GetDefault<UFMODSettings>();
-        BankUpdateNotifier.SetFilePath(Settings.GetFullBankPath());
+        BankUpdateNotifier.SetFilePath(Settings.GetFullBankPath() / AssetTable.GetMasterStringsBankPath());
 
         // Initialize ActiveLocale based on settings
         FString LocaleCode = "";
