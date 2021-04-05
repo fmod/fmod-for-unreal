@@ -15,14 +15,7 @@ enum EFMODLogging
     LEVEL_NONE = 0,
     LEVEL_ERROR = 1,
     LEVEL_WARNING = 2,
-    LEVEL_LOG = 4,
-    TYPE_MEMORY = 100,
-    TYPE_FILE = 200,
-    TYPE_CODEC = 400,
-    TYPE_TRACE = 800,
-    DISPLAY_TIMESTAMPS = 10000,
-    DISPLAY_LINENUMBERS = 20000,
-    DISPLAY_THREAD = 40000
+    LEVEL_LOG = 4
 };
 
 UENUM()
@@ -242,6 +235,12 @@ public:
     int32 ReloadBanksDelay;
 
     /**
+    * Enable memory tracking.
+    */
+    UPROPERTY(config, EditAnywhere, Category = Advanced)
+    bool bEnableMemoryTracking;
+
+    /**
 	 * Extra plugin files to load.  
 	 * The plugin files should sit alongside the FMOD dynamic libraries in the ThirdParty directory.
 	 */
@@ -285,6 +284,9 @@ public:
     UPROPERTY(config, EditAnywhere, Category = Advanced)
     FString WavWriterPath;
 
+    /*
+    * Specify the logging level to use in a debug/development build.
+    */
     UPROPERTY(config, EditAnywhere, Category = Advanced)
     TEnumAsByte<EFMODLogging> LoggingLevel;
 
@@ -322,14 +324,15 @@ public:
     FString GetMasterStringsBankFilename() const;
 
 #if WITH_EDITOR
+    /** Get the path desktop banks. */
+    FString GetDesktopBankPath() const;
+
     /** Check the settings for any configuration issues. */
     enum EProblem
     {
         Okay,
         BankPathNotSet,
-        AddedToUFS,
-        NotPackaged,
-        AddedToBoth
+        PackagingSettingsBad
     };
 
     EProblem Check() const;

@@ -186,9 +186,11 @@ UFMODAsset *FFMODAssetTable::GetAssetByStudioPath(const FString &InStudioPath) c
 
         if (Row)
         {
-            UPackage *Package = FindObject<UPackage>(nullptr, *(Row->PackageName));
+            UPackage *Package = CreatePackage(*(Row->PackageName));
+            Package->FullyLoad();
             Asset = FindObject<UFMODAsset>(Package, *(Row->AssetName));
         }
+
     }
 
     return Asset;

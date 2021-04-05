@@ -63,7 +63,8 @@ void FFMODBankUpdateNotifier::Refresh()
 {
     if (!FilePath.IsEmpty())
     {
-        const FDateTime NewFileTime = IFileManager::Get().GetTimeStamp(*FilePath);
+        FDateTime NewFileTime = MostRecentFileTime();
+
         if (NewFileTime != FileTime)
         {
             const UFMODSettings &Settings = *GetDefault<UFMODSettings>();

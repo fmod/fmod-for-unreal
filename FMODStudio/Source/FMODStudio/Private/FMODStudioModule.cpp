@@ -31,11 +31,13 @@
 #include "fmod_errors.h"
 #include "FMODStudioPrivatePCH.h"
 
+#include <atomic>
+
 #ifdef FMOD_PLATFORM_HEADER
 #include "FMODPlatform.h"
 #endif
 
-#if PLATFORM_IOS
+#if PLATFORM_IOS || PLATFORM_TVOS
 #include <AVFoundation/AVAudioSession.h>
 #endif
 
@@ -173,8 +175,13 @@ public:
     {
         AsyncTask(ENamedThreads::GameThread, [&]() { SetSystemPaused(true); });
     }
+
     void HandleApplicationHasReactivated()
     {
+#if PLATFORM_IOS || PLATFORM_TVOS
+        ActivateAudioSession();
+#endif
+
         AsyncTask(ENamedThreads::GameThread, [&]() { SetSystemPaused(false); });
     }
 
@@ -247,8 +254,9 @@ public:
 
     void ResetInterpolation();
 
-#if PLATFORM_IOS
+#if PLATFORM_IOS || PLATFORM_TVOS
     void InitializeAudioSession();
+    void ActivateAudioSession();
 #endif
 
     /** The studio system handle. */
@@ -308,7 +316,7 @@ public:
     void *StudioLibHandle;
 
     /** True if the mixer has been paused by application deactivation */
-    bool bMixerPaused;
+    std::atomic<bool> bMixerPaused;
 
     /** You can also supply a pool of memory for FMOD to work with and it will do so with no extra calls to malloc or free. */
     void *MemPool;
@@ -552,6 +560,12 @@ void FFMODStudioModule::CreateStudioSystem(EFMODSystemContext::Type Type)
         UE_LOG(LogFMOD, Verbose, TEXT("Enabling live update"));
         StudioInitFlags |= FMOD_STUDIO_INIT_LIVEUPDATE;
     }
+
+    if (Settings.bEnableMemoryTracking && Type == EFMODSystemContext::Runtime)
+    {
+        StudioInitFlags |= FMOD_STUDIO_INIT_MEMORY_TRACKING;
+    }
+
 #endif
     if (Type == EFMODSystemContext::Auditioning || Type == EFMODSystemContext::Editor)
     {
@@ -663,12 +677,12 @@ void FFMODStudioModule::CreateStudioSystem(EFMODSystemContext::Type Type)
     if (Type == EFMODSystemContext::Runtime)
     {
         // Add interrupt callbacks for Mobile
-        FCoreDelegates::ApplicationWillDeactivateDelegate.AddRaw(this, &FFMODStudioModule::HandleApplicationWillDeactivate);
-        FCoreDelegates::ApplicationHasReactivatedDelegate.AddRaw(this, &FFMODStudioModule::HandleApplicationHasReactivated);
-
-#if PLATFORM_IOS
+#if PLATFORM_IOS || PLATFORM_TVOS
         InitializeAudioSession();
 #endif
+
+        FCoreDelegates::ApplicationWillDeactivateDelegate.AddRaw(this, &FFMODStudioModule::HandleApplicationWillDeactivate);
+        FCoreDelegates::ApplicationHasReactivatedDelegate.AddRaw(this, &FFMODStudioModule::HandleApplicationHasReactivated);
     }
 
     IMediaModule *MediaModule = FModuleManager::LoadModulePtr<IMediaModule>("Media");
@@ -1161,7 +1175,9 @@ void FFMODStudioModule::SetSystemPaused(bool paused)
 {
     if (StudioSystem[EFMODSystemContext::Runtime])
     {
-        if (bMixerPaused != paused)
+        bool expected = !paused;
+
+        if (bMixerPaused.compare_exchange_strong(expected, paused))
         {
             FMOD::System *LowLevelSystem = nullptr;
             verifyfmod(StudioSystem[EFMODSystemContext::Runtime]->getCoreSystem(&LowLevelSystem));
@@ -1181,8 +1197,6 @@ void FFMODStudioModule::SetSystemPaused(bool paused)
                 LowLevelSystem->mixerSuspend();
             }
         }
-
-        bMixerPaused = paused;
     }
 }
 
@@ -1479,51 +1493,58 @@ void FFMODStudioModule::StopAuditioningInstance()
     }
 }
 
-#if PLATFORM_IOS
+#if PLATFORM_IOS || PLATFORM_TVOS
 void FFMODStudioModule::InitializeAudioSession()
 {
-    static bool bSuspended = false;
-
     [[NSNotificationCenter defaultCenter] addObserverForName:AVAudioSessionInterruptionNotification object:nil queue:nil usingBlock:^(NSNotification *notification)
     {
-        bool began = [[notification.userInfo valueForKey:AVAudioSessionInterruptionTypeKey] intValue] == AVAudioSessionInterruptionTypeBegan;
-
-        if (began == bSuspended)
+        switch ([[notification.userInfo valueForKey:AVAudioSessionInterruptionTypeKey] unsignedIntegerValue])
         {
-            return;
-        }
-        if (@available(iOS 10.3, *))
-        {
-            if (began && [[notification.userInfo valueForKey:AVAudioSessionInterruptionWasSuspendedKey] boolValue])
+            case AVAudioSessionInterruptionTypeBegan:
             {
-                return;
+                if (@available(iOS 10.3, *))
+                {
+                    if ([[notification.userInfo valueForKey:AVAudioSessionInterruptionWasSuspendedKey] boolValue])
+                    {
+                        // If the system suspended the app process and deactivated the audio session then we get a delayed
+                        // interruption notification when the app is re-activated. Just ignore that here.
+                        return;
+                    }
+                }
+                SetSystemPaused(true);
+                break;
+            }
+            case AVAudioSessionInterruptionTypeEnded:
+            {
+                ActivateAudioSession();
+                SetSystemPaused(false);
+                break;
             }
         }
-
-        bSuspended = began;
-        if (!began)
-        {
-            [[AVAudioSession sharedInstance] setActive:TRUE error:nil];
-        }
-
-        AsyncTask(ENamedThreads::GameThread, [&]() { SetSystemPaused(began); });
     }];
 
     [[NSNotificationCenter defaultCenter] addObserverForName:UIApplicationDidBecomeActiveNotification object:nil queue:nil usingBlock:^(NSNotification *notification)
     {
-#if PLATFORM_TVOS
-        AsyncTask(ENamedThreads::GameThread, [&]() { SetSystemPaused(true); });
-#else
-        if (!bSuspended)
-        {
-            return;
-        }
-#endif
-        [[AVAudioSession sharedInstance] setActive:TRUE error:nil];
-        AsyncTask(ENamedThreads::GameThread, [&]() { SetSystemPaused(false); });
-        bSuspended = false;
+    #if PLATFORM_TVOS
+        SetSystemPaused(true);
+    #endif
+        ActivateAudioSession();
+        SetSystemPaused(false);
     }];
+
+    ActivateAudioSession();
 }
-#endif // PLATFORM_IOS
+
+void FFMODStudioModule::ActivateAudioSession()
+{
+    NSError* ActiveError = nil;
+    [[AVAudioSession sharedInstance] setActive:TRUE error:&ActiveError];
+
+    if (ActiveError)
+    {
+        UE_LOG(LogFMOD, Error, TEXT("Failed to set audio session to active = %d [Error = %s]"), TRUE, *FString([ActiveError description]));
+    }
+}
+#endif
 
 #undef LOCTEXT_NAMESPACE

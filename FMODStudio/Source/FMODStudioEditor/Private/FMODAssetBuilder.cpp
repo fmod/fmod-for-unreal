@@ -601,24 +601,6 @@ void FFMODAssetBuilder::DeleteAssets(TArray<UObject*>& AssetsToDelete)
         }
     }
 
-    // Use ObjectTools to delete assets
+    // Use ObjectTools to delete assets - ObjectTools::DeleteObjects handles confirmation, source control, and making read only files writables
     ObjectTools::DeleteObjects(ObjectsToDelete, true);
-
-    if (USourceControlHelpers::IsEnabled())
-    {
-        // Mark assets for delete in source control
-        TArray<UPackage *> PackagesToDelete;
-
-        for (auto& Asset : ObjectsToDelete)
-        {
-            PackagesToDelete.Add(Asset->GetPackage());
-        }
-
-        auto PackageFilenames = USourceControlHelpers::PackageFilenames(PackagesToDelete);
-
-        for (auto& PackageFilename : PackageFilenames)
-        {
-            USourceControlHelpers::MarkFileForDelete(PackageFilename);
-        }
-    }
 }
