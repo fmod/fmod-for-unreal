@@ -351,36 +351,41 @@ void UFMODAudioComponent::TickComponent(float DeltaTime, enum ELevelTick TickTyp
 
     if (IsActive())
     {
-        if (GetStudioModule().HasListenerMoved())
-        {
-            UpdateInteriorVolumes();
-            UpdateAttenuation();
-            ApplyVolumeLPF();
-        }
-
-        if (bEnableTimelineCallbacks)
-        {
-            TArray<FTimelineMarkerProperties> LocalMarkerQueue;
-            TArray<FTimelineBeatProperties> LocalBeatQueue;
-            {
-                FScopeLock Lock(&CallbackLock);
-                Swap(LocalMarkerQueue, CallbackMarkerQueue);
-                Swap(LocalBeatQueue, CallbackBeatQueue);
-            }
-
-            for (const FTimelineMarkerProperties &EachProps : LocalMarkerQueue)
-            {
-                OnTimelineMarker.Broadcast(EachProps.Name, EachProps.Position);
-            }
-            for (const FTimelineBeatProperties &EachProps : LocalBeatQueue)
-            {
-                OnTimelineBeat.Broadcast(
-                    EachProps.Bar, EachProps.Beat, EachProps.Position, EachProps.Tempo, EachProps.TimeSignatureUpper, EachProps.TimeSignatureLower);
-            }
-        }
-
         FMOD_STUDIO_PLAYBACK_STATE state = FMOD_STUDIO_PLAYBACK_STOPPED;
-        StudioInstance->getPlaybackState(&state);
+
+        if (StudioInstance)
+        {
+            if (GetStudioModule().HasListenerMoved())
+            {
+                UpdateInteriorVolumes();
+                UpdateAttenuation();
+                ApplyVolumeLPF();
+            }
+
+            if (bEnableTimelineCallbacks)
+            {
+                TArray<FTimelineMarkerProperties> LocalMarkerQueue;
+                TArray<FTimelineBeatProperties> LocalBeatQueue;
+                {
+                    FScopeLock Lock(&CallbackLock);
+                    Swap(LocalMarkerQueue, CallbackMarkerQueue);
+                    Swap(LocalBeatQueue, CallbackBeatQueue);
+                }
+
+                for (const FTimelineMarkerProperties &EachProps : LocalMarkerQueue)
+                {
+                    OnTimelineMarker.Broadcast(EachProps.Name, EachProps.Position);
+                }
+                for (const FTimelineBeatProperties &EachProps : LocalBeatQueue)
+                {
+                    OnTimelineBeat.Broadcast(
+                        EachProps.Bar, EachProps.Beat, EachProps.Position, EachProps.Tempo, EachProps.TimeSignatureUpper, EachProps.TimeSignatureLower);
+                }
+            }
+
+            StudioInstance->getPlaybackState(&state);
+        }
+
         if (state == FMOD_STUDIO_PLAYBACK_STOPPED)
         {
             OnPlaybackCompleted();
@@ -413,10 +418,10 @@ void UFMODAudioComponent::PostLoad()
 
 void UFMODAudioComponent::Activate(bool bReset)
 {
-    Super::Activate(bReset);
     if (bReset || ShouldActivate() == true)
     {
-        Play();
+        // Don't call Super::Activate here - PlayInternal will do that if successful
+        PlayInternal(EFMODSystemContext::Max, bReset);
     }
 }
 
@@ -593,7 +598,7 @@ void UFMODAudioComponent::Play()
     PlayInternal(EFMODSystemContext::Max);
 }
 
-void UFMODAudioComponent::PlayInternal(EFMODSystemContext::Type Context)
+void UFMODAudioComponent::PlayInternal(EFMODSystemContext::Type Context, bool bReset)
 {
     Stop();
 
@@ -676,11 +681,15 @@ void UFMODAudioComponent::PlayInternal(EFMODSystemContext::Type Context)
         {
             verifyfmod(StudioInstance->setCallback(UFMODAudioComponent_EventCallback));
         }
+
         verifyfmod(StudioInstance->setUserData(this));
         verifyfmod(StudioInstance->start());
         UE_LOG(LogFMOD, Verbose, TEXT("Playing component %p"), this);
-        SetActiveFlag(true);
-        SetComponentTickEnabled(true);
+
+        if (bReset || ShouldActivate() == true)
+        {
+            Super::Activate(bReset);
+        }
     }
 }
 
@@ -739,15 +748,18 @@ void UFMODAudioComponent::TriggerCue()
 void UFMODAudioComponent::OnPlaybackCompleted()
 {
     // Mark inactive before calling destroy to avoid recursion
-    UE_LOG(LogFMOD, Verbose, TEXT("UFMODAudioComponent %p PlaybackCompleted"), this);
     SetActive(false);
     SetComponentTickEnabled(false);
 
-    Release();
+    if (StudioInstance)
+    {
+        UE_LOG(LogFMOD, Verbose, TEXT("UFMODAudioComponent %p PlaybackCompleted"), this);
+        Release();
 
-    // Fire callback after we have cleaned up our instance
-    OnEventStopped.Broadcast();
-
+        // Fire callback after we have cleaned up our instance
+        OnEventStopped.Broadcast();
+    }
+    
     // Auto destruction is handled via marking object for deletion.
     if (bAutoDestroy)
     {

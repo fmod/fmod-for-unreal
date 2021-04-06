@@ -465,6 +465,7 @@ void FFMODStudioModule::StartupModule()
     if (FParse::Param(FCommandLine::Get(), TEXT("nosound")) || FApp::IsBenchmarking() || IsRunningDedicatedServer() || IsRunningCommandlet())
     {
         bUseSound = false;
+        UE_LOG(LogFMOD, Log, TEXT("Running in nosound mode"));
     }
 
     if (FParse::Param(FCommandLine::Get(), TEXT("noliveupdate")))
@@ -1121,11 +1122,8 @@ void FFMODStudioModule::SetInPIE(bool bInPIE, bool simulating)
         // TODO: Stop sounds for the Editor system? What should happen if the user previews a sequence with transport
         // controls then starts a PIE session? What does happen?
 
-        UE_LOG(LogFMOD, Log, TEXT("Creating runtime Studio System"));
         ListenerCount = 1;
         CreateStudioSystem(EFMODSystemContext::Runtime);
-
-        UE_LOG(LogFMOD, Log, TEXT("Loading Banks"));
         LoadBanks(EFMODSystemContext::Runtime);
 
         const UFMODSettings &Settings = *GetDefault<UFMODSettings>();

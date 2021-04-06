@@ -284,7 +284,7 @@ public:
 
 public:
     /** Internal play function which can play events in the editor. */
-    void PlayInternal(EFMODSystemContext::Type Context);
+    void PlayInternal(EFMODSystemContext::Type Context, bool bReset = false);
 
     /** Actual Studio instance handle. */
     FMOD::Studio::EventInstance *StudioInstance;
