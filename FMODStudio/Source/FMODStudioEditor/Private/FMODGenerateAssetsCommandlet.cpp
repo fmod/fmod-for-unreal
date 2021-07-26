@@ -34,14 +34,23 @@ int32 UFMODGenerateAssetsCommandlet::Main(const FString& CommandLine)
     TMap<FString, FString> Params;
     ParseCommandLine(*CommandLine, Tokens, Switches, Params);
 
+    TArray<FString> GeneratedFolders = {
+    TEXT("Banks"),
+    TEXT("Buses"),
+    TEXT("Events"),
+    TEXT("Reverbs"),
+    TEXT("Snapshots"),
+    TEXT("VCAs")
+    };
+
     // Rebuild switch
     if (Switches.Contains(RebuildSwitch))
     {
         FString FolderToDelete;
         IPlatformFile& FileManager = FPlatformFileManager::Get().GetPlatformFile();
-        for (FString folder : Settings.GeneratedFolders)
+        for (FString folder : GeneratedFolders)
         {
-            FolderToDelete = FPaths::ProjectContentDir() + Settings.ContentBrowserPrefix.Path / folder;
+            FolderToDelete = FPaths::ProjectContentDir() + Settings.ContentBrowserPrefix + folder;
             bool removed = FileManager.DeleteDirectoryRecursively(*FolderToDelete);
             if (!removed)
             {
@@ -52,7 +61,7 @@ int32 UFMODGenerateAssetsCommandlet::Main(const FString& CommandLine)
 
     // Ensure AssetRegistry is up to date
     TArray<FString> InPaths;
-    InPaths.Add(Settings.GetFullContentPath());
+    InPaths.Add(Settings.ContentBrowserPrefix);
     AssetRegistry.ScanPathsSynchronous(InPaths);
     while (AssetRegistry.IsLoadingAssets())
     {
