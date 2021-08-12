@@ -1,62 +1,41 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2020.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2021.
 
 #pragma once
 
-#include "FMODAsset.h"
+#include "UObject/GCObject.h"
 
-namespace FMOD
-{
-namespace Studio
-{
-class System;
-}
-}
-
+class UDataTable;
+class UFMODAsset;
 class UFMODBank;
-struct FFMODBankDiskFileMap;
+class UFMODBankLookup;
 
-class FFMODAssetTable
+class FFMODAssetTable : public FGCObject
 {
 public:
-    FFMODAssetTable();
-    ~FFMODAssetTable();
+    //~ FGCObject
+    void AddReferencedObjects(FReferenceCollector& Collector) override;
 
-    void Create();
-    void Destroy();
+    void Load();
 
-    void Refresh();
-
-    UFMODAsset *FindByName(const FString &Name) const;
     FString GetBankPath(const UFMODBank &Bank) const;
     FString GetMasterBankPath() const;
     FString GetMasterStringsBankPath() const;
     FString GetMasterAssetsBankPath() const;
     void SetLocale(const FString &LocaleCode);
+    FString GetLocale() const;
     void GetAllBankPaths(TArray<FString> &BankPaths, bool IncludeMasterBank) const;
 
+    UFMODAsset *GetAssetByStudioPath(const FString &InStudioPath) const;
+
+    static inline FString PrivateDataPath() { return FString(TEXT("PrivateIntegrationData/")); }
+    static inline FString BankLookupName()  { return FString(TEXT("BankLookup")); }
+    static inline FString AssetLookupName() { return FString(TEXT("AssetLookup")); }
+
 private:
-    void AddAsset(const FGuid &AssetGuid, const FString &AssetFullName);
-    void GetAllBankPathsFromDisk(const FString &BankDir, TArray<FString> &Paths);
-    void BuildBankPathLookup();
     FString GetBankPathByGuid(const FGuid& Guid) const;
+    FString GetLocalizedBankPath(const UDataTable* BankTable) const;
 
-private:
-    FMOD::Studio::System *StudioSystem;
-    TMap<FGuid, TWeakObjectPtr<UFMODAsset>> GuidMap;
-    TMap<FName, TWeakObjectPtr<UFMODAsset>> NameMap;
-    TMap<FString, TWeakObjectPtr<UFMODAsset>> FullNameLookup;
-    FString MasterBankPath;
-    FString MasterStringsBankPath;
-    FString MasterAssetsBankPath;
-
-    struct BankLocalization
-    {
-        FString Locale;
-        FString Path;
-    };
-
-    typedef TArray<BankLocalization> BankLocalizations;
-
-    TMap<FGuid, BankLocalizations> BankPathLookup;
     FString ActiveLocale;
+    UFMODBankLookup *BankLookup;
+    UDataTable *AssetLookup;
 };

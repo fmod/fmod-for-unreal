@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2020.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2021.
 using System.IO;
 
 namespace UnrealBuildTool.Rules
@@ -40,22 +40,23 @@ namespace UnrealBuildTool.Rules
             PrivateDependencyModuleNames.AddRange(
                 new string[]
                 {
-                    "Slate",
-                    "SlateCore",
-                    "Settings",
+                    "AssetRegistry",
+                    "AssetTools",
                     "EditorStyle",
                     "LevelEditor",
-                    "AssetTools",
-                    "AssetRegistry",
-                    "PropertyEditor",
-                    "WorkspaceMenuStructure",
-                    "Sockets",
                     "LevelSequence",
                     "MainFrame",
                     "MovieScene",
                     "MovieSceneTracks",
                     "MovieSceneTools",
-                    "ToolMenus"
+                    "PropertyEditor",
+                    "Settings",
+                    "Slate",
+                    "SlateCore",
+                    "Sockets",
+                    "SourceControl",
+                    "ToolMenus",
+                    "WorkspaceMenuStructure",
                 }
                 );
         }

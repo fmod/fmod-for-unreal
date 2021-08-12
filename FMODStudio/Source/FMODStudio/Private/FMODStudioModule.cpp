@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2020.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2021.
 
 #include "FMODStudioModule.h"
 #include "FMODSettings.h"
@@ -6,7 +6,6 @@
 #include "FMODBlueprintStatics.h"
 #include "FMODAssetTable.h"
 #include "FMODFileCallbacks.h"
-#include "FMODBankUpdateNotifier.h"
 #include "FMODUtils.h"
 #include "FMODEvent.h"
 #include "FMODListener.h"
@@ -17,6 +16,8 @@
 #include "Misc/App.h"
 #include "Misc/CommandLine.h"
 #include "Misc/CoreDelegates.h"
+#include "Engine/Engine.h"
+#include "Engine/LocalPlayer.h"
 #include "Engine/GameViewportClient.h"
 #include "GameFramework/PlayerController.h"
 #include "Containers/Ticker.h"
@@ -30,16 +31,14 @@
 #include "fmod_errors.h"
 #include "FMODStudioPrivatePCH.h"
 
+#include <atomic>
+
 #ifdef FMOD_PLATFORM_HEADER
 #include "FMODPlatform.h"
-#elif PLATFORM_PS4
-#include "FMODPlatformLoadDll_PS4.h"
-#elif PLATFORM_XBOXONE
-#include "FMODPlatformLoadDll_XBoxOne.h"
-#elif PLATFORM_SWITCH
-#include "FMODPlatformLoadDll_Switch.h"
-#else
-#include "FMODPlatformLoadDll_Generic.h"
+#endif
+
+#if PLATFORM_IOS || PLATFORM_TVOS
+#include <AVFoundation/AVAudioSession.h>
 #endif
 
 #define LOCTEXT_NAMESPACE "FMODStudio"
@@ -118,7 +117,7 @@ struct FFMODSnapshotEntry
 class FFMODStudioSystemClockSink : public IMediaClockSink
 {
 public:
-    DECLARE_DELEGATE_RetVal(void, FUpdateListenerPosition);
+    DECLARE_DELEGATE(FUpdateListenerPosition);
 
     FFMODStudioSystemClockSink(FMOD::Studio::System *SystemIn)
         : System(SystemIn)
@@ -176,13 +175,17 @@ public:
     {
         AsyncTask(ENamedThreads::GameThread, [&]() { SetSystemPaused(true); });
     }
+
     void HandleApplicationHasReactivated()
     {
+#if PLATFORM_IOS || PLATFORM_TVOS
+        ActivateAudioSession();
+#endif
+
         AsyncTask(ENamedThreads::GameThread, [&]() { SetSystemPaused(false); });
     }
 
     virtual void StartupModule() override;
-    virtual void PostLoadCallback() override;
     virtual void ShutdownModule() override;
 
     FString GetDllPath(const TCHAR *ShortName, bool bExplicitPath, bool bUseLibPrefix);
@@ -192,15 +195,17 @@ public:
 
     void LoadBanks(EFMODSystemContext::Type Type);
 
-    /** Called when a newer version of the bank files was detected */
-    void HandleBanksUpdated();
+#if WITH_EDITOR
+    void ReloadBanks();
+#endif
 
     void CreateStudioSystem(EFMODSystemContext::Type Type);
     void DestroyStudioSystem(EFMODSystemContext::Type Type);
 
     bool Tick(float DeltaTime);
 
-    void UpdateViewportPosition();
+    void UpdateListeners();
+    void UpdateWorldListeners(UWorld *World, int *ListenerIndex);
 
     virtual FMOD::Studio::System *GetStudioSystem(EFMODSystemContext::Type Context) override;
     virtual FMOD::Studio::EventDescription *GetEventDescription(const UFMODEvent *Event, EFMODSystemContext::Type Type) override;
@@ -208,7 +213,7 @@ public:
     virtual void StopAuditioningInstance() override;
 
     virtual void SetListenerPosition(int ListenerIndex, UWorld *World, const FTransform &ListenerTransform, float DeltaSeconds) override;
-    virtual void FinishSetListenerPosition(int ListenerCount, float DeltaSeconds) override;
+    virtual void FinishSetListenerPosition(int ListenerCount) override;
 
     virtual const FFMODListener &GetNearestListener(const FVector &Location) override;
 
@@ -224,9 +229,6 @@ public:
     virtual UFMODEvent *FindEventByName(const FString &Name) override;
     virtual FString GetBankPath(const UFMODBank &Bank) override;
     virtual void GetAllBankPaths(TArray<FString> &Paths, bool IncludeMasterBank) const override;
-
-    FSimpleMulticastDelegate BanksReloadedDelegate;
-    virtual FSimpleMulticastDelegate &BanksReloadedEvent() override { return BanksReloadedDelegate; }
 
     virtual TArray<FString> GetFailedBankLoads(EFMODSystemContext::Type Context) override { return FailedBankLoads[Context]; }
 
@@ -250,7 +252,14 @@ public:
 
     virtual bool SetLocale(const FString& Locale) override;
 
+    virtual FString GetLocale() override;
+
     void ResetInterpolation();
+
+#if PLATFORM_IOS || PLATFORM_TVOS
+    void InitializeAudioSession();
+    void ActivateAudioSession();
+#endif
 
     /** The studio system handle. */
     FMOD::Studio::System *StudioSystem[EFMODSystemContext::Max];
@@ -267,9 +276,6 @@ public:
 
     /** Table of assets with name and guid */
     FFMODAssetTable AssetTable;
-
-    /** Periodically checks for updates of the strings.bank file */
-    FFMODBankUpdateNotifier BankUpdateNotifier;
 
     /** List of failed bank files */
     TArray<FString> FailedBankLoads[EFMODSystemContext::Max];
@@ -312,7 +318,7 @@ public:
     void *StudioLibHandle;
 
     /** True if the mixer has been paused by application deactivation */
-    bool bMixerPaused;
+    std::atomic<bool> bMixerPaused;
 
     /** You can also supply a pool of memory for FMOD to work with and it will do so with no extra calls to malloc or free. */
     void *MemPool;
@@ -382,7 +388,12 @@ void *FFMODStudioModule::LoadDll(const TCHAR *ShortName)
     void *Handle = nullptr;
     UE_LOG(LogFMOD, Log, TEXT("FFMODStudioModule::LoadDll: Loading %s"), *LibPath);
     // Unfortunately Unreal's platform loading code hasn't been implemented on all platforms so we wrap it
+#ifdef FMOD_PLATFORM_HEADER
     Handle = FMODPlatformLoadDll(*LibPath);
+#else
+    Handle = FPlatformProcess::GetDllHandle(*LibPath);
+#endif
+
 #if WITH_EDITOR
     if (!Handle && !FApp::IsUnattended())
     {
@@ -404,11 +415,6 @@ FString FFMODStudioModule::GetDllPath(const TCHAR *ShortName, bool bExplicitPath
     return FMODPlatform_GetDllPath(ShortName, bExplicitPath, bUseLibPrefix);
 #elif PLATFORM_MAC
     return FString::Printf(TEXT("%s/Mac/%s%s.dylib"), *BaseLibPath, LibPrefixName, ShortName);
-#elif PLATFORM_PS4
-    const TCHAR *DirPrefix = (bExplicitPath ? TEXT("/app0/prx/") : TEXT(""));
-    return FString::Printf(TEXT("%s%s%s.prx"), DirPrefix, LibPrefixName, ShortName);
-#elif PLATFORM_XBOXONE
-    return FString::Printf(TEXT("%s/XBoxOne/%s.dll"), *BaseLibPath, ShortName);
 #elif PLATFORM_ANDROID
     return FString::Printf(TEXT("%s%s.so"), LibPrefixName, ShortName);
 #elif PLATFORM_LINUX
@@ -429,7 +435,7 @@ FString FFMODStudioModule::GetDllPath(const TCHAR *ShortName, bool bExplicitPath
 
 bool FFMODStudioModule::LoadLibraries()
 {
-#if PLATFORM_IOS || PLATFORM_TVOS || PLATFORM_ANDROID || PLATFORM_LINUX || PLATFORM_MAC || PLATFORM_SWITCH || defined(FMOD_DONT_LOAD_LIBRARIES)
+#if PLATFORM_IOS || PLATFORM_TVOS || PLATFORM_ANDROID || PLATFORM_LINUX || PLATFORM_MAC || defined(FMOD_DONT_LOAD_LIBRARIES)
     return true; // Nothing to do on those platforms
 #else
     UE_LOG(LogFMOD, Verbose, TEXT("FFMODStudioModule::LoadLibraries"));
@@ -456,11 +462,12 @@ void FFMODStudioModule::StartupModule()
 {
     UE_LOG(LogFMOD, Log, TEXT("FFMODStudioModule startup"));
     BaseLibPath = IPluginManager::Get().FindPlugin(TEXT("FMODStudio"))->GetBaseDir() + TEXT("/Binaries");
-    UE_LOG(LogFMOD, Log, TEXT(" Lib path = '%s'"), *BaseLibPath);
+    UE_LOG(LogFMOD, Log, TEXT("Lib path = '%s'"), *BaseLibPath);
 
     if (FParse::Param(FCommandLine::Get(), TEXT("nosound")) || FApp::IsBenchmarking() || IsRunningDedicatedServer() || IsRunningCommandlet())
     {
         bUseSound = false;
+        UE_LOG(LogFMOD, Log, TEXT("Running in nosound mode"));
     }
 
     if (FParse::Param(FCommandLine::Get(), TEXT("noliveupdate")))
@@ -474,19 +481,14 @@ void FFMODStudioModule::StartupModule()
 
         const UFMODSettings &Settings = *GetDefault<UFMODSettings>();
 
-//#ifdef FMOD_PLATFORM_HEADER
-//        int size = FMODPlatform_MemoryPoolSize();
-#if PLATFORM_IOS || PLATFORM_TVOS || PLATFORM_ANDROID
+#if defined(FMOD_PLATFORM_HEADER)
+        int size = FMODPlatform_MemoryPoolSize();
+#elif PLATFORM_IOS || PLATFORM_TVOS || PLATFORM_ANDROID
         int size = Settings.MemoryPoolSizes.Mobile;
-#elif PLATFORM_PS4
-        int size = Settings.MemoryPoolSizes.PS4;
-#elif PLATFORM_XBOXONE
-        int size = Settings.MemoryPoolSizes.XboxOne;
-#elif PLATFORM_SWITCH
-        int size = Settings.MemoryPoolSizes.Switch;
 #else
         int size = Settings.MemoryPoolSizes.Desktop;
 #endif
+
         if (!GIsEditor && size > 0)
         {
             MemPool = FMemory::Malloc(size);
@@ -497,12 +499,12 @@ void FFMODStudioModule::StartupModule()
             verifyfmod(FMOD::Memory_Initialize(0, 0, FMODMemoryAlloc, FMODMemoryRealloc, FMODMemoryFree));
         }
 
+#if defined(FMOD_PLATFORM_HEADER)
         verifyfmod(FMODPlatformSystemSetup());
+#endif
 
         AcquireFMODFileSystem();
 
-        // Create sandbox system just for asset loading
-        AssetTable.Create();
         RefreshSettings();
 
         if (GIsEditor)
@@ -512,19 +514,12 @@ void FFMODStudioModule::StartupModule()
         }
         else
         {
-            AssetTable.Destroy(); // Don't need this copy around since we don't hot reload
-
             SetInPIE(true, false);
         }
     }
 
     OnTick = FTickerDelegate::CreateRaw(this, &FFMODStudioModule::Tick);
     TickDelegateHandle = FTicker::GetCoreTicker().AddTicker(OnTick);
-
-    if (GIsEditor)
-    {
-        BankUpdateNotifier.BanksUpdatedEvent.AddRaw(this, &FFMODStudioModule::HandleBanksUpdated);
-    }
 }
 
 inline FMOD_SPEAKERMODE ConvertSpeakerMode(EFMODSpeakerMode::Type Mode)
@@ -568,6 +563,12 @@ void FFMODStudioModule::CreateStudioSystem(EFMODSystemContext::Type Type)
         UE_LOG(LogFMOD, Verbose, TEXT("Enabling live update"));
         StudioInitFlags |= FMOD_STUDIO_INIT_LIVEUPDATE;
     }
+
+    if (Settings.bEnableMemoryTracking && Type == EFMODSystemContext::Runtime)
+    {
+        StudioInitFlags |= FMOD_STUDIO_INIT_MEMORY_TRACKING;
+    }
+
 #endif
     if (Type == EFMODSystemContext::Auditioning || Type == EFMODSystemContext::Editor)
     {
@@ -639,14 +640,10 @@ void FFMODStudioModule::CreateStudioSystem(EFMODSystemContext::Type Type)
         advSettings.vol0virtualvol = Settings.Vol0VirtualLevel;
         InitFlags |= FMOD_INIT_VOL0_BECOMES_VIRTUAL;
     }
-#ifdef FMOD_PLATFORM_HEADER
+#if defined(FMOD_PLATFORM_HEADER)
     FMODPlatform_SetRealChannelCount(&advSettings);
-#elif PLATFORM_IOS || PLATFORM_TVOS || PLATFORM_ANDROID || PLATFORM_SWITCH
+#elif PLATFORM_IOS || PLATFORM_TVOS || PLATFORM_ANDROID
     advSettings.maxFADPCMCodecs = Settings.RealChannelCount;
-#elif PLATFORM_PS4
-    advSettings.maxAT9Codecs = Settings.RealChannelCount;
-#elif PLATFORM_XBOXONE
-    advSettings.maxXMACodecs = Settings.RealChannelCount;
 #else
     advSettings.maxVorbisCodecs = Settings.RealChannelCount;
 #endif
@@ -683,6 +680,10 @@ void FFMODStudioModule::CreateStudioSystem(EFMODSystemContext::Type Type)
     if (Type == EFMODSystemContext::Runtime)
     {
         // Add interrupt callbacks for Mobile
+#if PLATFORM_IOS || PLATFORM_TVOS
+        InitializeAudioSession();
+#endif
+
         FCoreDelegates::ApplicationWillDeactivateDelegate.AddRaw(this, &FFMODStudioModule::HandleApplicationWillDeactivate);
         FCoreDelegates::ApplicationHasReactivatedDelegate.AddRaw(this, &FFMODStudioModule::HandleApplicationHasReactivated);
     }
@@ -695,7 +696,7 @@ void FFMODStudioModule::CreateStudioSystem(EFMODSystemContext::Type Type)
 
         if (Type == EFMODSystemContext::Runtime)
         {
-            ClockSinks[Type]->SetUpdateListenerPositionDelegate(FTimerDelegate::CreateRaw(this, &FFMODStudioModule::UpdateViewportPosition));
+            ClockSinks[Type]->SetUpdateListenerPositionDelegate(FFMODStudioSystemClockSink::FUpdateListenerPosition::CreateRaw(this, &FFMODStudioModule::UpdateListeners));
         }
 
         MediaModule->GetClock().AddSink(ClockSinks[Type].ToSharedRef());
@@ -781,11 +782,6 @@ void FFMODStudioModule::DestroyStudioSystem(EFMODSystemContext::Type Type)
 
 bool FFMODStudioModule::Tick(float DeltaTime)
 {
-    if (GIsEditor)
-    {
-        BankUpdateNotifier.Update();
-    }
-
     if (ClockSinks[EFMODSystemContext::Auditioning].IsValid())
     {
         verifyfmod(ClockSinks[EFMODSystemContext::Auditioning]->LastResult);
@@ -818,52 +814,76 @@ bool FFMODStudioModule::Tick(float DeltaTime)
     return true;
 }
 
-void FFMODStudioModule::UpdateViewportPosition()
+void FFMODStudioModule::UpdateListeners()
 {
+    int ListenerIndex = 0;
+    bListenerMoved = false;
+
+#if WITH_EDITOR
     if (bSimulating)
     {
         return;
     }
-    int ListenerIndex = 0;
 
-    UWorld *ViewportWorld = nullptr;
-    if (GEngine && GEngine->GameViewport)
+    if (GEngine)
     {
-        ViewportWorld = GEngine->GameViewport->GetWorld();
-    }
-
-    bool bCameraCut = false; // Not sure how to get View->bCameraCut from here
-    float DeltaSeconds = ((bCameraCut || !ViewportWorld) ? 0.f : ViewportWorld->GetDeltaSeconds());
-
-    bListenerMoved = false;
-
-    if (IsValid(ViewportWorld))
-    {
-        for (FConstPlayerControllerIterator Iterator = ViewportWorld->GetPlayerControllerIterator(); Iterator; ++Iterator)
+        // Every PIE session has its own world and local player controller(s), iterate all of them
+        for (auto ContextIt = GEngine->GetWorldContexts().CreateConstIterator(); ContextIt; ++ContextIt)
         {
-            APlayerController *PlayerController = Iterator->Get();
-            if (PlayerController)
+            const FWorldContext &PieContext = *ContextIt;
+
+            // We need to update the listener for all PIE worlds and all standalone game worlds. Since this code is only built WITH_EDITOR
+            // EWorldType::Game means a standalone game world in this scope.
+
+            if (PieContext.WorldType == EWorldType::PIE || PieContext.WorldType == EWorldType::Game)
             {
-                ULocalPlayer *LocalPlayer = PlayerController->GetLocalPlayer();
-                if (LocalPlayer)
+                if (PieContext.GameViewport)
                 {
-                    FVector Location;
-                    FVector ProjFront;
-                    FVector ProjRight;
-                    PlayerController->GetAudioListenerPosition(/*out*/ Location, /*out*/ ProjFront, /*out*/ ProjRight);
-                    FVector ProjUp = FVector::CrossProduct(ProjFront, ProjRight);
-
-                    FTransform ListenerTransform(FRotationMatrix::MakeFromXY(ProjFront, ProjRight));
-                    ListenerTransform.SetTranslation(Location);
-                    ListenerTransform.NormalizeRotation();
-
-                    SetListenerPosition(ListenerIndex, ViewportWorld, ListenerTransform, DeltaSeconds);
-
-                    ListenerIndex++;
+                    UpdateWorldListeners(PieContext.GameViewport->GetWorld(), &ListenerIndex);
                 }
             }
         }
-        FinishSetListenerPosition(ListenerIndex, DeltaSeconds);
+    }
+#else
+    if (GEngine && GEngine->GameViewport)
+    {
+        UpdateWorldListeners(GEngine->GameViewport->GetWorld(), &ListenerIndex);
+    }
+#endif
+
+    FinishSetListenerPosition(ListenerIndex);
+}
+
+void FFMODStudioModule::UpdateWorldListeners(UWorld *World, int *ListenerIndex)
+{
+    if (!World)
+    {
+        return;
+    }
+
+    float DeltaSeconds = World->GetDeltaSeconds();
+
+    for (auto Iterator = GEngine->GetLocalPlayerIterator(World); Iterator; ++Iterator)
+    {
+        ULocalPlayer *LocalPlayer = *Iterator;
+
+        if (LocalPlayer && LocalPlayer->PlayerController)
+        {
+            APlayerController *PlayerController = LocalPlayer->PlayerController;
+            FVector Location;
+            FVector ProjFront;
+            FVector ProjRight;
+            PlayerController->GetAudioListenerPosition(Location, ProjFront, ProjRight);
+            FVector ProjUp = FVector::CrossProduct(ProjFront, ProjRight);
+
+            FTransform ListenerTransform(FRotationMatrix::MakeFromXY(ProjFront, ProjRight));
+            ListenerTransform.SetTranslation(Location);
+            ListenerTransform.NormalizeRotation();
+
+            SetListenerPosition(*ListenerIndex, World, ListenerTransform, DeltaSeconds);
+
+            (*ListenerIndex)++;
+        }
     }
 }
 
@@ -902,6 +922,14 @@ void FFMODStudioModule::SetListenerPosition(int ListenerIndex, UWorld *World, co
     FMOD::Studio::System *System = IFMODStudioModule::Get().GetStudioSystem(EFMODSystemContext::Runtime);
     if (System && ListenerIndex < MAX_LISTENERS)
     {
+        // Expand number of listeners dynamically
+        if (ListenerIndex >= ListenerCount)
+        {
+            Listeners[ListenerIndex] = FFMODListener();
+            ListenerCount = ListenerIndex + 1;
+            verifyfmod(System->setNumListeners(ListenerCount));
+        }
+
         FVector ListenerPos = ListenerTransform.GetTranslation();
 
         FInteriorSettings *InteriorSettings =
@@ -927,21 +955,12 @@ void FFMODStudioModule::SetListenerPosition(int ListenerIndex, UWorld *World, co
         Attributes.forward = FMODUtils::ConvertUnitVector(Forward);
         Attributes.up = FMODUtils::ConvertUnitVector(Up);
         Attributes.velocity = FMODUtils::ConvertWorldVector(Listeners[ListenerIndex].Velocity);
-
-        // Expand number of listeners dynamically
-        if (ListenerIndex >= ListenerCount)
-        {
-            Listeners[ListenerIndex] = FFMODListener();
-            ListenerCount = ListenerIndex + 1;
-            verifyfmod(System->setNumListeners(ListenerCount));
-        }
         verifyfmod(System->setListenerAttributes(ListenerIndex, &Attributes));
-
         bListenerMoved = true;
     }
 }
 
-void FFMODStudioModule::FinishSetListenerPosition(int NumListeners, float DeltaSeconds)
+void FFMODStudioModule::FinishSetListenerPosition(int NumListeners)
 {
     FMOD::Studio::System *System = IFMODStudioModule::Get().GetStudioSystem(EFMODSystemContext::Runtime);
     if (!System || NumListeners < 1)
@@ -1053,31 +1072,8 @@ void FFMODStudioModule::FinishSetListenerPosition(int NumListeners, float DeltaS
 
 void FFMODStudioModule::RefreshSettings()
 {
-    AssetTable.Refresh();
-    if (GIsEditor)
-    {
-        const UFMODSettings &Settings = *GetDefault<UFMODSettings>();
-        BankUpdateNotifier.SetFilePath(Settings.GetFullBankPath() / AssetTable.GetMasterStringsBankPath());
-
-        // Initialize ActiveLocale based on settings
-        FString LocaleCode = "";
-
-        if (Settings.Locales.Num() > 0)
-        {
-            LocaleCode = Settings.Locales[0].LocaleCode;
-
-            for (int32 i = 0; i < Settings.Locales.Num(); ++i)
-            {
-                if (Settings.Locales[i].bDefault)
-                {
-                    LocaleCode = Settings.Locales[i].LocaleCode;
-                    break;
-                }
-            }
-        }
-
-        AssetTable.SetLocale(LocaleCode);
-    }
+    AssetTable.Load();
+    AssetTable.SetLocale(GetLocale());
 }
 
 void FFMODStudioModule::SetInPIE(bool bInPIE, bool simulating)
@@ -1086,11 +1082,6 @@ void FFMODStudioModule::SetInPIE(bool bInPIE, bool simulating)
     bSimulating = simulating;
     bListenerMoved = true;
     ResetInterpolation();
-
-    if (GIsEditor)
-    {
-        BankUpdateNotifier.EnableUpdate(!bInPIE);
-    }
 
     FMOD_DEBUG_FLAGS flags;
 
@@ -1111,11 +1102,8 @@ void FFMODStudioModule::SetInPIE(bool bInPIE, bool simulating)
         // TODO: Stop sounds for the Editor system? What should happen if the user previews a sequence with transport
         // controls then starts a PIE session? What does happen?
 
-        UE_LOG(LogFMOD, Log, TEXT("Creating runtime Studio System"));
         ListenerCount = 1;
         CreateStudioSystem(EFMODSystemContext::Runtime);
-
-        UE_LOG(LogFMOD, Log, TEXT("Loading Banks"));
         LoadBanks(EFMODSystemContext::Runtime);
 
         const UFMODSettings &Settings = *GetDefault<UFMODSettings>();
@@ -1134,12 +1122,12 @@ void FFMODStudioModule::SetInPIE(bool bInPIE, bool simulating)
 
 UFMODAsset *FFMODStudioModule::FindAssetByName(const FString &Name)
 {
-    return AssetTable.FindByName(Name);
+    return AssetTable.GetAssetByStudioPath(Name);
 }
 
 UFMODEvent *FFMODStudioModule::FindEventByName(const FString &Name)
 {
-    UFMODAsset *Asset = AssetTable.FindByName(Name);
+    UFMODAsset *Asset = FindAssetByName(Name);
     return Cast<UFMODEvent>(Asset);
 }
 
@@ -1165,7 +1153,9 @@ void FFMODStudioModule::SetSystemPaused(bool paused)
 {
     if (StudioSystem[EFMODSystemContext::Runtime])
     {
-        if (bMixerPaused != paused)
+        bool expected = !paused;
+
+        if (bMixerPaused.compare_exchange_strong(expected, paused))
         {
             FMOD::System *LowLevelSystem = nullptr;
             verifyfmod(StudioSystem[EFMODSystemContext::Runtime]->getCoreSystem(&LowLevelSystem));
@@ -1185,13 +1175,7 @@ void FFMODStudioModule::SetSystemPaused(bool paused)
                 LowLevelSystem->mixerSuspend();
             }
         }
-
-        bMixerPaused = paused;
     }
-}
-
-void FFMODStudioModule::PostLoadCallback()
-{
 }
 
 void FFMODStudioModule::ShutdownModule()
@@ -1209,11 +1193,6 @@ void FFMODStudioModule::ShutdownModule()
 
     if (MemPool)
         FMemory::Free(MemPool);
-
-    if (GIsEditor)
-    {
-        BankUpdateNotifier.BanksUpdatedEvent.RemoveAll(this);
-    }
 
     if (UObjectInitialized())
     {
@@ -1275,6 +1254,27 @@ bool FFMODStudioModule::SetLocale(const FString& LocaleName)
     return false;
 }
 
+FString FFMODStudioModule::GetLocale()
+{
+    FString LocaleCode = "";
+    const UFMODSettings& Settings = *GetDefault<UFMODSettings>();
+
+    if (Settings.Locales.Num() > 0)
+    {
+        LocaleCode = Settings.Locales[0].LocaleCode;
+
+        for (int32 i = 0; i < Settings.Locales.Num(); ++i)
+        {
+            if (Settings.Locales[i].bDefault)
+            {
+                LocaleCode = Settings.Locales[i].LocaleCode;
+                break;
+            }
+        }
+    }
+    return LocaleCode;
+}
+
 void FFMODStudioModule::LoadBanks(EFMODSystemContext::Type Type)
 {
     const UFMODSettings &Settings = *GetDefault<UFMODSettings>();
@@ -1316,7 +1316,7 @@ void FFMODStudioModule::LoadBanks(EFMODSystemContext::Type Type)
             BankEntries.Add(NamedBankEntry(MasterBankPath, MasterBank, Result));
         }
 
-        if (Result == FMOD_OK)
+        if (Result == FMOD_OK && !AssetTable.GetMasterAssetsBankPath().IsEmpty())
         {
             FMOD::Studio::Bank *MasterAssetsBank = nullptr;
             FString MasterAssetsBankPath = Settings.GetFullBankPath() / AssetTable.GetMasterAssetsBankPath();
@@ -1420,13 +1420,14 @@ void FFMODStudioModule::LoadBanks(EFMODSystemContext::Type Type)
     bBanksLoaded = true;
 }
 
-void FFMODStudioModule::HandleBanksUpdated()
+#if WITH_EDITOR
+void FFMODStudioModule::ReloadBanks()
 {
     UE_LOG(LogFMOD, Verbose, TEXT("Refreshing auditioning system"));
 
     DestroyStudioSystem(EFMODSystemContext::Auditioning);
 
-    AssetTable.Refresh();
+    AssetTable.Load();
 
     CreateStudioSystem(EFMODSystemContext::Auditioning);
     LoadBanks(EFMODSystemContext::Auditioning);
@@ -1434,9 +1435,8 @@ void FFMODStudioModule::HandleBanksUpdated()
     DestroyStudioSystem(EFMODSystemContext::Editor);
     CreateStudioSystem(EFMODSystemContext::Editor);
     LoadBanks(EFMODSystemContext::Editor);
-
-    BanksReloadedDelegate.Broadcast();
 }
+#endif
 
 FMOD::Studio::System *FFMODStudioModule::GetStudioSystem(EFMODSystemContext::Type Context)
 {
@@ -1491,5 +1491,59 @@ void FFMODStudioModule::StopAuditioningInstance()
         AuditioningInstance = nullptr;
     }
 }
+
+#if PLATFORM_IOS || PLATFORM_TVOS
+void FFMODStudioModule::InitializeAudioSession()
+{
+    [[NSNotificationCenter defaultCenter] addObserverForName:AVAudioSessionInterruptionNotification object:nil queue:nil usingBlock:^(NSNotification *notification)
+    {
+        switch ([[notification.userInfo valueForKey:AVAudioSessionInterruptionTypeKey] unsignedIntegerValue])
+        {
+            case AVAudioSessionInterruptionTypeBegan:
+            {
+                if (@available(iOS 10.3, *))
+                {
+                    if ([[notification.userInfo valueForKey:AVAudioSessionInterruptionWasSuspendedKey] boolValue])
+                    {
+                        // If the system suspended the app process and deactivated the audio session then we get a delayed
+                        // interruption notification when the app is re-activated. Just ignore that here.
+                        return;
+                    }
+                }
+                SetSystemPaused(true);
+                break;
+            }
+            case AVAudioSessionInterruptionTypeEnded:
+            {
+                ActivateAudioSession();
+                SetSystemPaused(false);
+                break;
+            }
+        }
+    }];
+
+    [[NSNotificationCenter defaultCenter] addObserverForName:UIApplicationDidBecomeActiveNotification object:nil queue:nil usingBlock:^(NSNotification *notification)
+    {
+    #if PLATFORM_TVOS
+        SetSystemPaused(true);
+    #endif
+        ActivateAudioSession();
+        SetSystemPaused(false);
+    }];
+
+    ActivateAudioSession();
+}
+
+void FFMODStudioModule::ActivateAudioSession()
+{
+    NSError* ActiveError = nil;
+    [[AVAudioSession sharedInstance] setActive:TRUE error:&ActiveError];
+
+    if (ActiveError)
+    {
+        UE_LOG(LogFMOD, Error, TEXT("Failed to set audio session to active = %d [Error = %s]"), TRUE, *FString([ActiveError description]));
+    }
+}
+#endif
 
 #undef LOCTEXT_NAMESPACE
