@@ -12,6 +12,8 @@ class UFMODBankLookup;
 class FFMODAssetTable : public FGCObject
 {
 public:
+	FFMODAssetTable();
+
     //~ FGCObject
     void AddReferencedObjects(FReferenceCollector& Collector) override;
 
