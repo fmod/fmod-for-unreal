@@ -1,7 +1,7 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2020.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2021.
 
 #include "FMODAudioComponentDetails.h"
-#include "Toolkits/AssetEditorManager.h"
+#include "Subsystems/AssetEditorSubsystem.h"
 #include "FMODAmbientSound.h"
 #include "FMODStudioModule.h"
 #include "FMODEvent.h"
@@ -73,7 +73,7 @@ FReply FFMODAudioComponentDetails::OnEditSoundClicked()
 {
     if (AudioComponent.IsValid())
     {
-        UFMODEvent *Event = AudioComponent.Get()->Event.Get();
+        UFMODEvent *Event = AudioComponent.Get()->Event;
         if (Event)
         {
             GEditor->GetEditorSubsystem<UAssetEditorSubsystem>()->OpenEditorForAsset(Event);
@@ -87,7 +87,7 @@ FReply FFMODAudioComponentDetails::OnPlaySoundClicked()
 {
     if (AudioComponent.IsValid())
     {
-        UFMODEvent *Event = AudioComponent.Get()->Event.Get();
+        UFMODEvent *Event = AudioComponent.Get()->Event;
         if (IsValid(Event))
         {
             FMOD::Studio::EventInstance *Instance = IFMODStudioModule::Get().CreateAuditioningInstance(Event);

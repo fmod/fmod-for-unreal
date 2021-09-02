@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2020.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2021.
 
 #include "FMODAmbientSound.h"
 #include "FMODEvent.h"
@@ -19,7 +19,7 @@ AFMODAmbientSound::AFMODAmbientSound(const FObjectInitializer &ObjectInitializer
 
     RootComponent = AudioComponent;
 
-    SetReplicates(false);
+    bReplicates = false;
     SetHidden(true);
     SetCanBeDamaged(true);
 }
@@ -59,7 +59,7 @@ bool AFMODAmbientSound::GetReferencedContentObjects(TArray<UObject *> &Objects) 
 {
     if (IsValid(AudioComponent) && AudioComponent->Event)
     {
-        Objects.Add(AudioComponent->Event.Get());
+        Objects.Add(AudioComponent->Event);
     }
     return true;
 }

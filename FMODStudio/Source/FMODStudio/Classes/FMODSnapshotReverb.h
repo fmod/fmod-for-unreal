@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2020.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2021.
 
 #pragma once
 
@@ -18,12 +18,8 @@ class FMODSTUDIO_API UFMODSnapshotReverb : public UReverbEffect
     UPROPERTY()
     FGuid AssetGuid;
 
-    /** Whether to show in the content window */
-    UPROPERTY()
-    bool bShowAsAsset;
-
-    /** Force this to be an asset */
-    virtual bool IsAsset() const override { return bShowAsAsset; }
+    /** Non default instances of UFMODAsset are assets */
+    virtual bool IsAsset() const override;
 
 #if WITH_EDITORONLY_DATA
     virtual void PostEditChangeProperty(FPropertyChangedEvent &PropertyChangedEvent) override;

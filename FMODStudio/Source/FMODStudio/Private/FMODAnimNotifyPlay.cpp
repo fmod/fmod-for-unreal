@@ -15,27 +15,27 @@ UFMODAnimNotifyPlay::UFMODAnimNotifyPlay()
 
 void UFMODAnimNotifyPlay::Notify(USkeletalMeshComponent *MeshComp, UAnimSequenceBase *AnimSeq)
 {
-    if (Event.IsValid())
+    if (Event)
     {
         if (bFollow)
         {
             // Play event attached
             UFMODBlueprintStatics::PlayEventAttached(
-                Event.Get(), MeshComp, *AttachName, FVector(0, 0, 0), EAttachLocation::KeepRelativeOffset, false, true, true);
+                Event, MeshComp, *AttachName, FVector(0, 0, 0), EAttachLocation::KeepRelativeOffset, false, true, true);
         }
         else
         {
             // Play event at location
-            UFMODBlueprintStatics::PlayEventAtLocation(MeshComp, Event.Get(), MeshComp->GetComponentTransform(), true);
+            UFMODBlueprintStatics::PlayEventAtLocation(MeshComp, Event, MeshComp->GetComponentTransform(), true);
         }
     }
 }
 
 FString UFMODAnimNotifyPlay::GetNotifyName_Implementation() const
 {
-    if (Event.IsValid())
+    if (Event)
     {
-        return (Event.Get())->GetName();
+        return Event->GetName();
     }
     else
     {

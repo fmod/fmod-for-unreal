@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2020.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2021.
 using UnrealBuildTool;
 using System;
 using System.IO;
@@ -8,16 +8,17 @@ namespace UnrealBuildTool.Rules
 {
     public class FMODStudio : ModuleRules
     {
-        string LibRootDirectory								{ get { return Path.Combine(ModuleDirectory, @"..\..\Binaries\"); } }
-        protected virtual string FMODLibDir					{ get { return null; } }
+        string LibRootDirectory                             { get { return Path.Combine(ModuleDirectory, @"..\..\Binaries\"); } }
+        protected virtual string FMODLibDir                 { get { return null; } }
 
-        protected virtual string ConsoleLinkExt				{ get { return null; } }
-        protected virtual string ConsoleDllExt				{ get { return null; } }
-        protected virtual string ConsoleLibPrefix			{ get { return null; } }
+        protected virtual string ConsoleLinkExt             { get { return null; } }
+        protected virtual string ConsoleDllExt              { get { return null; } }
+        protected virtual string ConsoleLibPrefix           { get { return null; } }
 
-        protected virtual bool ConsoleRuntimeDependencies	{ get { return true; } }
-        protected virtual bool ConsoleDelayLoad				{ get { return false; } }
-        protected virtual bool LinkDebugFiles				{ get { return false; } }
+        protected virtual bool ConsoleRuntimeDependencies   { get { return true; } }
+        protected virtual bool ConsoleDelayLoad             { get { return false; } }
+        protected virtual bool LinkDebugFiles               { get { return false; } }
+        protected virtual bool CopyLibs                     { get { return false; } }
 
         public FMODStudio(ReadOnlyTargetRules Target) : base(Target)
         {
@@ -50,9 +51,10 @@ namespace UnrealBuildTool.Rules
 
             if (Target.bBuildEditor == true)
             {
+                PublicDependencyModuleNames.Add("DeveloperToolSettings");
                 PrivateDependencyModuleNames.Add("AssetRegistry");
-                PrivateDependencyModuleNames.Add("UnrealEd");
                 PrivateDependencyModuleNames.Add("Settings");
+                PrivateDependencyModuleNames.Add("UnrealEd");
             }
 
             DynamicallyLoadedModuleNames.AddRange(
@@ -89,22 +91,7 @@ namespace UnrealBuildTool.Rules
 
                 libPath = System.IO.Path.Combine(LibRootDirectory, platformName);
 
-                // Minimum UE version for Switch 4.15
-                System.Console.WriteLine("Target Platform -- " + Target.Platform.ToString());
-                if (Target.Platform == UnrealTargetPlatform.Switch)
-                {
-                    linkExtension = ".a";
-                    dllExtension = ".a";
-                    libPrefix = "lib";
-                    bAddRuntimeDependencies = false;
-                }
-                else if (Target.Platform.ToString() == "UWP64")
-                {
-                    linkExtension = ".lib";
-                    dllExtension = ".dll";
-                    bAddDelayLoad = true;
-                }
-                else if (Target.IsInPlatformGroup(UnrealPlatformGroup.Windows))
+                if (Target.IsInPlatformGroup(UnrealPlatformGroup.Windows))
                 {
                     linkExtension = "_vc.lib";
                     dllExtension = ".dll";
@@ -116,18 +103,6 @@ namespace UnrealBuildTool.Rules
                     libPrefix = "lib";
 
                     libPath = System.IO.Path.Combine(ModuleDirectory, "../../Libs/Mac/");
-                }
-                else if (Target.Platform == UnrealTargetPlatform.XboxOne)
-                {
-                    linkExtension = "_vc.lib";
-                    dllExtension = ".dll";
-                }
-                else if (Target.Platform == UnrealTargetPlatform.PS4)
-                {
-                    linkExtension = "_stub.a";
-                    dllExtension = ".prx";
-                    libPrefix = "lib";
-                    bAddDelayLoad = true;
                 }
                 else if (Target.Platform == UnrealTargetPlatform.Android)
                 {
@@ -185,7 +160,7 @@ namespace UnrealBuildTool.Rules
 
             if (Target.IsInPlatformGroup(UnrealPlatformGroup.Android))
             {
-                string[] archs = new string[] { "armeabi-v7a", "arm64-v8a", "x86_64" };
+                string[] archs = new string[] { "arm64-v8a", "x86_64" };
                 foreach (string arch in archs)
                 {
                     string LibPath = System.IO.Path.Combine(libPath, arch);
@@ -199,7 +174,18 @@ namespace UnrealBuildTool.Rules
                 PublicAdditionalLibraries.Add(fmodStudioLibPath);
             }
 
-            if (bAddRuntimeDependencies)
+            if (CopyLibs)
+            {
+                RuntimeDependencies.Add("$(TargetOutputDir)/" + fmodDllName, fmodDllPath);
+                RuntimeDependencies.Add("$(TargetOutputDir)/" + fmodStudioDllName, fmodStudioDllPath);
+                foreach (string plugin in plugins)
+                {
+                    string pluginPath = System.IO.Path.Combine(libPath, plugin + dllExtension);
+                    System.Console.WriteLine("Adding reference to FMOD plugin: " + pluginPath);
+                    RuntimeDependencies.Add("$(TargetOutputDir)/" + plugin + dllExtension, pluginPath);
+                }
+            }
+            else if (bAddRuntimeDependencies)
             {
                 RuntimeDependencies.Add(fmodDllPath);
                 RuntimeDependencies.Add(fmodStudioDllPath);
@@ -242,23 +228,6 @@ namespace UnrealBuildTool.Rules
                         AdditionalPropertiesForReceipt.Add("AndroidPlugin", RelPluginPath);
                     }
                 }
-            }
-        }
-
-        private void CopyFile(string source, string dest)
-        {
-            //System.Console.WriteLine("Copying {0} to {1}", source, dest);
-            if (System.IO.File.Exists(dest))
-            {
-                System.IO.File.SetAttributes(dest, System.IO.File.GetAttributes(dest) & ~System.IO.FileAttributes.ReadOnly);
-            }
-            try
-            {
-                System.IO.File.Copy(source, dest, true);
-            }
-            catch (System.Exception ex)
-            {
-                System.Console.WriteLine("Failed to copy file: {0}", ex.Message);
             }
         }
 

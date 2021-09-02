@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2020.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2021.
 
 #pragma once
 
@@ -25,4 +25,7 @@ public:
 	 * @return True if the module is loaded and ready to use
 	 */
     static inline bool IsAvailable() { return FModuleManager::Get().IsModuleLoaded("FMODStudioEditor"); }
+
+	/** This event is fired after all banks were reloaded */
+	virtual FSimpleMulticastDelegate &BanksReloadedEvent() = 0;
 };
