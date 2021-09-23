@@ -40,7 +40,7 @@ int32 UFMODGenerateAssetsCommandlet::Main(const FString& CommandLine)
         IPlatformFile& FileManager = FPlatformFileManager::Get().GetPlatformFile();
         for (FString folder : Settings.GeneratedFolders)
         {
-            FolderToDelete = FPaths::ProjectContentDir() + Settings.ContentBrowserPrefix.Path / folder;
+            FolderToDelete = FPaths::ProjectContentDir() + Settings.ContentBrowserPrefix + folder;
             bool removed = FileManager.DeleteDirectoryRecursively(*FolderToDelete);
             if (!removed)
             {

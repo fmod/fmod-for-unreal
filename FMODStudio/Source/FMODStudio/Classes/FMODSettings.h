@@ -250,8 +250,8 @@ public:
     /**
 	 * Directory for content to appear in content window. Be careful changing this!
 	 */
-    UPROPERTY(config, EditAnywhere, Category = Advanced, meta = (RelativeToGameContentDir))
-    FDirectoryPath ContentBrowserPrefix;
+    UPROPERTY(config, EditAnywhere, Category = Advanced)
+    FString ContentBrowserPrefix;
 
     /**
 	 * Force platform directory name, or leave empty for automatic (Desktop/Mobile/PS4/XBoxOne)

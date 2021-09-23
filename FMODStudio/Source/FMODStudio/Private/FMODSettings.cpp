@@ -20,7 +20,7 @@ UFMODSettings::UFMODSettings(const FObjectInitializer &ObjectInitializer)
     MasterBankName = TEXT("Master");
     BankOutputDirectory.Path = TEXT("FMOD");
     OutputFormat = EFMODSpeakerMode::Surround_5_1;
-    ContentBrowserPrefix.Path = TEXT("FMOD");
+    ContentBrowserPrefix = TEXT("/Game/FMOD/");
     bLoadAllBanks = true;
     bLoadAllSampleData = false;
     bEnableLiveUpdate = true;
@@ -93,7 +93,7 @@ FString UFMODSettings::GetMasterStringsBankFilename() const
 
 FString UFMODSettings::GetFullContentPath() const
 {
-    return TEXT("/Game/") + ContentBrowserPrefix.Path;
+    return ContentBrowserPrefix;
 }
 
 #if WITH_EDITOR

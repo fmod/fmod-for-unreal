@@ -1059,12 +1059,8 @@ void FFMODStudioModule::FinishSetListenerPosition(int NumListeners)
 
 void FFMODStudioModule::RefreshSettings()
 {
-    // Avoid this from command line, in case the lookups aren't built yet.
-    if (!IsRunningCommandlet())
-    {
-        AssetTable.Load();
-        AssetTable.SetLocale(GetLocale());
-    }
+    AssetTable.Load();
+    AssetTable.SetLocale(GetLocale());
 }
 
 void FFMODStudioModule::SetInPIE(bool bInPIE, bool simulating)

@@ -505,8 +505,8 @@ UFMODAsset *FFMODAssetBuilder::CreateAsset(const AssetCreateInfo& CreateInfo, TA
 
     if (CreateInfo.Class == UFMODSnapshot::StaticClass())
     {
-        FString OldPrefix = Settings.ContentBrowserPrefix.Path / GetAssetClassName(Asset->GetClass());
-        FString NewPrefix = Settings.ContentBrowserPrefix.Path / GetAssetClassName(UFMODSnapshotReverb::StaticClass());
+        FString OldPrefix = Settings.ContentBrowserPrefix + GetAssetClassName(Asset->GetClass());
+        FString NewPrefix = Settings.ContentBrowserPrefix + GetAssetClassName(UFMODSnapshotReverb::StaticClass());
         UObject *Outer = Asset->GetOuter() ? Asset->GetOuter() : Asset;
         FString ReverbPackagePath = Outer->GetPathName().Replace(*OldPrefix, *NewPrefix);
 
@@ -594,8 +594,8 @@ void FFMODAssetBuilder::DeleteAssets(TArray<UObject*>& AssetsToDelete)
         {
             // Also delete the reverb asset
             const UFMODSettings &Settings = *GetDefault<UFMODSettings>();
-            FString OldPrefix = Settings.ContentBrowserPrefix.Path / GetAssetClassName(Asset->GetClass());
-            FString NewPrefix = Settings.ContentBrowserPrefix.Path / GetAssetClassName(UFMODSnapshotReverb::StaticClass());
+            FString OldPrefix = Settings.ContentBrowserPrefix + GetAssetClassName(Asset->GetClass());
+            FString NewPrefix = Settings.ContentBrowserPrefix + GetAssetClassName(UFMODSnapshotReverb::StaticClass());
             FString ReverbName = Asset->GetPathName().Replace(*OldPrefix, *NewPrefix);
             UObject *Reverb = StaticFindObject(UFMODSnapshotReverb::StaticClass(), nullptr, *ReverbName);
 
