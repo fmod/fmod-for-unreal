@@ -421,6 +421,14 @@ FString FFMODStudioModule::GetDllPath(const TCHAR *ShortName, bool bExplicitPath
 
 bool FFMODStudioModule::LoadLibraries()
 {
+#if PLATFORM_WINDOWS
+	if (!FWindowsPlatformMisc::CoInitialize())
+	{
+		UE_LOG(LogFMOD, Error, TEXT("Could not initialize COM library!"));
+		return false;
+	}
+#endif
+
 #if PLATFORM_IOS || PLATFORM_TVOS || PLATFORM_ANDROID || PLATFORM_LINUX || PLATFORM_MAC || defined(FMOD_DONT_LOAD_LIBRARIES)
     return true; // Nothing to do on those platforms
 #else
