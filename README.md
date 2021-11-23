@@ -1,15 +1,7 @@
-# ue4integration
-FMOD Studio UE4 Integration
----------------------------
-Source for the the UE4 FMOD Studio plugin.  It contains the source code but does
-not contain the FMOD libs for any platform. Master branch supports the latest FMOD
-and UE4 versions, check branches for previous versions.
+# FMOD For Unreal
 
-This repository is only useful for developers who are building UE4 from source,
-or those who wish to rebuild plugin binaries via the command line.
+This repository contains the source code for the FMOD Studio Unreal integration, excluding any platforms that require a non-disclosure agreement (such as Xbox). Additionally, native binaries for all platforms have been removed and must be acquired from a built package. Developers can use this repository to track changes, report issues or submit modifications.
 
-The FMOD libs can be found at http://www.fmod.com/download
-either in the official UE4 plugin release, or else the programmers API download.
-
-For more information about the FMOD integration, online documentation is available at
-http://www.fmod.org/documentation/#content/generated/engine_ue4/overview.html
+* Packages which include binaries can be downloaded from the FMOD [download page](https://fmod.com/download#unrealintegration).
+* For getting started information, up-to-date documentation and compatibility details check the FMOD For Unreal [documentation site](https://fmod.com/resources/documentation-unreal).
+* Free support is available on the FMOD [forums](https://qa.fmod.com/c/ue4) for all users, paid / licensed support available by email.
