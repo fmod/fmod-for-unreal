@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2020.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2021.
 
 #pragma once
 
@@ -135,7 +135,7 @@ public:
 
     /** The event asset to use for this sound. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = FMODAudio)
-    TAssetPtr<class UFMODEvent> Event;
+    UFMODEvent* Event;
 
     /** Event parameter cache. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, SimpleDisplay, Category = FMODAudio)
@@ -147,7 +147,7 @@ public:
     FString ProgrammerSoundName;
 
     /** Enable timeline callbacks for this sound, so that OnTimelineMarker and OnTimelineBeat can be used. */
-    UPROPERTY(EditAnywhere, Category = FMODAudio)
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = FMODAudio)
     uint32 bEnableTimelineCallbacks : 1;
 
     /** Stored properties to apply next time we create an instance. */
@@ -194,9 +194,9 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Audio|FMOD|Components")
     void Release();
 
-    /** Trigger a cue in an event. */
+    /**  Allow an event to continue past a sustain point. */
     UFUNCTION(BlueprintCallable, Category = "Audio|FMOD|Components")
-    void TriggerCue();
+    void KeyOff();
 
     /** Return true if this component is currently playing an event. */
     UFUNCTION(BlueprintCallable, Category = "Audio|FMOD|Components")
@@ -284,7 +284,7 @@ public:
 
 public:
     /** Internal play function which can play events in the editor. */
-    void PlayInternal(EFMODSystemContext::Type Context);
+    void PlayInternal(EFMODSystemContext::Type Context, bool bReset = false);
 
     /** Actual Studio instance handle. */
     FMOD::Studio::EventInstance *StudioInstance;
@@ -316,9 +316,7 @@ public:
 
 private:
 // Begin ActorComponent interface.
-#if WITH_EDITORONLY_DATA
     virtual void OnRegister() override;
-#endif
     virtual void OnUnregister() override;
     virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
     virtual void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;

@@ -1,12 +1,12 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2020.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2021.
 
 #include "FMODEventEditor.h"
 #include "FMODEvent.h"
+#include "FMODStudioEditorModule.h"
 #include "FMODStudioModule.h"
 #include "FMODUtils.h"
 #include "SFMODEventEditorPanel.h"
 #include "Widgets/Docking/SDockTab.h"
-//#include "WorkspaceMenuStructureModule.h"
 #include "fmod_studio.hpp"
 #include "UnrealEd/Public/Editor.h"
 
@@ -39,13 +39,13 @@ void FFMODEventEditor::UnregisterTabSpawners(const TSharedRef<class FTabManager>
 FFMODEventEditor::FFMODEventEditor()
     : CurrentPreviewEventInstance(nullptr)
 {
-    IFMODStudioModule::Get().BanksReloadedEvent().AddRaw(this, &FFMODEventEditor::HandleBanksReloaded);
+    IFMODStudioEditorModule::Get().BanksReloadedEvent().AddRaw(this, &FFMODEventEditor::HandleBanksReloaded);
     BeginPIEDelegateHandle = FEditorDelegates::BeginPIE.AddRaw(this, &FFMODEventEditor::HandleBeginPIE);
 }
 
 FFMODEventEditor::~FFMODEventEditor()
 {
-    IFMODStudioModule::Get().BanksReloadedEvent().RemoveAll(this);
+    IFMODStudioEditorModule::Get().BanksReloadedEvent().RemoveAll(this);
     FEditorDelegates::BeginPIE.Remove(BeginPIEDelegateHandle);
 
     CurrentPreviewEventInstance = nullptr;

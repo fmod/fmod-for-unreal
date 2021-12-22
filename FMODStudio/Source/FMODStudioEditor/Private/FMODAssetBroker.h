@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2020.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2021.
 
 #pragma once
 
@@ -32,7 +32,7 @@ public:
     {
         if (UFMODAudioComponent *AudioComp = Cast<UFMODAudioComponent>(InComponent))
         {
-            return AudioComp->Event.Get();
+            return AudioComp->Event;
         }
         return NULL;
     }

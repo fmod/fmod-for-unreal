@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2020.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2021.
 
 #pragma once
 
@@ -6,17 +6,17 @@
 #include "UObject/ObjectMacros.h"
 #include "Sections/MovieSceneParameterSection.h"
 #include "MovieSceneNameableTrack.h"
+#include "Compilation/IMovieSceneTrackTemplateProducer.h"
 #include "FMODEventParameterTrack.generated.h"
 
 /** Handles manipulation of event parameters in a movie scene. */
 UCLASS(MinimalAPI)
-class UFMODEventParameterTrack : public UMovieSceneNameableTrack
+class UFMODEventParameterTrack : public UMovieSceneNameableTrack, public IMovieSceneTrackTemplateProducer
 {
     GENERATED_UCLASS_BODY()
 
 public:
-    // Begin UMovieSceneTrack interface
-    virtual FMovieSceneEvalTemplatePtr CreateTemplateForSection(const UMovieSceneSection &InSection) const override;
+    // UMovieSceneTrack interface
     virtual UMovieSceneSection *CreateNewSection() override;
     virtual void RemoveAllAnimationData() override;
     virtual bool HasSection(const UMovieSceneSection &Section) const override;
@@ -24,6 +24,10 @@ public:
     virtual void RemoveSection(UMovieSceneSection &Section) override;
     virtual bool IsEmpty() const override;
     virtual const TArray<UMovieSceneSection *> &GetAllSections() const override;
+
+    // ~IMovieSceneTrackTemplateProducer interface
+    virtual FMovieSceneEvalTemplatePtr CreateTemplateForSection(const UMovieSceneSection &InSection) const override;
+
 // End UMovieSceneTrack interface
 
 #if WITH_EDITORONLY_DATA

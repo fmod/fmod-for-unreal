@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2020.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2021.
 
 #include "FMODAsset.h"
 #include "FMODStudioModule.h"
@@ -8,6 +8,11 @@ static const TCHAR *FMODAssetTypeStrings[] = { TEXT("Bank"), TEXT("Event"), TEXT
 UFMODAsset::UFMODAsset(const FObjectInitializer &ObjectInitializer)
     : Super(ObjectInitializer)
 {
+}
+
+bool UFMODAsset::IsAsset() const
+{
+    return this != GetClass()->GetDefaultObject();
 }
 
 /** Get tags to show in content view */
