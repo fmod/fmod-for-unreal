@@ -1,6 +1,6 @@
 /* ======================================================================================== */
 /* FMOD Core API - Common C/C++ header file.                                                */
-/* Copyright (c), Firelight Technologies Pty, Ltd. 2004-2020.                               */
+/* Copyright (c), Firelight Technologies Pty, Ltd. 2004-2021.                               */
 /*                                                                                          */
 /* This header is included by fmod.hpp (C++ interface) and fmod.h (C interface)             */
 /*                                                                                          */
@@ -58,7 +58,7 @@ typedef unsigned long long         FMOD_PORT_INDEX;
 /*
     FMOD constants
 */
-#define FMOD_VERSION    0x00020106                     /* 0xaaaabbcc -> aaaa = product version, bb = major version, cc = minor version.*/
+#define FMOD_VERSION    0x00020114                     /* 0xaaaabbcc -> aaaa = product version, bb = major version, cc = minor version.*/
 
 typedef unsigned int FMOD_DEBUG_FLAGS;
 #define FMOD_DEBUG_LEVEL_NONE                       0x00000000
@@ -127,6 +127,8 @@ typedef unsigned int FMOD_SYSTEM_CALLBACK_TYPE;
 #define FMOD_SYSTEM_CALLBACK_POSTUPDATE             0x00000800
 #define FMOD_SYSTEM_CALLBACK_RECORDLISTCHANGED      0x00001000
 #define FMOD_SYSTEM_CALLBACK_BUFFEREDNOMIX          0x00002000
+#define FMOD_SYSTEM_CALLBACK_DEVICEREINITIALIZE     0x00004000
+#define FMOD_SYSTEM_CALLBACK_OUTPUTUNDERRUN         0x00008000
 #define FMOD_SYSTEM_CALLBACK_ALL                    0xFFFFFFFF
 
 typedef unsigned int FMOD_MODE;
@@ -212,7 +214,7 @@ typedef unsigned int FMOD_THREAD_STACK_SIZE;
 #define FMOD_THREAD_STACK_SIZE_MIXER                (80  * 1024)
 #define FMOD_THREAD_STACK_SIZE_FEEDER               (16  * 1024)
 #define FMOD_THREAD_STACK_SIZE_STREAM               (96  * 1024)
-#define FMOD_THREAD_STACK_SIZE_FILE                 (48  * 1024)
+#define FMOD_THREAD_STACK_SIZE_FILE                 (64  * 1024)
 #define FMOD_THREAD_STACK_SIZE_NONBLOCKING          (112 * 1024)
 #define FMOD_THREAD_STACK_SIZE_RECORD               (16  * 1024)
 #define FMOD_THREAD_STACK_SIZE_GEOMETRY             (48  * 1024)
@@ -433,6 +435,7 @@ typedef enum FMOD_OUTPUTTYPE
     FMOD_OUTPUTTYPE_NNAUDIO,
     FMOD_OUTPUTTYPE_WINSONIC,
     FMOD_OUTPUTTYPE_AAUDIO,
+    FMOD_OUTPUTTYPE_AUDIOWORKLET,
 
     FMOD_OUTPUTTYPE_MAX,
     FMOD_OUTPUTTYPE_FORCEINT = 65536
@@ -765,6 +768,7 @@ typedef struct FMOD_ADVANCEDSETTINGS
     FMOD_DSP_RESAMPLER  resamplerMethod;
     unsigned int        randomSeed;
     int                 maxConvolutionThreads;
+    int                 maxOpusCodecs;
 } FMOD_ADVANCEDSETTINGS;
 
 typedef struct FMOD_TAG

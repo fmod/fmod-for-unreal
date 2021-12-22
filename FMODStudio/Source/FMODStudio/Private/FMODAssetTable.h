@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2020.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2021.
 
 #pragma once
 
@@ -32,6 +32,7 @@ public:
     FString GetMasterStringsBankPath() const;
     FString GetMasterAssetsBankPath() const;
     void SetLocale(const FString &LocaleCode);
+    FString GetLocale() const;
     void GetAllBankPaths(TArray<FString> &BankPaths, bool IncludeMasterBank) const;
 
 private:

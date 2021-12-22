@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2020.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2021.
 
 #include "FMODStudioModule.h"
 #include "FMODSettings.h"
@@ -32,16 +32,14 @@
 #include "fmod_errors.h"
 #include "FMODStudioPrivatePCH.h"
 
+#include <atomic>
+
 #ifdef FMOD_PLATFORM_HEADER
 #include "FMODPlatform.h"
-#elif PLATFORM_PS4
-#include "FMODPlatformLoadDll_PS4.h"
-#elif PLATFORM_XBOXONE
-#include "FMODPlatformLoadDll_XBoxOne.h"
-#elif PLATFORM_SWITCH
-#include "FMODPlatformLoadDll_Switch.h"
-#else
-#include "FMODPlatformLoadDll_Generic.h"
+#endif
+
+#if PLATFORM_IOS || PLATFORM_TVOS
+#include <AVFoundation/AVAudioSession.h>
 #endif
 
 #define LOCTEXT_NAMESPACE "FMODStudio"
@@ -178,8 +176,13 @@ public:
     {
         AsyncTask(ENamedThreads::GameThread, [&]() { SetSystemPaused(true); });
     }
+
     void HandleApplicationHasReactivated()
     {
+#if PLATFORM_IOS || PLATFORM_TVOS
+        ActivateAudioSession();
+#endif
+
         AsyncTask(ENamedThreads::GameThread, [&]() { SetSystemPaused(false); });
     }
 
@@ -253,7 +256,14 @@ public:
 
     virtual bool SetLocale(const FString& Locale) override;
 
+    virtual FString GetLocale() override;
+
     void ResetInterpolation();
+
+#if PLATFORM_IOS || PLATFORM_TVOS
+    void InitializeAudioSession();
+    void ActivateAudioSession();
+#endif
 
     /** The studio system handle. */
     FMOD::Studio::System *StudioSystem[EFMODSystemContext::Max];
@@ -315,7 +325,7 @@ public:
     void *StudioLibHandle;
 
     /** True if the mixer has been paused by application deactivation */
-    bool bMixerPaused;
+    std::atomic<bool> bMixerPaused;
 
     /** You can also supply a pool of memory for FMOD to work with and it will do so with no extra calls to malloc or free. */
     void *MemPool;
@@ -385,7 +395,12 @@ void *FFMODStudioModule::LoadDll(const TCHAR *ShortName)
     void *Handle = nullptr;
     UE_LOG(LogFMOD, Log, TEXT("FFMODStudioModule::LoadDll: Loading %s"), *LibPath);
     // Unfortunately Unreal's platform loading code hasn't been implemented on all platforms so we wrap it
+#ifdef FMOD_PLATFORM_HEADER
     Handle = FMODPlatformLoadDll(*LibPath);
+#else
+    Handle = FPlatformProcess::GetDllHandle(*LibPath);
+#endif
+
 #if WITH_EDITOR
     if (!Handle && !FApp::IsUnattended())
     {
@@ -407,11 +422,6 @@ FString FFMODStudioModule::GetDllPath(const TCHAR *ShortName, bool bExplicitPath
     return FMODPlatform_GetDllPath(ShortName, bExplicitPath, bUseLibPrefix);
 #elif PLATFORM_MAC
     return FString::Printf(TEXT("%s/Mac/%s%s.dylib"), *BaseLibPath, LibPrefixName, ShortName);
-#elif PLATFORM_PS4
-    const TCHAR *DirPrefix = (bExplicitPath ? TEXT("/app0/prx/") : TEXT(""));
-    return FString::Printf(TEXT("%s%s%s.prx"), DirPrefix, LibPrefixName, ShortName);
-#elif PLATFORM_XBOXONE
-    return FString::Printf(TEXT("%s/XBoxOne/%s.dll"), *BaseLibPath, ShortName);
 #elif PLATFORM_ANDROID
     return FString::Printf(TEXT("%s%s.so"), LibPrefixName, ShortName);
 #elif PLATFORM_LINUX
@@ -432,7 +442,7 @@ FString FFMODStudioModule::GetDllPath(const TCHAR *ShortName, bool bExplicitPath
 
 bool FFMODStudioModule::LoadLibraries()
 {
-#if PLATFORM_IOS || PLATFORM_TVOS || PLATFORM_ANDROID || PLATFORM_LINUX || PLATFORM_MAC || PLATFORM_SWITCH || defined(FMOD_DONT_LOAD_LIBRARIES)
+#if PLATFORM_IOS || PLATFORM_TVOS || PLATFORM_ANDROID || PLATFORM_LINUX || PLATFORM_MAC || defined(FMOD_DONT_LOAD_LIBRARIES)
     return true; // Nothing to do on those platforms
 #else
     UE_LOG(LogFMOD, Verbose, TEXT("FFMODStudioModule::LoadLibraries"));
@@ -459,7 +469,7 @@ void FFMODStudioModule::StartupModule()
 {
     UE_LOG(LogFMOD, Log, TEXT("FFMODStudioModule startup"));
     BaseLibPath = IPluginManager::Get().FindPlugin(TEXT("FMODStudio"))->GetBaseDir() + TEXT("/Binaries");
-    UE_LOG(LogFMOD, Log, TEXT(" Lib path = '%s'"), *BaseLibPath);
+    UE_LOG(LogFMOD, Log, TEXT("Lib path = '%s'"), *BaseLibPath);
 
     if (FParse::Param(FCommandLine::Get(), TEXT("nosound")) || FApp::IsBenchmarking() || IsRunningDedicatedServer() || IsRunningCommandlet())
     {
@@ -477,16 +487,10 @@ void FFMODStudioModule::StartupModule()
 
         const UFMODSettings &Settings = *GetDefault<UFMODSettings>();
 
-//#ifdef FMOD_PLATFORM_HEADER
-//        int size = FMODPlatform_MemoryPoolSize();
-#if PLATFORM_IOS || PLATFORM_TVOS || PLATFORM_ANDROID
+#if defined(FMOD_PLATFORM_HEADER)
+        int size = FMODPlatform_MemoryPoolSize();
+#elif PLATFORM_IOS || PLATFORM_TVOS || PLATFORM_ANDROID
         int size = Settings.MemoryPoolSizes.Mobile;
-#elif PLATFORM_PS4
-        int size = Settings.MemoryPoolSizes.PS4;
-#elif PLATFORM_XBOXONE
-        int size = Settings.MemoryPoolSizes.XboxOne;
-#elif PLATFORM_SWITCH
-        int size = Settings.MemoryPoolSizes.Switch;
 #else
         int size = Settings.MemoryPoolSizes.Desktop;
 #endif
@@ -500,7 +504,9 @@ void FFMODStudioModule::StartupModule()
             verifyfmod(FMOD::Memory_Initialize(0, 0, FMODMemoryAlloc, FMODMemoryRealloc, FMODMemoryFree));
         }
 
+#if defined(FMOD_PLATFORM_HEADER)
         verifyfmod(FMODPlatformSystemSetup());
+#endif
 
         AcquireFMODFileSystem();
 
@@ -571,6 +577,12 @@ void FFMODStudioModule::CreateStudioSystem(EFMODSystemContext::Type Type)
         UE_LOG(LogFMOD, Verbose, TEXT("Enabling live update"));
         StudioInitFlags |= FMOD_STUDIO_INIT_LIVEUPDATE;
     }
+
+    if (Settings.bEnableMemoryTracking && Type == EFMODSystemContext::Runtime)
+    {
+        StudioInitFlags |= FMOD_STUDIO_INIT_MEMORY_TRACKING;
+    }
+
 #endif
     if (Type == EFMODSystemContext::Auditioning || Type == EFMODSystemContext::Editor)
     {
@@ -642,14 +654,10 @@ void FFMODStudioModule::CreateStudioSystem(EFMODSystemContext::Type Type)
         advSettings.vol0virtualvol = Settings.Vol0VirtualLevel;
         InitFlags |= FMOD_INIT_VOL0_BECOMES_VIRTUAL;
     }
-#ifdef FMOD_PLATFORM_HEADER
+#if defined(FMOD_PLATFORM_HEADER)
     FMODPlatform_SetRealChannelCount(&advSettings);
-#elif PLATFORM_IOS || PLATFORM_TVOS || PLATFORM_ANDROID || PLATFORM_SWITCH
+#elif PLATFORM_IOS || PLATFORM_TVOS || PLATFORM_ANDROID
     advSettings.maxFADPCMCodecs = Settings.RealChannelCount;
-#elif PLATFORM_PS4
-    advSettings.maxAT9Codecs = Settings.RealChannelCount;
-#elif PLATFORM_XBOXONE
-    advSettings.maxXMACodecs = Settings.RealChannelCount;
 #else
     advSettings.maxVorbisCodecs = Settings.RealChannelCount;
 #endif
@@ -686,6 +694,10 @@ void FFMODStudioModule::CreateStudioSystem(EFMODSystemContext::Type Type)
     if (Type == EFMODSystemContext::Runtime)
     {
         // Add interrupt callbacks for Mobile
+#if PLATFORM_IOS || PLATFORM_TVOS
+        InitializeAudioSession();
+#endif
+
         FCoreDelegates::ApplicationWillDeactivateDelegate.AddRaw(this, &FFMODStudioModule::HandleApplicationWillDeactivate);
         FCoreDelegates::ApplicationHasReactivatedDelegate.AddRaw(this, &FFMODStudioModule::HandleApplicationHasReactivated);
     }
@@ -786,7 +798,7 @@ bool FFMODStudioModule::Tick(float DeltaTime)
 {
     if (GIsEditor)
     {
-        BankUpdateNotifier.Update();
+        BankUpdateNotifier.Update(DeltaTime);
     }
 
     if (ClockSinks[EFMODSystemContext::Auditioning].IsValid())
@@ -838,14 +850,16 @@ void FFMODStudioModule::UpdateListeners()
         for (auto ContextIt = GEngine->GetWorldContexts().CreateConstIterator(); ContextIt; ++ContextIt)
         {
             const FWorldContext &PieContext = *ContextIt;
-            if (PieContext.WorldType != EWorldType::PIE)
-            {
-                continue;
-            }
 
-            if (PieContext.GameViewport)
+            // We need to update the listener for all PIE worlds and all standalone game worlds. Since this code is only built WITH_EDITOR
+            // EWorldType::Game means a standalone game world in this scope.
+
+            if (PieContext.WorldType == EWorldType::PIE || PieContext.WorldType == EWorldType::Game)
             {
-                UpdateWorldListeners(PieContext.GameViewport->GetWorld(), &ListenerIndex);
+                if (PieContext.GameViewport)
+                {
+                    UpdateWorldListeners(PieContext.GameViewport->GetWorld(), &ListenerIndex);
+                }
             }
         }
     }
@@ -1078,29 +1092,11 @@ void FFMODStudioModule::FinishSetListenerPosition(int NumListeners)
 void FFMODStudioModule::RefreshSettings()
 {
     AssetTable.Refresh();
+    AssetTable.SetLocale(GetLocale());
     if (GIsEditor)
     {
-        const UFMODSettings &Settings = *GetDefault<UFMODSettings>();
+        const UFMODSettings& Settings = *GetDefault<UFMODSettings>();
         BankUpdateNotifier.SetFilePath(Settings.GetFullBankPath() / AssetTable.GetMasterStringsBankPath());
-
-        // Initialize ActiveLocale based on settings
-        FString LocaleCode = "";
-
-        if (Settings.Locales.Num() > 0)
-        {
-            LocaleCode = Settings.Locales[0].LocaleCode;
-
-            for (int32 i = 0; i < Settings.Locales.Num(); ++i)
-            {
-                if (Settings.Locales[i].bDefault)
-                {
-                    LocaleCode = Settings.Locales[i].LocaleCode;
-                    break;
-                }
-            }
-        }
-
-        AssetTable.SetLocale(LocaleCode);
     }
 }
 
@@ -1189,7 +1185,9 @@ void FFMODStudioModule::SetSystemPaused(bool paused)
 {
     if (StudioSystem[EFMODSystemContext::Runtime])
     {
-        if (bMixerPaused != paused)
+        bool expected = !paused;
+
+        if (bMixerPaused.compare_exchange_strong(expected, paused))
         {
             FMOD::System *LowLevelSystem = nullptr;
             verifyfmod(StudioSystem[EFMODSystemContext::Runtime]->getCoreSystem(&LowLevelSystem));
@@ -1209,8 +1207,6 @@ void FFMODStudioModule::SetSystemPaused(bool paused)
                 LowLevelSystem->mixerSuspend();
             }
         }
-
-        bMixerPaused = paused;
     }
 }
 
@@ -1297,6 +1293,27 @@ bool FFMODStudioModule::SetLocale(const FString& LocaleName)
 
     UE_LOG(LogFMOD, Error, TEXT("No project locale named '%s' has been defined."), *LocaleName);
     return false;
+}
+
+FString FFMODStudioModule::GetLocale()
+{
+    FString LocaleCode = "";
+    const UFMODSettings& Settings = *GetDefault<UFMODSettings>();
+
+    if (Settings.Locales.Num() > 0)
+    {
+        LocaleCode = Settings.Locales[0].LocaleCode;
+
+        for (int32 i = 0; i < Settings.Locales.Num(); ++i)
+        {
+            if (Settings.Locales[i].bDefault)
+            {
+                LocaleCode = Settings.Locales[i].LocaleCode;
+                break;
+            }
+        }
+    }
+    return LocaleCode;
 }
 
 void FFMODStudioModule::LoadBanks(EFMODSystemContext::Type Type)
@@ -1515,5 +1532,59 @@ void FFMODStudioModule::StopAuditioningInstance()
         AuditioningInstance = nullptr;
     }
 }
+
+#if PLATFORM_IOS || PLATFORM_TVOS
+void FFMODStudioModule::InitializeAudioSession()
+{
+    [[NSNotificationCenter defaultCenter] addObserverForName:AVAudioSessionInterruptionNotification object:nil queue:nil usingBlock:^(NSNotification *notification)
+    {
+        switch ([[notification.userInfo valueForKey:AVAudioSessionInterruptionTypeKey] unsignedIntegerValue])
+        {
+            case AVAudioSessionInterruptionTypeBegan:
+            {
+                if (@available(iOS 10.3, *))
+                {
+                    if ([[notification.userInfo valueForKey:AVAudioSessionInterruptionWasSuspendedKey] boolValue])
+                    {
+                        // If the system suspended the app process and deactivated the audio session then we get a delayed
+                        // interruption notification when the app is re-activated. Just ignore that here.
+                        return;
+                    }
+                }
+                SetSystemPaused(true);
+                break;
+            }
+            case AVAudioSessionInterruptionTypeEnded:
+            {
+                ActivateAudioSession();
+                SetSystemPaused(false);
+                break;
+            }
+        }
+    }];
+
+    [[NSNotificationCenter defaultCenter] addObserverForName:UIApplicationDidBecomeActiveNotification object:nil queue:nil usingBlock:^(NSNotification *notification)
+    {
+    #if PLATFORM_TVOS
+        SetSystemPaused(true);
+    #endif
+        ActivateAudioSession();
+        SetSystemPaused(false);
+    }];
+
+    ActivateAudioSession();
+}
+
+void FFMODStudioModule::ActivateAudioSession()
+{
+    NSError* ActiveError = nil;
+    [[AVAudioSession sharedInstance] setActive:TRUE error:&ActiveError];
+
+    if (ActiveError)
+    {
+        UE_LOG(LogFMOD, Error, TEXT("Failed to set audio session to active = %d [Error = %s]"), TRUE, *FString([ActiveError description]));
+    }
+}
+#endif
 
 #undef LOCTEXT_NAMESPACE

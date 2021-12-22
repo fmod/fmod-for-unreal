@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2020.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2021.
 
 #include "FMODAssetTable.h"
 #include "FMODEvent.h"
@@ -473,6 +473,11 @@ FString FFMODAssetTable::GetMasterAssetsBankPath() const
 void FFMODAssetTable::SetLocale(const FString &LocaleCode)
 {
     ActiveLocale = LocaleCode;
+}
+
+FString FFMODAssetTable::GetLocale() const
+{
+    return ActiveLocale;
 }
 
 void FFMODAssetTable::GetAllBankPaths(TArray<FString> &Paths, bool IncludeMasterBank) const

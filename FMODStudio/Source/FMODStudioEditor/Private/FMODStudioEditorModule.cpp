@@ -1,6 +1,8 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2020.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2021.
 
 #include "FMODStudioEditorModule.h"
+
+#include "FMODStudioEditorPrivatePCH.h"
 #include "FMODStudioModule.h"
 #include "FMODStudioStyle.h"
 #include "FMODAudioComponent.h"

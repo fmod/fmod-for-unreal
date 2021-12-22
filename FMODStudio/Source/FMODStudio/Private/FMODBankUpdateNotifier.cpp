@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2020.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2021.
 
 #include "FMODBankUpdateNotifier.h"
 #include "FMODSettings.h"
@@ -9,6 +9,8 @@
 FFMODBankUpdateNotifier::FFMODBankUpdateNotifier()
     : bUpdateEnabled(true)
     , NextRefreshTime(FDateTime::MinValue())
+    , FileTime(FDateTime::MinValue())
+    , Countdown(0.0f)
 {
 }
 
@@ -16,18 +18,29 @@ void FFMODBankUpdateNotifier::SetFilePath(const FString &InPath)
 {
     FilePath = InPath;
     NextRefreshTime = FDateTime::MinValue();
-    FileTime = FDateTime::MinValue();
+    FileTime = MostRecentFileTime();
 }
 
-void FFMODBankUpdateNotifier::Update()
+void FFMODBankUpdateNotifier::Update(float DeltaTime)
 {
     if (bUpdateEnabled)
     {
         FDateTime CurTime = FDateTime::UtcNow();
+
         if (CurTime >= NextRefreshTime)
         {
             NextRefreshTime = CurTime + FTimespan(0, 0, 1);
             Refresh();
+        }
+
+        if (Countdown > 0.0f)
+        {
+            Countdown -= DeltaTime;
+
+            if (Countdown <= 0.0f)
+            {
+                BanksUpdatedEvent.Broadcast();
+            }
         }
     }
 }
@@ -40,6 +53,9 @@ void FFMODBankUpdateNotifier::EnableUpdate(bool bEnable)
     {
         // Refreshing right after update is enabled is not desirable
         NextRefreshTime = FDateTime::UtcNow() + FTimespan(0, 0, 1);
+
+        // Cancel any pending countdown
+        Countdown = 0.0f;
     }
 }
 
@@ -47,13 +63,34 @@ void FFMODBankUpdateNotifier::Refresh()
 {
     if (!FilePath.IsEmpty())
     {
-        const FDateTime NewFileTime = IFileManager::Get().GetTimeStamp(*FilePath);
-        if (NewFileTime != FileTime)
-        {
-            FileTime = NewFileTime;
-            UE_LOG(LogFMOD, Log, TEXT("File has changed: %s"), *FilePath);
+        FDateTime ModifiedTime = MostRecentFileTime();
 
-            BanksUpdatedEvent.Broadcast();
+        if (ModifiedTime > FileTime)
+        {
+            const UFMODSettings &Settings = *GetDefault<UFMODSettings>();
+            Countdown = (float)Settings.ReloadBanksDelay;
+            FileTime = ModifiedTime;
         }
     }
+}
+
+FDateTime FFMODBankUpdateNotifier::MostRecentFileTime()
+{
+    // Get the most recent modified timestamp of all the bank files in the directory we are watching.
+    FDateTime MostRecent = FDateTime::MinValue();
+
+    TArray<FString> BankPaths;
+    IFileManager::Get().FindFilesRecursive(BankPaths, *FilePath, TEXT("*.bank"), true, false, false);
+
+    for (const auto& Path : BankPaths)
+    {
+        FDateTime ModifiedTime = IFileManager::Get().GetTimeStamp(*Path);
+
+        if (ModifiedTime > MostRecent)
+        {
+            MostRecent = ModifiedTime;
+        }
+    }
+
+    return MostRecent;
 }

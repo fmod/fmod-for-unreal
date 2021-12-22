@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2020.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2021.
 
 #pragma once
 
@@ -147,7 +147,7 @@ public:
     FString ProgrammerSoundName;
 
     /** Enable timeline callbacks for this sound, so that OnTimelineMarker and OnTimelineBeat can be used. */
-    UPROPERTY(EditAnywhere, Category = FMODAudio)
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = FMODAudio)
     uint32 bEnableTimelineCallbacks : 1;
 
     /** Stored properties to apply next time we create an instance. */
@@ -316,9 +316,7 @@ public:
 
 private:
 // Begin ActorComponent interface.
-#if WITH_EDITORONLY_DATA
     virtual void OnRegister() override;
-#endif
     virtual void OnUnregister() override;
     virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
     virtual void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
