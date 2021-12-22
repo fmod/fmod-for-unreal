@@ -786,8 +786,15 @@ void FFMODStudioEditorModule::ValidateFMOD()
                 {
                     ProblemsFound++;
                     FText Message = LOCTEXT("LocalesMismatch",
-                        "The project locales do not match those defined in the FMOD Studio Project.\n");
-                    FMessageDialog::Open(EAppMsgType::Ok, Message);
+                        "The project locales do not match those defined in the FMOD Studio Project.\n\n"
+                        "Would you like to import the locales from Studio?\n");
+                    if (FMessageDialog::Open(EAppMsgType::YesNo, Message) == EAppReturnType::Yes)
+                    {
+                        Settings.Locales = StudioLocales;
+                        Settings.Locales[0].bDefault = true;
+                        SettingsSection->Save();
+                        IFMODStudioModule::Get().RefreshSettings();
+                    }
                 }
             }
         }
@@ -971,6 +978,34 @@ void FFMODStudioEditorModule::ValidateFMOD()
         if (EAppReturnType::Yes == FMessageDialog::Open(EAppMsgType::YesNo, message))
         {
             PackagingSettings->DirectoriesToAlwaysStageAsNonUFS.Add(Settings.BankOutputDirectory);
+            PackagingSettings->UpdateDefaultConfigFile();
+        }
+    }
+
+    bool bAssetsFound = false;
+    for (int i = 0; i < PackagingSettings->DirectoriesToAlwaysCook.Num(); ++i)
+    {
+        if (PackagingSettings->DirectoriesToAlwaysCook[i].Path.StartsWith(Settings.GetFullContentPath()))
+        {
+            bAssetsFound = true;
+            break;
+        }
+    }
+    if (!bAssetsFound)
+    {
+        ProblemsFound++;
+
+        FText message = LOCTEXT("PackagingFMOD_Ask",
+            "FMOD has not been added to the \"Additional Asset Directories to Cook\" list.\n\nDo you want add it now?");
+
+        if (EAppReturnType::Yes == FMessageDialog::Open(EAppMsgType::YesNo, message))
+        {
+            FDirectoryPath GeneratedDir;
+            for (FString folder : Settings.GeneratedFolders)
+            {
+                GeneratedDir.Path = Settings.GetFullContentPath() / folder;
+                PackagingSettings->DirectoriesToAlwaysCook.Add(GeneratedDir);
+            }
             PackagingSettings->UpdateDefaultConfigFile();
         }
     }

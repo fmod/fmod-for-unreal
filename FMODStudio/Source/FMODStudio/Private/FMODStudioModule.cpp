@@ -1427,7 +1427,7 @@ void FFMODStudioModule::ReloadBanks()
 
     DestroyStudioSystem(EFMODSystemContext::Auditioning);
 
-    AssetTable.Load();
+    RefreshSettings();
 
     CreateStudioSystem(EFMODSystemContext::Auditioning);
     LoadBanks(EFMODSystemContext::Auditioning);

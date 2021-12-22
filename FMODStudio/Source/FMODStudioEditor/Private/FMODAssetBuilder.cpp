@@ -16,8 +16,11 @@
 #include "ObjectTools.h"
 #include "SourceControlHelpers.h"
 #include "HAL/FileManager.h"
+#include "Misc/MessageDialog.h"
 
 #include "fmod_studio.hpp"
+
+#define LOCTEXT_NAMESPACE "FMODAssetBuilder"
 
 FFMODAssetBuilder::~FFMODAssetBuilder()
 {
@@ -42,7 +45,7 @@ void FFMODAssetBuilder::ProcessBanks()
     TArray<UObject*> AssetsToSave;
     TArray<UObject*> AssetsToDelete;
     const UFMODSettings& Settings = *GetDefault<UFMODSettings>();
-    FString PackagePath = Settings.ContentBrowserPrefix + FFMODAssetTable::PrivateDataPath();
+    FString PackagePath = Settings.GetFullContentPath() / FFMODAssetTable::PrivateDataPath();
     BuildBankLookup(FFMODAssetTable::BankLookupName(), PackagePath, Settings, AssetsToSave);
     BuildAssets(Settings, FFMODAssetTable::AssetLookupName(), PackagePath, AssetsToSave, AssetsToDelete);
     SaveAssets(AssetsToSave);
@@ -234,6 +237,13 @@ void FFMODAssetBuilder::BuildBankLookup(const FString &AssetName, const FString 
     FString SearchDir = InSettings.GetFullBankPath();
     IFileManager::Get().FindFilesRecursive(BankPaths, *SearchDir, TEXT("*.bank"), true, false, false);
 
+    if (BankPaths.Num() <= 0)
+    {
+        return;
+    }
+
+    TArray<FString> BankGuids;
+
     for (FString BankPath : BankPaths)
     {
         FMOD::Studio::Bank *Bank;
@@ -249,6 +259,28 @@ void FFMODAssetBuilder::BuildBankLookup(const FString &AssetName, const FString 
         if (result == FMOD_OK)
         {
             FString GUID = FMODUtils::ConvertGuid(BankID).ToString(EGuidFormats::DigitsWithHyphensInBraces);
+
+            if (BankGuids.Find(GUID) != INDEX_NONE)
+            {
+                bool foundLocale = false;
+                for (const FFMODProjectLocale& Locale : InSettings.Locales)
+                {
+                    if (BankPath.EndsWith(FString("_") + Locale.LocaleCode + FString(".bank")))
+                    {
+                        foundLocale = true;
+                        break;
+                    }
+                }
+                if (!foundLocale)
+                {
+                    FString Message =
+                        "Please check the FMOD Studio plugin settings or validate FMOD from the Help menu.";
+                    UE_LOG(LogFMOD, Log, TEXT("Locales Mismatch: %s"), *Message);
+                }
+            }
+
+            BankGuids.Add(GUID);
+
             FName OuterRowName(*GUID);
             FFMODLocalizedBankTable *Row = BankLookup->DataTable->FindRow<FFMODLocalizedBankTable>(OuterRowName, nullptr, false);
 
@@ -444,7 +476,7 @@ UFMODAsset *FFMODAssetBuilder::CreateAsset(const AssetCreateInfo& CreateInfo, TA
     }
 
     const UFMODSettings &Settings = *GetDefault<UFMODSettings>();
-    FString Folder = Settings.ContentBrowserPrefix + GetAssetClassName(CreateInfo.Class) + CreateInfo.Path;
+    FString Folder = Settings.GetFullContentPath() / GetAssetClassName(CreateInfo.Class) + CreateInfo.Path;
     FString PackagePath = FString::Printf(TEXT("%s/%s"), *Folder, *SanitizedAssetName);
     FString SanitizedPackagePath;
 
@@ -604,3 +636,5 @@ void FFMODAssetBuilder::DeleteAssets(TArray<UObject*>& AssetsToDelete)
     // Use ObjectTools to delete assets - ObjectTools::DeleteObjects handles confirmation, source control, and making read only files writables
     ObjectTools::DeleteObjects(ObjectsToDelete, true);
 }
+
+#undef LOCTEXT_NAMESPACE

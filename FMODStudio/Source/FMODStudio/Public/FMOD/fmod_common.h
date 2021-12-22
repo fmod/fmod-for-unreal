@@ -58,7 +58,7 @@ typedef unsigned long long         FMOD_PORT_INDEX;
 /*
     FMOD constants
 */
-#define FMOD_VERSION    0x00020112                     /* 0xaaaabbcc -> aaaa = product version, bb = major version, cc = minor version.*/
+#define FMOD_VERSION    0x00020114                     /* 0xaaaabbcc -> aaaa = product version, bb = major version, cc = minor version.*/
 
 typedef unsigned int FMOD_DEBUG_FLAGS;
 #define FMOD_DEBUG_LEVEL_NONE                       0x00000000
@@ -435,6 +435,7 @@ typedef enum FMOD_OUTPUTTYPE
     FMOD_OUTPUTTYPE_NNAUDIO,
     FMOD_OUTPUTTYPE_WINSONIC,
     FMOD_OUTPUTTYPE_AAUDIO,
+    FMOD_OUTPUTTYPE_AUDIOWORKLET,
 
     FMOD_OUTPUTTYPE_MAX,
     FMOD_OUTPUTTYPE_FORCEINT = 65536
@@ -767,6 +768,7 @@ typedef struct FMOD_ADVANCEDSETTINGS
     FMOD_DSP_RESAMPLER  resamplerMethod;
     unsigned int        randomSeed;
     int                 maxConvolutionThreads;
+    int                 maxOpusCodecs;
 } FMOD_ADVANCEDSETTINGS;
 
 typedef struct FMOD_TAG
