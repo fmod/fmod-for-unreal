@@ -16,8 +16,11 @@
 #include "ObjectTools.h"
 #include "SourceControlHelpers.h"
 #include "HAL/FileManager.h"
+#include "Misc/MessageDialog.h"
 
 #include "fmod_studio.hpp"
+
+#define LOCTEXT_NAMESPACE "FMODAssetBuilder"
 
 FFMODAssetBuilder::~FFMODAssetBuilder()
 {
@@ -239,6 +242,8 @@ void FFMODAssetBuilder::BuildBankLookup(const FString &AssetName, const FString 
         return;
     }
 
+    TArray<FString> BankGuids;
+
     for (FString BankPath : BankPaths)
     {
         FMOD::Studio::Bank *Bank;
@@ -254,6 +259,28 @@ void FFMODAssetBuilder::BuildBankLookup(const FString &AssetName, const FString 
         if (result == FMOD_OK)
         {
             FString GUID = FMODUtils::ConvertGuid(BankID).ToString(EGuidFormats::DigitsWithHyphensInBraces);
+
+            if (BankGuids.Find(GUID) != INDEX_NONE)
+            {
+                bool foundLocale = false;
+                for (const FFMODProjectLocale& Locale : InSettings.Locales)
+                {
+                    if (BankPath.EndsWith(FString("_") + Locale.LocaleCode + FString(".bank")))
+                    {
+                        foundLocale = true;
+                        break;
+                    }
+                }
+                if (!foundLocale)
+                {
+                    FString Message =
+                        "Please check the FMOD Studio plugin settings or validate FMOD from the Help menu.";
+                    UE_LOG(LogFMOD, Log, TEXT("Locales Mismatch: %s"), *Message);
+                }
+            }
+
+            BankGuids.Add(GUID);
+
             FName OuterRowName(*GUID);
             FFMODLocalizedBankTable *Row = BankLookup->DataTable->FindRow<FFMODLocalizedBankTable>(OuterRowName, nullptr, false);
 
@@ -609,3 +636,5 @@ void FFMODAssetBuilder::DeleteAssets(TArray<UObject*>& AssetsToDelete)
     // Use ObjectTools to delete assets - ObjectTools::DeleteObjects handles confirmation, source control, and making read only files writables
     ObjectTools::DeleteObjects(ObjectsToDelete, true);
 }
+
+#undef LOCTEXT_NAMESPACE

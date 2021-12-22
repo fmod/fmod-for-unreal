@@ -67,17 +67,31 @@ FString UFMODAudioComponent::GetDetailedInfoInternal(void) const
     return Result;
 }
 
-#if WITH_EDITORONLY_DATA
 void UFMODAudioComponent::OnRegister()
 {
     Super::OnRegister();
 
+#if WITH_EDITORONLY_DATA
     if (!bDefaultParameterValuesCached)
+    {
         CacheDefaultParameterValues();
+    }
 
     UpdateSpriteTexture();
+#endif
+
+    if (IsActive() && bAutoActivate)
+    {
+        FMOD_STUDIO_PLAYBACK_STATE state = FMOD_STUDIO_PLAYBACK_STOPPED;
+        StudioInstance->getPlaybackState(&state);
+        if (state == FMOD_STUDIO_PLAYBACK_STOPPED)
+        {
+            Play();
+        }
+    }
 }
 
+#if WITH_EDITORONLY_DATA
 void UFMODAudioComponent::UpdateSpriteTexture()
 {
     if (SpriteComponent)

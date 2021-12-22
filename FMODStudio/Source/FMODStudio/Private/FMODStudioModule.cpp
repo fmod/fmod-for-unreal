@@ -380,7 +380,7 @@ void *FFMODStudioModule::LoadDll(const TCHAR *ShortName)
     void *Handle = nullptr;
     UE_LOG(LogFMOD, Log, TEXT("FFMODStudioModule::LoadDll: Loading %s"), *LibPath);
     // Unfortunately Unreal's platform loading code hasn't been implemented on all platforms so we wrap it
-#ifdef FMOD_PLATFORM_HEADER
+#ifdef FMOD_PLATFORM_LOAD_DLL
     Handle = FMODPlatformLoadDll(*LibPath);
 #else
     Handle = FPlatformProcess::GetDllHandle(*LibPath);
@@ -1414,7 +1414,7 @@ void FFMODStudioModule::ReloadBanks()
 
     DestroyStudioSystem(EFMODSystemContext::Auditioning);
 
-    AssetTable.Load();
+    RefreshSettings();
 
     CreateStudioSystem(EFMODSystemContext::Auditioning);
     LoadBanks(EFMODSystemContext::Auditioning);

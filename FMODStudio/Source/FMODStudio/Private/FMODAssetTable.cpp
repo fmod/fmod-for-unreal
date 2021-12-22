@@ -19,6 +19,12 @@
 #include "Misc/Paths.h"
 #include "UObject/Package.h"
 
+FFMODAssetTable::FFMODAssetTable()
+    : BankLookup(nullptr),
+      AssetLookup(nullptr)
+{
+}
+
 void FFMODAssetTable::AddReferencedObjects(FReferenceCollector& Collector)
 {
     // The garbage collector will clean up any objects which aren't referenced, doing this tells the garbage collector our lookups are referenced

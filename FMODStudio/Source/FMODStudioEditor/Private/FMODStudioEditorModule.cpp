@@ -786,8 +786,15 @@ void FFMODStudioEditorModule::ValidateFMOD()
                 {
                     ProblemsFound++;
                     FText Message = LOCTEXT("LocalesMismatch",
-                        "The project locales do not match those defined in the FMOD Studio Project.\n");
-                    FMessageDialog::Open(EAppMsgType::Ok, Message);
+                        "The project locales do not match those defined in the FMOD Studio Project.\n\n"
+                        "Would you like to import the locales from Studio?\n");
+                    if (FMessageDialog::Open(EAppMsgType::YesNo, Message) == EAppReturnType::Yes)
+                    {
+                        Settings.Locales = StudioLocales;
+                        Settings.Locales[0].bDefault = true;
+                        SettingsSection->Save();
+                        IFMODStudioModule::Get().RefreshSettings();
+                    }
                 }
             }
         }
