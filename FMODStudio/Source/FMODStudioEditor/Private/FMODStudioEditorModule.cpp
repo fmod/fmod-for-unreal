@@ -201,7 +201,7 @@ public:
     bool Tick(float DeltaTime);
 
     /** Build UE4 assets for FMOD Studio items */
-    void BuildAssets();
+    void ProcessBanks();
 
     /** Add extensions to menu */
     void RegisterHelpMenuEntries();
@@ -246,7 +246,6 @@ public:
     FDelegateHandle EndPIEDelegateHandle;
     FDelegateHandle PausePIEDelegateHandle;
     FDelegateHandle ResumePIEDelegateHandle;
-    FDelegateHandle HandleBanksReloadedDelegateHandle;
     FDelegateHandle FMODControlTrackEditorCreateTrackEditorHandle;
     FDelegateHandle FMODParamTrackEditorCreateTrackEditorHandle;
 
@@ -367,23 +366,30 @@ void FFMODStudioEditorModule::OnPostEngineInit()
     {
         // Build assets when asset registry has finished loading
         FAssetRegistryModule& AssetRegistry = FModuleManager::LoadModuleChecked<FAssetRegistryModule>(AssetRegistryConstants::ModuleName);
-        AssetRegistry.Get().OnFilesLoaded().AddLambda([this]() { BuildAssets(); });
+        AssetRegistry.Get().OnFilesLoaded().AddLambda([this]() { ProcessBanks(); });
     }
 
     // Bind to bank update notifier to reload banks when they change on disk
-    BankUpdateNotifier.BanksUpdatedEvent.AddRaw(this, &FFMODStudioEditorModule::ReloadBanks);
+    BankUpdateNotifier.BanksUpdatedEvent.AddRaw(this, &FFMODStudioEditorModule::ProcessBanks);
 
     // Register a callback to validate settings on startup
     IMainFrameModule& MainFrameModule = FModuleManager::LoadModuleChecked<IMainFrameModule>(TEXT("MainFrame"));
     MainFrameModule.OnMainFrameCreationFinished().AddRaw(this, &FFMODStudioEditorModule::OnMainFrameLoaded);
 }
 
-void FFMODStudioEditorModule::BuildAssets()
+void FFMODStudioEditorModule::ProcessBanks()
 {
     if (!IsRunningCommandlet())
     {
-        AssetBuilder.ProcessBanks();
-        HandleSettingsSaved();
+        BankUpdateNotifier.EnableUpdate(false);
+        ReloadBanks();
+
+        const UFMODSettings &Settings = *GetDefault<UFMODSettings>();
+        BankUpdateNotifier.SetFilePath(Settings.GetFullBankPath());
+
+        BankUpdateNotifier.EnableUpdate(true);
+
+        IFMODStudioModule::Get().RefreshSettings();
     }
 }
 
@@ -780,8 +786,15 @@ void FFMODStudioEditorModule::ValidateFMOD()
                 {
                     ProblemsFound++;
                     FText Message = LOCTEXT("LocalesMismatch",
-                        "The project locales do not match those defined in the FMOD Studio Project.\n");
-                    FMessageDialog::Open(EAppMsgType::Ok, Message);
+                        "The project locales do not match those defined in the FMOD Studio Project.\n\n"
+                        "Would you like to import the locales from Studio?\n");
+                    if (FMessageDialog::Open(EAppMsgType::YesNo, Message) == EAppReturnType::Yes)
+                    {
+                        Settings.Locales = StudioLocales;
+                        Settings.Locales[0].bDefault = true;
+                        SettingsSection->Save();
+                        IFMODStudioModule::Get().RefreshSettings();
+                    }
                 }
             }
         }
@@ -965,6 +978,34 @@ void FFMODStudioEditorModule::ValidateFMOD()
         if (EAppReturnType::Yes == FMessageDialog::Open(EAppMsgType::YesNo, message))
         {
             PackagingSettings->DirectoriesToAlwaysStageAsNonUFS.Add(Settings.BankOutputDirectory);
+            PackagingSettings->UpdateDefaultConfigFile();
+        }
+    }
+
+    bool bAssetsFound = false;
+    for (int i = 0; i < PackagingSettings->DirectoriesToAlwaysCook.Num(); ++i)
+    {
+        if (PackagingSettings->DirectoriesToAlwaysCook[i].Path.StartsWith(Settings.GetFullContentPath()))
+        {
+            bAssetsFound = true;
+            break;
+        }
+    }
+    if (!bAssetsFound)
+    {
+        ProblemsFound++;
+
+        FText message = LOCTEXT("PackagingFMOD_Ask",
+            "FMOD has not been added to the \"Additional Asset Directories to Cook\" list.\n\nDo you want add it now?");
+
+        if (EAppReturnType::Yes == FMessageDialog::Open(EAppMsgType::YesNo, message))
+        {
+            FDirectoryPath GeneratedDir;
+            for (FString folder : Settings.GeneratedFolders)
+            {
+                GeneratedDir.Path = Settings.GetFullContentPath() / folder;
+                PackagingSettings->DirectoriesToAlwaysCook.Add(GeneratedDir);
+            }
             PackagingSettings->UpdateDefaultConfigFile();
         }
     }
@@ -1185,25 +1226,24 @@ void FFMODStudioEditorModule::ShutdownModule()
 
 bool FFMODStudioEditorModule::HandleSettingsSaved()
 {
-    const UFMODSettings &Settings = *GetDefault<UFMODSettings>();
-    BankUpdateNotifier.SetFilePath(Settings.GetFullBankPath());
-    IFMODStudioModule::Get().RefreshSettings();
+    ProcessBanks();
     return true;
 }
 
 void FFMODStudioEditorModule::ReloadBanks()
 {
+    AssetBuilder.ProcessBanks();
+    IFMODStudioModule::Get().ReloadBanks();
+    BanksReloadedDelegate.Broadcast();
+
     // Show a reload notification
     TArray<FString> FailedBanks = IFMODStudioModule::Get().GetFailedBankLoads(EFMODSystemContext::Auditioning);
     FText Message;
     SNotificationItem::ECompletionState State;
     if (FailedBanks.Num() == 0)
     {
-        AssetBuilder.ProcessBanks();
-        IFMODStudioModule::Get().ReloadBanks();
         Message = LOCTEXT("FMODBanksReloaded", "Reloaded FMOD Banks\n");
         State = SNotificationItem::CS_Success;
-        BanksReloadedDelegate.Broadcast();
     }
     else
     {

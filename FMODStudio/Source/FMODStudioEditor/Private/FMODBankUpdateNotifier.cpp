@@ -29,8 +29,8 @@ void FFMODBankUpdateNotifier::Update(float DeltaTime)
 
         if (CurTime >= NextRefreshTime)
         {
-            NextRefreshTime = CurTime + FTimespan(0, 0, 1);
             Refresh();
+            NextRefreshTime = CurTime + FTimespan(0, 0, 1);
         }
 
         if (Countdown > 0.0f)

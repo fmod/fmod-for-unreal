@@ -252,6 +252,8 @@ public:
 
     virtual bool SetLocale(const FString& Locale) override;
 
+    virtual FString GetLocale() override;
+
     void ResetInterpolation();
 
 #if PLATFORM_IOS || PLATFORM_TVOS
@@ -1071,29 +1073,7 @@ void FFMODStudioModule::FinishSetListenerPosition(int NumListeners)
 void FFMODStudioModule::RefreshSettings()
 {
     AssetTable.Load();
-
-    if (GIsEditor)
-    {
-        // Initialize ActiveLocale based on settings
-        const UFMODSettings &Settings = *GetDefault<UFMODSettings>();
-        FString LocaleCode = "";
-
-        if (Settings.Locales.Num() > 0)
-        {
-            LocaleCode = Settings.Locales[0].LocaleCode;
-
-            for (int32 i = 0; i < Settings.Locales.Num(); ++i)
-            {
-                if (Settings.Locales[i].bDefault)
-                {
-                    LocaleCode = Settings.Locales[i].LocaleCode;
-                    break;
-                }
-            }
-        }
-
-        AssetTable.SetLocale(LocaleCode);
-    }
+    AssetTable.SetLocale(GetLocale());
 }
 
 void FFMODStudioModule::SetInPIE(bool bInPIE, bool simulating)
@@ -1274,6 +1254,27 @@ bool FFMODStudioModule::SetLocale(const FString& LocaleName)
     return false;
 }
 
+FString FFMODStudioModule::GetLocale()
+{
+    FString LocaleCode = "";
+    const UFMODSettings& Settings = *GetDefault<UFMODSettings>();
+
+    if (Settings.Locales.Num() > 0)
+    {
+        LocaleCode = Settings.Locales[0].LocaleCode;
+
+        for (int32 i = 0; i < Settings.Locales.Num(); ++i)
+        {
+            if (Settings.Locales[i].bDefault)
+            {
+                LocaleCode = Settings.Locales[i].LocaleCode;
+                break;
+            }
+        }
+    }
+    return LocaleCode;
+}
+
 void FFMODStudioModule::LoadBanks(EFMODSystemContext::Type Type)
 {
     const UFMODSettings &Settings = *GetDefault<UFMODSettings>();
@@ -1426,7 +1427,7 @@ void FFMODStudioModule::ReloadBanks()
 
     DestroyStudioSystem(EFMODSystemContext::Auditioning);
 
-    AssetTable.Load();
+    RefreshSettings();
 
     CreateStudioSystem(EFMODSystemContext::Auditioning);
     LoadBanks(EFMODSystemContext::Auditioning);

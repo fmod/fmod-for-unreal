@@ -12,7 +12,6 @@
 DEFINE_LOG_CATEGORY_STATIC(LogFMODCommandlet, Log, All);
 
 static constexpr auto RebuildSwitch = TEXT("rebuild");
-static constexpr auto SubmitSwitch = TEXT("sumbit");
 
 UFMODGenerateAssetsCommandlet::UFMODGenerateAssetsCommandlet(const FObjectInitializer& ObjectInitializer)
     : Super(ObjectInitializer)
@@ -34,21 +33,12 @@ int32 UFMODGenerateAssetsCommandlet::Main(const FString& CommandLine)
     TMap<FString, FString> Params;
     ParseCommandLine(*CommandLine, Tokens, Switches, Params);
 
-    TArray<FString> GeneratedFolders = {
-    TEXT("Banks"),
-    TEXT("Buses"),
-    TEXT("Events"),
-    TEXT("Reverbs"),
-    TEXT("Snapshots"),
-    TEXT("VCAs")
-    };
-
     // Rebuild switch
     if (Switches.Contains(RebuildSwitch))
     {
         FString FolderToDelete;
         IPlatformFile& FileManager = FPlatformFileManager::Get().GetPlatformFile();
-        for (FString folder : GeneratedFolders)
+        for (FString folder : Settings.GeneratedFolders)
         {
             FolderToDelete = FPaths::ProjectContentDir() + Settings.ContentBrowserPrefix + folder;
             bool removed = FileManager.DeleteDirectoryRecursively(*FolderToDelete);
@@ -61,7 +51,7 @@ int32 UFMODGenerateAssetsCommandlet::Main(const FString& CommandLine)
 
     // Ensure AssetRegistry is up to date
     TArray<FString> InPaths;
-    InPaths.Add(Settings.ContentBrowserPrefix);
+    InPaths.Add(Settings.GetFullContentPath());
     AssetRegistry.ScanPathsSynchronous(InPaths);
     while (AssetRegistry.IsLoadingAssets())
     {
