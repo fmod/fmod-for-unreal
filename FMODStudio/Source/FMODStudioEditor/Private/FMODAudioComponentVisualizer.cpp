@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2020.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2021.
 
 #include "FMODAudioComponentVisualizer.h"
 #include "FMODAudioComponent.h"
@@ -37,8 +37,7 @@ void FFMODAudioComponentVisualizer::DrawVisualization(const UActorComponent *Com
                     }
                     else
                     {
-                        EventDesc->getMinimumDistance(&MinDistance);
-                        EventDesc->getMaximumDistance(&MaxDistance);
+                        EventDesc->getMinMaxDistance(&MinDistance, &MaxDistance);
                     }
                     MinDistance = FMODUtils::DistanceToUEScale(MinDistance);
                     MaxDistance = FMODUtils::DistanceToUEScale(MaxDistance);

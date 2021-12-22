@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2020.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2021.
 
 #pragma once
 
@@ -278,11 +278,11 @@ class FMODSTUDIO_API UFMODBlueprintStatics : public UBlueprintFunctionLibrary
     UFUNCTION(BlueprintCallable, Category = "Audio|FMOD|EventInstance", meta = (UnsafeDuringActorConstruction = "true"))
     static void EventInstanceRelease(FFMODEventInstance EventInstance);
 
-    /** Trigger a cue on an FMOD Event Instance.
+    /** Allow an FMOD Event Instance to continue past a sustain point.
 	 * @param EventInstance - Event instance
 	 */
     UFUNCTION(BlueprintCallable, Category = "Audio|FMOD|EventInstance", meta = (UnsafeDuringActorConstruction = "true"))
-    static void EventInstanceTriggerCue(FFMODEventInstance EventInstance);
+    static void EventInstanceKeyOff(FFMODEventInstance EventInstance);
 
     /** Set 3D attributes on a FMOD Event Instance.
 	 * @param EventInstance - Event instance
