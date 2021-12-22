@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2020.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2021.
 
 #pragma once
 
@@ -132,7 +132,7 @@ public:
     /**
 	 * Called to change the listener position for editor mode
 	 */
-    virtual void FinishSetListenerPosition(int NumListeners, float DeltaSeconds) = 0;
+    virtual void FinishSetListenerPosition(int NumListeners) = 0;
 
     /**
 	 * Return the audio settings for the listener nearest the given location
@@ -165,4 +165,7 @@ public:
 
     /** Set active locale. Locale must be the locale name of one of the configured project locales */
     virtual bool SetLocale(const FString& Locale) = 0;
+
+    /** Get ative locale. */
+    virtual FString GetLocale() = 0;
 };

@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2020.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2021.
 
 #include "AssetTypeActions_FMODEvent.h"
 #include "AssetTypeActions_Base.h"
@@ -22,9 +22,12 @@ FAssetTypeActions_FMODEvent::FAssetTypeActions_FMODEvent()
 
 FAssetTypeActions_FMODEvent::~FAssetTypeActions_FMODEvent()
 {
-    FEditorDelegates::BeginPIE.Remove(BeginPIEDelegateHandle);
-    IFMODStudioModule::Get().BanksReloadedEvent().RemoveAll(this);
-    IFMODStudioModule::Get().StopAuditioningInstance();
+    if (GIsRunning)
+    {
+        FEditorDelegates::BeginPIE.Remove(BeginPIEDelegateHandle);
+        IFMODStudioModule::Get().BanksReloadedEvent().RemoveAll(this);
+        IFMODStudioModule::Get().StopAuditioningInstance();
+    }
 }
 
 UClass *FAssetTypeActions_FMODEvent::GetSupportedClass() const

@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2020.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2021.
 
 #pragma once
 
@@ -12,7 +12,7 @@ public:
     FFMODBankUpdateNotifier();
 
     void SetFilePath(const FString &InPath);
-    void Update();
+    void Update(float DeltaTime);
 
     void EnableUpdate(bool bEnable);
 
@@ -20,9 +20,11 @@ public:
 
 private:
     void Refresh();
+    FDateTime MostRecentFileTime();
 
     bool bUpdateEnabled;
     FString FilePath;
     FDateTime NextRefreshTime;
     FDateTime FileTime;
+    float Countdown;
 };
