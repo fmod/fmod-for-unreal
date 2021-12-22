@@ -102,6 +102,7 @@ FMOD_RESULT F_API FMOD_Studio_EventDescription_IsSnapshot(FMOD_STUDIO_EVENTDESCR
 FMOD_RESULT F_API FMOD_Studio_EventDescription_IsOneshot(FMOD_STUDIO_EVENTDESCRIPTION *eventdescription, FMOD_BOOL *oneshot);
 FMOD_RESULT F_API FMOD_Studio_EventDescription_IsStream(FMOD_STUDIO_EVENTDESCRIPTION *eventdescription, FMOD_BOOL *isStream);
 FMOD_RESULT F_API FMOD_Studio_EventDescription_Is3D(FMOD_STUDIO_EVENTDESCRIPTION *eventdescription, FMOD_BOOL *is3D);
+FMOD_RESULT F_API FMOD_Studio_EventDescription_IsDopplerEnabled(FMOD_STUDIO_EVENTDESCRIPTION *eventdescription, FMOD_BOOL *doppler);
 FMOD_RESULT F_API FMOD_Studio_EventDescription_HasCue(FMOD_STUDIO_EVENTDESCRIPTION *eventdescription, FMOD_BOOL *cue);
 FMOD_RESULT F_API FMOD_Studio_EventDescription_CreateInstance(FMOD_STUDIO_EVENTDESCRIPTION *eventdescription, FMOD_STUDIO_EVENTINSTANCE **instance);
 FMOD_RESULT F_API FMOD_Studio_EventDescription_GetInstanceCount(FMOD_STUDIO_EVENTDESCRIPTION *eventdescription, int *count);

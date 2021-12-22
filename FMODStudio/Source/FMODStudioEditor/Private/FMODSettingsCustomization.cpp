@@ -46,30 +46,15 @@ public:
             FText()
         );
 
-        TSharedRef<SWidget> NotPackagedWidget = MakeRow(
+        TSharedRef<SWidget> PackagingSettingsBadWidget = MakeRow(
             "SettingsEditor.WarningIcon",
-            LOCTEXT("NotPackagedText",
-                "Bank Output Directory has not been added to the \"Additional Non-Asset Directories to Copy\" list."
+            LOCTEXT("PackagingSettingsBadText",
+                "The packaging settings for copying the FMOD bank files to staging are not correct. It is recommended that the bank output directory "
+                "for the Desktop platform (or the forced platform if set) is added to the \"Additional Non-Asset Directories To Copy\" list, and "
+                "that no other directory containing FMOD banks or assets is added to either the \"Additional Non-Asset Directories To Copy\" list "
+                "or the \"Additional Non-Asset Directories to Package\" list."
             ),
-            LOCTEXT("AddToNonUFS", "Add")
-        );
-
-        TSharedRef<SWidget> AddedToUFSWidget = MakeRow(
-            "SettingsEditor.WarningIcon",
-            LOCTEXT("AddedToUFSText", 
-                "Bank Output Directory has been added to the \"Additional Non-Asset Directories to Package\" list. "
-                "It is recommended to move FMOD to the \"Additional Non-Asset Directories to Copy\" list."
-            ),
-            LOCTEXT("MoveToNonUFS", "Move")
-        );
-
-        TSharedRef<SWidget> AddedToBothWidget = MakeRow(
-            "SettingsEditor.WarningIcon",
-            LOCTEXT("AddedToBothText",
-                "Bank Output Directory has been added to the \"Additional Non-Asset Directories to Package\" list. "
-                "It is recommended to remove FMOD from the \"Additional Non-Asset Directories to Package\" list."
-            ),
-            LOCTEXT("RemoveFromUFS", "Remove")
+            LOCTEXT("FixPackagingSettings", "Fix")
         );
 
         ChildSlot
@@ -94,17 +79,7 @@ public:
 
                     + SWidgetSwitcher::Slot()
                     [
-                        AddedToUFSWidget
-                    ]
-
-                    + SWidgetSwitcher::Slot()
-                    [
-                        NotPackagedWidget
-                    ]
-
-                    + SWidgetSwitcher::Slot()
-                    [
-                        AddedToBothWidget
+                        PackagingSettingsBadWidget
                     ]
                 ]
             ];
@@ -169,31 +144,39 @@ private:
     {
         const UFMODSettings& Settings = *GetDefault<UFMODSettings>();
         UProjectPackagingSettings* PackagingSettings = Cast<UProjectPackagingSettings>(UProjectPackagingSettings::StaticClass()->GetDefaultObject());
-        bool UpdateConfigFile = false;
 
-        if (SettingsState == UFMODSettings::AddedToUFS || SettingsState == UFMODSettings::AddedToBoth)
+        if (SettingsState == UFMODSettings::PackagingSettingsBad)
         {
-            // Remove from non-asset directories to package list
-            for (int i = 0; i < PackagingSettings->DirectoriesToAlwaysStageAsUFS.Num(); ++i)
+            // Remove any bad entries
+            for (int i = 0; i < PackagingSettings->DirectoriesToAlwaysStageAsNonUFS.Num();)
+            {
+                if (PackagingSettings->DirectoriesToAlwaysStageAsNonUFS[i].Path.StartsWith(Settings.BankOutputDirectory.Path))
+                {
+                    PackagingSettings->DirectoriesToAlwaysStageAsNonUFS.RemoveAt(i);
+                }
+                else
+                {
+                    ++i;
+                }
+            }
+
+            for (int i = 0; i < PackagingSettings->DirectoriesToAlwaysStageAsUFS.Num();)
             {
                 if (PackagingSettings->DirectoriesToAlwaysStageAsUFS[i].Path.StartsWith(Settings.BankOutputDirectory.Path))
                 {
                     PackagingSettings->DirectoriesToAlwaysStageAsUFS.RemoveAt(i);
-                    UpdateConfigFile = true;
-                    break;
+                }
+                else
+                {
+                    ++i;
                 }
             }
-        }
 
-        if (SettingsState == UFMODSettings::AddedToUFS || SettingsState == UFMODSettings::NotPackaged)
-        {
-            // Add to non-asset directories to copy list
-            PackagingSettings->DirectoriesToAlwaysStageAsNonUFS.Add(Settings.BankOutputDirectory);
-            UpdateConfigFile = true;
-        }
+            // Add correct entry
+            FDirectoryPath BankPath;
+            BankPath.Path = Settings.GetDesktopBankPath();
+            PackagingSettings->DirectoriesToAlwaysStageAsNonUFS.Add(BankPath);
 
-        if (UpdateConfigFile)
-        {
             PackagingSettings->UpdateDefaultConfigFile();
         }
 

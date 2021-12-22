@@ -475,6 +475,11 @@ void FFMODAssetTable::SetLocale(const FString &LocaleCode)
     ActiveLocale = LocaleCode;
 }
 
+FString FFMODAssetTable::GetLocale() const
+{
+    return ActiveLocale;
+}
+
 void FFMODAssetTable::GetAllBankPaths(TArray<FString> &Paths, bool IncludeMasterBank) const
 {
     const UFMODSettings &Settings = *GetDefault<UFMODSettings>();

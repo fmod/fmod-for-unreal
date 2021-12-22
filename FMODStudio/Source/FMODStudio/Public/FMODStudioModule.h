@@ -165,4 +165,7 @@ public:
 
     /** Set active locale. Locale must be the locale name of one of the configured project locales */
     virtual bool SetLocale(const FString& Locale) = 0;
+
+    /** Get ative locale. */
+    virtual FString GetLocale() = 0;
 };

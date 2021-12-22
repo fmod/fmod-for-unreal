@@ -316,9 +316,7 @@ public:
 
 private:
 // Begin ActorComponent interface.
-#if WITH_EDITORONLY_DATA
     virtual void OnRegister() override;
-#endif
     virtual void OnUnregister() override;
     virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
     virtual void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;

@@ -256,6 +256,8 @@ public:
 
     virtual bool SetLocale(const FString& Locale) override;
 
+    virtual FString GetLocale() override;
+
     void ResetInterpolation();
 
 #if PLATFORM_IOS || PLATFORM_TVOS
@@ -575,6 +577,12 @@ void FFMODStudioModule::CreateStudioSystem(EFMODSystemContext::Type Type)
         UE_LOG(LogFMOD, Verbose, TEXT("Enabling live update"));
         StudioInitFlags |= FMOD_STUDIO_INIT_LIVEUPDATE;
     }
+
+    if (Settings.bEnableMemoryTracking && Type == EFMODSystemContext::Runtime)
+    {
+        StudioInitFlags |= FMOD_STUDIO_INIT_MEMORY_TRACKING;
+    }
+
 #endif
     if (Type == EFMODSystemContext::Auditioning || Type == EFMODSystemContext::Editor)
     {
@@ -790,7 +798,7 @@ bool FFMODStudioModule::Tick(float DeltaTime)
 {
     if (GIsEditor)
     {
-        BankUpdateNotifier.Update();
+        BankUpdateNotifier.Update(DeltaTime);
     }
 
     if (ClockSinks[EFMODSystemContext::Auditioning].IsValid())
@@ -1084,29 +1092,11 @@ void FFMODStudioModule::FinishSetListenerPosition(int NumListeners)
 void FFMODStudioModule::RefreshSettings()
 {
     AssetTable.Refresh();
+    AssetTable.SetLocale(GetLocale());
     if (GIsEditor)
     {
-        const UFMODSettings &Settings = *GetDefault<UFMODSettings>();
+        const UFMODSettings& Settings = *GetDefault<UFMODSettings>();
         BankUpdateNotifier.SetFilePath(Settings.GetFullBankPath() / AssetTable.GetMasterStringsBankPath());
-
-        // Initialize ActiveLocale based on settings
-        FString LocaleCode = "";
-
-        if (Settings.Locales.Num() > 0)
-        {
-            LocaleCode = Settings.Locales[0].LocaleCode;
-
-            for (int32 i = 0; i < Settings.Locales.Num(); ++i)
-            {
-                if (Settings.Locales[i].bDefault)
-                {
-                    LocaleCode = Settings.Locales[i].LocaleCode;
-                    break;
-                }
-            }
-        }
-
-        AssetTable.SetLocale(LocaleCode);
     }
 }
 
@@ -1303,6 +1293,27 @@ bool FFMODStudioModule::SetLocale(const FString& LocaleName)
 
     UE_LOG(LogFMOD, Error, TEXT("No project locale named '%s' has been defined."), *LocaleName);
     return false;
+}
+
+FString FFMODStudioModule::GetLocale()
+{
+    FString LocaleCode = "";
+    const UFMODSettings& Settings = *GetDefault<UFMODSettings>();
+
+    if (Settings.Locales.Num() > 0)
+    {
+        LocaleCode = Settings.Locales[0].LocaleCode;
+
+        for (int32 i = 0; i < Settings.Locales.Num(); ++i)
+        {
+            if (Settings.Locales[i].bDefault)
+            {
+                LocaleCode = Settings.Locales[i].LocaleCode;
+                break;
+            }
+        }
+    }
+    return LocaleCode;
 }
 
 void FFMODStudioModule::LoadBanks(EFMODSystemContext::Type Type)

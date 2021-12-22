@@ -126,7 +126,7 @@ typedef enum
 typedef enum
 {
     FMOD_DSP_NORMALIZE_FADETIME,
-    FMOD_DSP_NORMALIZE_THRESHHOLD,
+    FMOD_DSP_NORMALIZE_THRESHOLD,
     FMOD_DSP_NORMALIZE_MAXAMP
 } FMOD_DSP_NORMALIZE;
 
@@ -403,6 +403,42 @@ typedef enum
     FMOD_DSP_FFT_SPECTRUMDATA,
     FMOD_DSP_FFT_DOMINANT_FREQ
 } FMOD_DSP_FFT;
+
+#define FMOD_DSP_LOUDNESS_METER_HISTOGRAM_SAMPLES 66
+
+typedef enum
+{
+    FMOD_DSP_LOUDNESS_METER_STATE,
+    FMOD_DSP_LOUDNESS_METER_WEIGHTING,
+    FMOD_DSP_LOUDNESS_METER_INFO
+} FMOD_DSP_LOUDNESS_METER;
+
+
+typedef enum
+{
+    FMOD_DSP_LOUDNESS_METER_STATE_RESET_INTEGRATED = -3,
+    FMOD_DSP_LOUDNESS_METER_STATE_RESET_MAXPEAK = -2,
+    FMOD_DSP_LOUDNESS_METER_STATE_RESET_ALL = -1,
+    FMOD_DSP_LOUDNESS_METER_STATE_PAUSED = 0,
+    FMOD_DSP_LOUDNESS_METER_STATE_ANALYZING = 1
+} FMOD_DSP_LOUDNESS_METER_STATE_TYPE;
+
+typedef struct FMOD_DSP_LOUDNESS_METER_INFO_TYPE
+{
+    float momentaryloudness;
+    float shorttermloudness;
+    float integratedloudness;
+    float loudness10thpercentile;
+    float loudness95thpercentile;
+    float loudnesshistogram[FMOD_DSP_LOUDNESS_METER_HISTOGRAM_SAMPLES];
+    float maxtruepeak;
+    float maxmomentaryloudness;
+} FMOD_DSP_LOUDNESS_METER_INFO_TYPE;
+
+typedef struct FMOD_DSP_LOUDNESS_METER_WEIGHTING_TYPE
+{
+    float channelweight[32];
+} FMOD_DSP_LOUDNESS_METER_WEIGHTING_TYPE;
 
 
 typedef enum
