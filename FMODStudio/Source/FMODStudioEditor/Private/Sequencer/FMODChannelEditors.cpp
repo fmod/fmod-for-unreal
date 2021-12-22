@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2020.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2021.
 
 #include "Sequencer/FMODChannelEditors.h"
 #include "ISequencerChannelInterface.h"
@@ -7,8 +7,9 @@
 #include "MovieSceneTimeHelpers.h"
 #include "MovieSceneToolHelpers.h"
 #include "ScopedTransaction.h"
-#include "EditorWidgets/Public/SEnumCombobox.h"
+#include "EditorWidgets/Public/SEnumCombo.h"
 #include "EditorStyleSet.h"
+#include "Channels/MovieSceneChannelTraits.h"
 
 class SFMODEventControlKeyEditor : public SCompoundWidget
 {
@@ -16,7 +17,7 @@ public:
     SLATE_BEGIN_ARGS(SFMODEventControlKeyEditor) {}
     SLATE_END_ARGS();
 
-    void Construct(const FArguments &InArgs, TMovieSceneChannelHandle<FMovieSceneByteChannel> InChannelHandle,
+    void Construct(const FArguments &InArgs, TMovieSceneChannelHandle<FFMODEventControlChannel> InChannelHandle,
         TWeakObjectPtr<UMovieSceneSection> InWeakSection, TWeakPtr<ISequencer> InWeakSequencer, UEnum *InEnum)
     {
         ChannelHandle = InChannelHandle;
@@ -31,16 +32,16 @@ public:
 private:
     int32 OnGetCurrentValueAsInt() const
     {
-        using namespace MovieScene;
+        using namespace UE::MovieScene;
 
-        FMovieSceneByteChannel *Channel = ChannelHandle.Get();
+        FFMODEventControlChannel *Channel = ChannelHandle.Get();
         ISequencer *Sequencer = WeakSequencer.Pin().Get();
         UMovieSceneSection *OwningSection = WeakSection.Get();
         uint8 Result = 0;
 
         if (Channel && Sequencer && OwningSection)
         {
-            const FFrameTime CurrentTime = MovieScene::ClampToDiscreteRange(Sequencer->GetLocalTime().Time, OwningSection->GetRange());
+            const FFrameTime CurrentTime = UE::MovieScene::ClampToDiscreteRange(Sequencer->GetLocalTime().Time, OwningSection->GetRange());
             EvaluateChannel(Channel, CurrentTime, Result);
         }
 
@@ -49,9 +50,8 @@ private:
 
     void SetValue(uint8 InValue)
     {
-        using namespace MovieScene;
-        using namespace Sequencer;
-
+        using namespace UE::MovieScene;
+ 
         UMovieSceneSection *OwningSection = WeakSection.Get();
         if (!OwningSection)
         {
@@ -60,7 +60,7 @@ private:
 
         OwningSection->SetFlags(RF_Transactional);
 
-        FMovieSceneByteChannel *Channel = ChannelHandle.Get();
+        FFMODEventControlChannel *Channel = ChannelHandle.Get();
         ISequencer *Sequencer = WeakSequencer.Pin().Get();
 
         if (!OwningSection->TryModify() || !Channel || !Sequencer)
@@ -121,20 +121,20 @@ private:
         }
     }
 
-    TMovieSceneChannelHandle<FMovieSceneByteChannel> ChannelHandle;
+    TMovieSceneChannelHandle<FFMODEventControlChannel> ChannelHandle;
     TWeakObjectPtr<UMovieSceneSection> WeakSection;
     TWeakPtr<ISequencer> WeakSequencer;
 };
 
-bool CanCreateKeyEditor(const FMovieSceneByteChannel *Channel)
+bool CanCreateKeyEditor(const FFMODEventControlChannel *Channel)
 {
     return true;
 }
 
-TSharedRef<SWidget> CreateKeyEditor(const TMovieSceneChannelHandle<FMovieSceneByteChannel> &Channel, UMovieSceneSection *Section,
+TSharedRef<SWidget> CreateKeyEditor(const TMovieSceneChannelHandle<FFMODEventControlChannel> &Channel, UMovieSceneSection *Section,
     const FGuid &InObjectBindingID, TWeakPtr<FTrackInstancePropertyBindings> PropertyBindings, TWeakPtr<ISequencer> InSequencer)
 {
-    const FMovieSceneByteChannel *RawChannel = Channel.Get();
+    const FFMODEventControlChannel *RawChannel = Channel.Get();
 
     if (!RawChannel)
     {
@@ -145,33 +145,7 @@ TSharedRef<SWidget> CreateKeyEditor(const TMovieSceneChannelHandle<FMovieSceneBy
     return SNew(SFMODEventControlKeyEditor, Channel, Section, InSequencer, Enum);
 }
 
-TSharedPtr<FStructOnScope> GetKeyStruct(const TMovieSceneChannelHandle<FFMODEventControlChannel> &ChannelHandle, FKeyHandle InHandle)
-{
-    FFMODEventControlChannel *Channel = ChannelHandle.Get();
-    if (!Channel)
-    {
-        return nullptr;
-    }
-
-    TMovieSceneChannelData<uint8> ChannelData = Channel->GetData();
-    const int32 KeyIndex = ChannelData.GetIndex(InHandle);
-
-    if (KeyIndex == INDEX_NONE)
-    {
-        return nullptr;
-    }
-
-    TSharedPtr<FStructOnScope> KeyStruct = MakeShared<FStructOnScope>(FFMODEventControlKeyStruct::StaticStruct());
-    FFMODEventControlKeyStruct *Struct = reinterpret_cast<FFMODEventControlKeyStruct *>(KeyStruct->GetStructMemory());
-
-    Struct->Time = ChannelData.GetTimes()[KeyIndex];
-    Struct->Value = (EFMODEventControlKey)ChannelData.GetValues()[KeyIndex];
-
-    Struct->KeyStructInterop.Add(FMovieSceneChannelValueHelper(ChannelHandle, &Struct->Value, MakeTuple(InHandle, Struct->Time)));
-    return KeyStruct;
-}
-
-void DrawKeys(FFMODEventControlChannel *Channel, TArrayView<const FKeyHandle> InKeyHandles, TArrayView<FKeyDrawParams> OutKeyDrawParams)
+void DrawKeys(FFMODEventControlChannel *Channel, TArrayView<const FKeyHandle> InKeyHandles, const UMovieSceneSection* InOwner, TArrayView<FKeyDrawParams> OutKeyDrawParams)
 {
     static const FName KeyLeftBrushName("Sequencer.KeyLeft");
     static const FName KeyRightBrushName("Sequencer.KeyRight");

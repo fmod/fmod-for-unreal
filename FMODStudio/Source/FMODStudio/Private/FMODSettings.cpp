@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2020.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2021.
 
 #include "FMODSettings.h"
 #include "Misc/Paths.h"
@@ -34,8 +34,10 @@ UFMODSettings::UFMODSettings(const FObjectInitializer &ObjectInitializer)
     StudioUpdatePeriod = 0;
     LiveUpdatePort = 9264;
     EditorLiveUpdatePort = 9265;
+    ReloadBanksDelay = 5;
     bMatchHardwareSampleRate = true;
     bLockAllBuses = false;
+    bEnableMemoryTracking = false;
 }
 
 FString UFMODSettings::GetFullBankPath() const
@@ -89,7 +91,28 @@ FString UFMODSettings::GetMasterStringsBankFilename() const
     return MasterBankName + TEXT(".strings.bank");
 }
 
+FString UFMODSettings::GetFullContentPath() const
+{
+    return ContentBrowserPrefix;
+}
+
 #if WITH_EDITOR
+FString UFMODSettings::GetDesktopBankPath() const
+{
+    FString Path = BankOutputDirectory.Path;
+
+    if (ForcePlatformName.IsEmpty())
+    {
+        Path = Path / "Desktop";
+    }
+    else if (ForcePlatformName != TEXT("."))
+    {
+        Path = Path / ForcePlatformName;
+    }
+
+    return Path;
+}
+
 UFMODSettings::EProblem UFMODSettings::Check() const
 {
     if (!IsBankPathSet())
@@ -97,16 +120,25 @@ UFMODSettings::EProblem UFMODSettings::Check() const
         return BankPathNotSet;
     }
 
+    // Check packaging settings to ensure that only the correct bank output directory for desktop (or forced platform) banks is set-up for staging
+    FString DesktopBankPath = GetDesktopBankPath();
     UProjectPackagingSettings* PackagingSettings = Cast<UProjectPackagingSettings>(UProjectPackagingSettings::StaticClass()->GetDefaultObject());
-    bool bAddedToNonUFS = false;
-    bool bAddedToUFS = false;
+    bool bCorrectPathAdded = false;
+    bool bOtherPathsAdded = false;
+    bool bAssetsToCookAdded = false;
 
     for (int i = 0; i < PackagingSettings->DirectoriesToAlwaysStageAsNonUFS.Num(); ++i)
     {
         if (PackagingSettings->DirectoriesToAlwaysStageAsNonUFS[i].Path.StartsWith(BankOutputDirectory.Path))
         {
-            bAddedToNonUFS = true;
-            break;
+            if (PackagingSettings->DirectoriesToAlwaysStageAsNonUFS[i].Path == DesktopBankPath)
+            {
+                bCorrectPathAdded = true;
+            }
+            else
+            {
+                bOtherPathsAdded = true;
+            }
         }
     }
 
@@ -114,24 +146,23 @@ UFMODSettings::EProblem UFMODSettings::Check() const
     {
         if (PackagingSettings->DirectoriesToAlwaysStageAsUFS[i].Path.StartsWith(BankOutputDirectory.Path))
         {
-            bAddedToUFS = true;
+            bOtherPathsAdded = true;
             break;
         }
     }
 
-    if (bAddedToUFS && bAddedToNonUFS)
+    for (int i = 0; i < PackagingSettings->DirectoriesToAlwaysCook.Num(); ++i)
     {
-        return AddedToBoth;
+        if (PackagingSettings->DirectoriesToAlwaysCook[i].Path.StartsWith(GetFullContentPath()))
+        {
+            bAssetsToCookAdded = true;
+            break;
+        }
     }
 
-    if (bAddedToUFS)
+    if (!bCorrectPathAdded || bOtherPathsAdded || !bAssetsToCookAdded)
     {
-        return AddedToUFS;
-    }
- 
-    if (!bAddedToNonUFS)
-    {
-        return NotPackaged;
+        return PackagingSettingsBad;
     }
 
     return Okay;

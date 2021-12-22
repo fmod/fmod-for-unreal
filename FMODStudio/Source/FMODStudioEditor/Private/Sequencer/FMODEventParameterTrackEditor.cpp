@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2020.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2021.
 
 #include "FMODEventParameterTrackEditor.h"
 #include "FMODAmbientSound.h"
@@ -85,7 +85,7 @@ TSharedRef<SWidget> FFMODEventParameterTrackEditor::BuildParameterMenu(
 {
     FMenuBuilder AddParameterMenuBuilder(true, nullptr);
 
-    if (IsValid(AudioComponent) && AudioComponent->Event.IsValid())
+    if (IsValid(AudioComponent) && AudioComponent->Event)
     {
         TArray<FParameterNameAndAction> ParameterNamesAndActions;
         TArray<FMOD_STUDIO_PARAMETER_DESCRIPTION> ParameterDescriptions;
