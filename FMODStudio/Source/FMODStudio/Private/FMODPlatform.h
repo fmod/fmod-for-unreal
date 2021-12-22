@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2020.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2021.
 #pragma once
 
 #include "Containers/UnrealString.h"
@@ -13,6 +13,8 @@ void FMODPlatform_SetRealChannelCount(FMOD_ADVANCEDSETTINGS* advSettings);
 
 int FMODPlatform_MemoryPoolSize();
 
+#ifdef FMOD_PLATFORM_LOAD_DLL
 void* FMODPlatformLoadDll(const TCHAR* LibToLoad);
+#endif
 
 FMOD_RESULT FMODPlatformSystemSetup();

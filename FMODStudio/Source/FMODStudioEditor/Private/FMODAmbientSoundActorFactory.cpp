@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2020.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2021.
 
 #include "FMODAmbientSoundActorFactory.h"
 #include "FMODStudioEditorPrivatePCH.h"
@@ -49,7 +49,7 @@ UObject *UFMODAmbientSoundActorFactory::GetAssetFromActorInstance(AActor *Instan
     AFMODAmbientSound *SoundActor = CastChecked<AFMODAmbientSound>(Instance);
 
     check(SoundActor->AudioComponent);
-    return SoundActor->AudioComponent->Event.Get();
+    return SoundActor->AudioComponent->Event;
 }
 
 void UFMODAmbientSoundActorFactory::PostCreateBlueprint(UObject *Asset, AActor *CDO)

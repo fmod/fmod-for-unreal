@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2020.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2021.
 
 #pragma once
 
@@ -29,19 +29,13 @@ struct FFMODEventControlChannel : public FMovieSceneByteChannel
 template <>
 struct TStructOpsTypeTraits<FFMODEventControlChannel> : public TStructOpsTypeTraitsBase2<FFMODEventControlChannel>
 {
-    enum
-    {
-        WithStructuredSerializeFromMismatchedTag = true
-    };
+    enum { WithStructuredSerializeFromMismatchedTag = true };
 };
 
 template <>
 struct TMovieSceneChannelTraits<FFMODEventControlChannel> : TMovieSceneChannelTraitsBase<FFMODEventControlChannel>
 {
-    enum
-    {
-        SupportsDefaults = false
-    };
+    enum { SupportsDefaults = false };
 
 #if WITH_EDITOR
 
@@ -61,10 +55,6 @@ public:
     /** Channel containing the event control keys */
     UPROPERTY()
     FFMODEventControlChannel ControlKeys;
-
-protected:
-    //~ UMovieSceneSection interface
-    virtual FMovieSceneEvalTemplatePtr GenerateTemplate() const override;
 };
 
 inline void AssignValue(FFMODEventControlChannel *InChannel, FKeyHandle InKeyHandle, EFMODEventControlKey InValue)

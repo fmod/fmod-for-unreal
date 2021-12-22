@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2020.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2021.
 
 #include "SFMODEventEditorPanel.h"
 #include "FMODStudioModule.h"
@@ -46,8 +46,7 @@ TSharedRef<SBorder> SFMODEventEditorPanel::ConstructToolbar(FMOD::Studio::EventD
     bool bIsOneshot = false, bIsStream = false, bIs3D = false;
     if (EventDescription != nullptr)
     {
-        EventDescription->getMinimumDistance(&MinDistance);
-        EventDescription->getMaximumDistance(&MaxDistance);
+        EventDescription->getMinMaxDistance(&MinDistance, &MaxDistance);
         EventDescription->getLength(&EventLengthMS);
         EventDescription->isOneshot(&bIsOneshot);
         EventDescription->isStream(&bIsStream);
@@ -149,8 +148,7 @@ TSharedRef<SExpandableArea> SFMODEventEditorPanel::ConstructInfo(FMOD::Studio::E
         float MinDist = 0.0f;
         float MaxDist = 0.0f;
         EventDescription->getLength(&Length);
-        EventDescription->getMinimumDistance(&MinDist);
-        EventDescription->getMaximumDistance(&MaxDist);
+        EventDescription->getMinMaxDistance(&MinDist, &MaxDist);
 
         bool bOneShot = false;
         bool bStream = false;
