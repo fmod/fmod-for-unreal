@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2021.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2022.
 
 #include "FMODSettingsCustomization.h"
 
@@ -196,7 +196,7 @@ private:
                 PackagingSettings->DirectoriesToAlwaysCook.Add(generatedFolder);
             }
 
-            PackagingSettings->UpdateDefaultConfigFile();
+            PackagingSettings->TryUpdateDefaultConfigFile();
         }
 
         UpdateState();
@@ -229,7 +229,7 @@ FFMODSettingsCustomization::FFMODSettingsCustomization()
 
 void FFMODSettingsCustomization::CustomizeDetails(IDetailLayoutBuilder &DetailLayout)
 {
-    IDetailCategoryBuilder &PackagingCategory = DetailLayout.EditCategory(TEXT("Basic"));
+    IDetailCategoryBuilder &PackagingCategory = DetailLayout.EditCategory(TEXT("Notice"), FText::GetEmpty(), ECategoryPriority::Important);
     TSharedRef<SSettingsMessage> PlatformSetupMessage = SNew(SSettingsMessage);
     PackagingCategory.AddCustomRow(LOCTEXT("Warning", "Warning"), false).WholeRowWidget[PlatformSetupMessage];
 }
