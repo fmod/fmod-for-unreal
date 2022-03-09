@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2022.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2021.
 
 #pragma once
 
@@ -16,10 +16,6 @@ public:
 
     //~ FGCObject
     void AddReferencedObjects(FReferenceCollector& Collector) override;
-    virtual FString GetReferencerName() const override
-    {
-        return TEXT("FFMODAssetTable");
-    }
 
     void Load();
 

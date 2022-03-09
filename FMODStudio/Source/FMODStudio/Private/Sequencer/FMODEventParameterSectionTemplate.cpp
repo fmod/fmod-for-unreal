@@ -14,7 +14,7 @@ struct FFMODEventParameterPreAnimatedToken : IMovieScenePreAnimatedToken
     FFMODEventParameterPreAnimatedToken(FFMODEventParameterPreAnimatedToken &&) = default;
     FFMODEventParameterPreAnimatedToken &operator=(FFMODEventParameterPreAnimatedToken &&) = default;
 
-    virtual void RestoreState(UObject &Object, const UE::MovieScene::FRestoreStateParams& Params) override
+    virtual void RestoreState(UObject &Object, IMovieScenePlayer &Player) override
     {
         UFMODAudioComponent *AudioComponent = CastChecked<UFMODAudioComponent>(&Object);
 

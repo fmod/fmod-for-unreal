@@ -10,7 +10,6 @@
 #include "FMODSettings.h"
 #include "FMODSnapshot.h"
 #include "FMODSnapshotReverb.h"
-#include "FMODPort.h"
 #include "FMODUtils.h"
 #include "FMODVCA.h"
 #include "FileHelpers.h"
@@ -409,10 +408,6 @@ FString FFMODAssetBuilder::GetAssetClassName(UClass* AssetClass)
     {
         ClassName = TEXT("Reverbs");
     }
-    else if (AssetClass == UFMODPort::StaticClass())
-    {
-        ClassName = TEXT("Ports");
-    }
     return ClassName;
 }
 
@@ -444,10 +439,6 @@ bool FFMODAssetBuilder::MakeAssetCreateInfo(const FGuid &AssetGuid, const FStrin
     else if (AssetType.Equals(TEXT("vca")))
     {
         CreateInfo->Class = UFMODVCA::StaticClass();
-    }
-    else if (AssetType.Equals(TEXT("port")))
-    {
-        CreateInfo->Class = UFMODPort::StaticClass();
     }
     else if (AssetType.Equals(TEXT("parameter")))
     {

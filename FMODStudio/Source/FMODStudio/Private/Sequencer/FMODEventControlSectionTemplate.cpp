@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2022.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2021.
 
 #include "FMODEventControlSectionTemplate.h"
 #include "FMODAmbientSound.h"
@@ -21,7 +21,7 @@ struct FPlayingToken : IMovieScenePreAnimatedToken
         }
     }
 
-    virtual void RestoreState(UObject &Object, const UE::MovieScene::FRestoreStateParams& Params) override
+    virtual void RestoreState(UObject &Object, IMovieScenePlayer &Player) override
     {
         UFMODAudioComponent *AudioComponent = CastChecked<UFMODAudioComponent>(&Object);
 

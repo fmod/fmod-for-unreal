@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2022.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2021.
 
 #include "FMODBlueprintStatics.h"
 #include "FMODAudioComponent.h"
@@ -74,7 +74,7 @@ class UFMODAudioComponent *UFMODBlueprintStatics::PlayEventAttached(class UFMODE
     AActor *Actor = AttachToComponent->GetOwner();
 
     // Avoid creating component if we're trying to play a sound on an already destroyed actor.
-    if (!IsValid(Actor))
+    if (Actor && Actor->IsPendingKill())
     {
         return nullptr;
     }

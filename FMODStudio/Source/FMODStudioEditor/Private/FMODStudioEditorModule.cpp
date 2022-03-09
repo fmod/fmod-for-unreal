@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2022.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2021.
 
 #include "FMODStudioEditorModule.h"
 #include "FMODStudioModule.h"
@@ -241,7 +241,7 @@ public:
     FTickerDelegate OnTick;
 
     /** Handle for registered delegates. */
-    FTSTicker::FDelegateHandle TickDelegateHandle;
+    FDelegateHandle TickDelegateHandle;
     FDelegateHandle BeginPIEDelegateHandle;
     FDelegateHandle EndPIEDelegateHandle;
     FDelegateHandle PausePIEDelegateHandle;
@@ -357,7 +357,7 @@ void FFMODStudioEditorModule::OnPostEngineInit()
     ViewportDrawingDelegateHandle = UDebugDrawService::Register(TEXT("Editor"), ViewportDrawingDelegate);
 
     OnTick = FTickerDelegate::CreateRaw(this, &FFMODStudioEditorModule::Tick);
-    TickDelegateHandle = FTSTicker::GetCoreTicker().AddTicker(OnTick);
+    TickDelegateHandle = FTicker::GetCoreTicker().AddTicker(OnTick);
 
     // Create asset builder
     AssetBuilder.Create();
@@ -379,7 +379,7 @@ void FFMODStudioEditorModule::OnPostEngineInit()
 
 void FFMODStudioEditorModule::ProcessBanks()
 {
-    if (!IsRunningCommandlet() && FApp::HasProjectName())
+    if (!IsRunningCommandlet())
     {
         BankUpdateNotifier.EnableUpdate(false);
         ReloadBanks();
@@ -965,7 +965,7 @@ void FFMODStudioEditorModule::ValidateFMOD()
                 PackagingSettings->DirectoriesToAlwaysStageAsNonUFS.Add(Settings.BankOutputDirectory);
             }
 
-            PackagingSettings->TryUpdateDefaultConfigFile();
+            PackagingSettings->UpdateDefaultConfigFile();
         }
     }
     else if (!bPackagingFound)
@@ -978,7 +978,7 @@ void FFMODStudioEditorModule::ValidateFMOD()
         if (EAppReturnType::Yes == FMessageDialog::Open(EAppMsgType::YesNo, message))
         {
             PackagingSettings->DirectoriesToAlwaysStageAsNonUFS.Add(Settings.BankOutputDirectory);
-            PackagingSettings->TryUpdateDefaultConfigFile();
+            PackagingSettings->UpdateDefaultConfigFile();
         }
     }
 
@@ -1006,7 +1006,7 @@ void FFMODStudioEditorModule::ValidateFMOD()
                 GeneratedDir.Path = Settings.GetFullContentPath() / folder;
                 PackagingSettings->DirectoriesToAlwaysCook.Add(GeneratedDir);
             }
-            PackagingSettings->TryUpdateDefaultConfigFile();
+            PackagingSettings->UpdateDefaultConfigFile();
         }
     }
 
@@ -1023,28 +1023,25 @@ void FFMODStudioEditorModule::ValidateFMOD()
 
 void FFMODStudioEditorModule::OnMainFrameLoaded(TSharedPtr<SWindow> InRootWindow, bool bIsNewProjectWindow)
 {
-    if (!bIsNewProjectWindow)
+    // Show a popup notification that allows the user to fix bad settings
+    const UFMODSettings& Settings = *GetDefault<UFMODSettings>();
+
+    if (Settings.Check() != UFMODSettings::Okay)
     {
-        // Show a popup notification that allows the user to fix bad settings
-        const UFMODSettings& Settings = *GetDefault<UFMODSettings>();
+        FNotificationInfo Info(LOCTEXT("BadSettingsPopupTitle", "FMOD Settings Problem Detected"));
+        Info.bFireAndForget = false;
+        Info.bUseLargeFont = true;
+        Info.bUseThrobber = false;
+        Info.FadeOutDuration = 0.5f;
+        Info.ButtonDetails.Add(FNotificationButtonInfo(LOCTEXT("BadSettingsPopupSettings", "Settings..."),
+            LOCTEXT("BadSettingsPopupSettingsTT", "Open the settings editor"),
+            FSimpleDelegate::CreateRaw(this, &FFMODStudioEditorModule::OnBadSettingsPopupSettingsClicked)));
+        Info.ButtonDetails.Add(FNotificationButtonInfo(LOCTEXT("BadSettingsPopupDismiss", "Dismiss"), 
+            LOCTEXT("BadSettingsPopupDismissTT", "Dismiss this notification"),
+            FSimpleDelegate::CreateRaw(this, &FFMODStudioEditorModule::OnBadSettingsPopupDismissClicked)));
 
-        if (Settings.Check() != UFMODSettings::Okay)
-        {
-            FNotificationInfo Info(LOCTEXT("BadSettingsPopupTitle", "FMOD Settings Problem Detected"));
-            Info.bFireAndForget = false;
-            Info.bUseLargeFont = true;
-            Info.bUseThrobber = false;
-            Info.FadeOutDuration = 0.5f;
-            Info.ButtonDetails.Add(FNotificationButtonInfo(LOCTEXT("BadSettingsPopupSettings", "Settings..."),
-                LOCTEXT("BadSettingsPopupSettingsTT", "Open the settings editor"),
-                FSimpleDelegate::CreateRaw(this, &FFMODStudioEditorModule::OnBadSettingsPopupSettingsClicked)));
-            Info.ButtonDetails.Add(FNotificationButtonInfo(LOCTEXT("BadSettingsPopupDismiss", "Dismiss"), 
-                LOCTEXT("BadSettingsPopupDismissTT", "Dismiss this notification"),
-                FSimpleDelegate::CreateRaw(this, &FFMODStudioEditorModule::OnBadSettingsPopupDismissClicked)));
-
-            BadSettingsNotification = FSlateNotificationManager::Get().AddNotification(Info);
-            BadSettingsNotification.Pin()->SetCompletionState(SNotificationItem::CS_Pending);
-        }
+        BadSettingsNotification = FSlateNotificationManager::Get().AddNotification(Info);
+        BadSettingsNotification.Pin()->SetCompletionState(SNotificationItem::CS_Pending);
     }
 }
 
@@ -1171,7 +1168,7 @@ void FFMODStudioEditorModule::ShutdownModule()
         BankUpdateNotifier.BanksUpdatedEvent.RemoveAll(this);
 
         // Unregister tick function.
-        FTSTicker::GetCoreTicker().RemoveTicker(TickDelegateHandle);
+        FTicker::GetCoreTicker().RemoveTicker(TickDelegateHandle);
 
         FEditorDelegates::BeginPIE.Remove(BeginPIEDelegateHandle);
         FEditorDelegates::EndPIE.Remove(EndPIEDelegateHandle);

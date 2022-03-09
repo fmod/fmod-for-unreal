@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2022.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2021.
 
 #include "FMODStudioModule.h"
 #include "FMODSettings.h"
@@ -272,7 +272,7 @@ public:
     TSharedPtr<FFMODStudioSystemClockSink, ESPMode::ThreadSafe> ClockSinks[EFMODSystemContext::Max];
 
     /** Handle for registered TickDelegate. */
-    FTSTicker::FDelegateHandle TickDelegateHandle;
+    FDelegateHandle TickDelegateHandle;
 
     /** Table of assets with name and guid */
     FFMODAssetTable AssetTable;
@@ -505,7 +505,7 @@ void FFMODStudioModule::StartupModule()
     }
 
     OnTick = FTickerDelegate::CreateRaw(this, &FFMODStudioModule::Tick);
-    TickDelegateHandle = FTSTicker::GetCoreTicker().AddTicker(OnTick);
+    TickDelegateHandle = FTicker::GetCoreTicker().AddTicker(OnTick);
 }
 
 inline FMOD_SPEAKERMODE ConvertSpeakerMode(EFMODSpeakerMode::Type Mode)
@@ -1184,7 +1184,7 @@ void FFMODStudioModule::ShutdownModule()
     if (UObjectInitialized())
     {
         // Unregister tick function.
-        FTSTicker::GetCoreTicker().RemoveTicker(TickDelegateHandle);
+        FTicker::GetCoreTicker().RemoveTicker(TickDelegateHandle);
     }
 
     UE_LOG(LogFMOD, Verbose, TEXT("FFMODStudioModule unloading dynamic libraries"));
@@ -1349,7 +1349,7 @@ void FFMODStudioModule::LoadBanks(EFMODSystemContext::Type Type)
             }
 
             // Optionally lock all buses to make sure they are created
-            if (MasterBank && bLockAllBuses)
+            if (MasterBank && Settings.bLockAllBuses)
             {
                 UE_LOG(LogFMOD, Verbose, TEXT("Locking all buses"));
                 int BusCount = 0;
