@@ -74,7 +74,7 @@ class UFMODAudioComponent *UFMODBlueprintStatics::PlayEventAttached(class UFMODE
     AActor *Actor = AttachToComponent->GetOwner();
 
     // Avoid creating component if we're trying to play a sound on an already destroyed actor.
-    if (Actor && Actor->IsPendingKill())
+    if (!IsValid(Actor))
     {
         return nullptr;
     }

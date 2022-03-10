@@ -272,7 +272,7 @@ public:
     TSharedPtr<FFMODStudioSystemClockSink, ESPMode::ThreadSafe> ClockSinks[EFMODSystemContext::Max];
 
     /** Handle for registered TickDelegate. */
-    FDelegateHandle TickDelegateHandle;
+    FTSTicker::FDelegateHandle TickDelegateHandle;
 
     /** Table of assets with name and guid */
     FFMODAssetTable AssetTable;
@@ -505,7 +505,7 @@ void FFMODStudioModule::StartupModule()
     }
 
     OnTick = FTickerDelegate::CreateRaw(this, &FFMODStudioModule::Tick);
-    TickDelegateHandle = FTicker::GetCoreTicker().AddTicker(OnTick);
+    TickDelegateHandle = FTSTicker::GetCoreTicker().AddTicker(OnTick);
 }
 
 inline FMOD_SPEAKERMODE ConvertSpeakerMode(EFMODSpeakerMode::Type Mode)
@@ -1184,7 +1184,7 @@ void FFMODStudioModule::ShutdownModule()
     if (UObjectInitialized())
     {
         // Unregister tick function.
-        FTicker::GetCoreTicker().RemoveTicker(TickDelegateHandle);
+        FTSTicker::GetCoreTicker().RemoveTicker(TickDelegateHandle);
     }
 
     UE_LOG(LogFMOD, Verbose, TEXT("FFMODStudioModule unloading dynamic libraries"));

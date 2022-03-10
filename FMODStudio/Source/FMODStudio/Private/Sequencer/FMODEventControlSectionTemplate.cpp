@@ -21,7 +21,7 @@ struct FPlayingToken : IMovieScenePreAnimatedToken
         }
     }
 
-    virtual void RestoreState(UObject &Object, IMovieScenePlayer &Player) override
+    virtual void RestoreState(UObject &Object, const UE::MovieScene::FRestoreStateParams& Params) override
     {
         UFMODAudioComponent *AudioComponent = CastChecked<UFMODAudioComponent>(&Object);
 
