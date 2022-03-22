@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2021.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2022.
 
 #include "FMODStudioModule.h"
 #include "FMODSettings.h"
@@ -1403,7 +1403,7 @@ void FFMODStudioModule::LoadBanks(EFMODSystemContext::Type Type)
             }
 
             // Optionally lock all buses to make sure they are created
-            if (MasterBank && Settings.bLockAllBuses)
+            if (MasterBank && bLockAllBuses)
             {
                 UE_LOG(LogFMOD, Verbose, TEXT("Locking all buses"));
                 int BusCount = 0;
