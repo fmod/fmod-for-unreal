@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2021.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2022.
 
 #include "FMODAudioComponentDetails.h"
 #include "Toolkits/AssetEditorManager.h"

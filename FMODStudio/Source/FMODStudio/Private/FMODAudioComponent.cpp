@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2021.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2022.
 
 #include "FMODAudioComponent.h"
 #include "FMODStudioModule.h"
@@ -538,7 +538,32 @@ void UFMODAudioComponent::EventCallbackCreateProgrammerSound(FMOD_STUDIO_PROGRAM
         FString SoundName = ProgrammerSoundNameCopy.Len() ? ProgrammerSoundNameCopy : UTF8_TO_TCHAR(props->name);
         FMOD_MODE SoundMode = FMOD_LOOP_NORMAL | FMOD_CREATECOMPRESSEDSAMPLE | FMOD_NONBLOCKING;
 
-        if (SoundName.Contains(TEXT(".")))
+        if (SoundName.StartsWith(TEXT("http://")) || 
+            SoundName.StartsWith(TEXT("http:\\\\")) || 
+            SoundName.StartsWith(TEXT("https://")) || 
+            SoundName.StartsWith(TEXT("https:\\\\")))
+        {
+            // Load via url
+            FMOD::Sound* Sound = nullptr;
+            FMOD_CREATESOUNDEXINFO exinfo;
+            memset(&exinfo, 0, sizeof(FMOD_CREATESOUNDEXINFO));
+            exinfo.cbsize = sizeof(FMOD_CREATESOUNDEXINFO);
+            exinfo.filebuffersize = 1024 * 16;
+            exinfo.ignoresetfilesystem = true;
+
+            if (LowLevelSystem->createSound(TCHAR_TO_UTF8(*SoundName), FMOD_CREATESTREAM | FMOD_NONBLOCKING, &exinfo, &Sound) == FMOD_OK)
+            {
+                UE_LOG(LogFMOD, Verbose, TEXT("Creating programmer sound from url '%s'"), *SoundName);
+                props->sound = (FMOD_SOUND*)Sound;
+                props->subsoundIndex = -1;
+                NeedDestroyProgrammerSoundCallback = true;
+            }
+            else
+            {
+                UE_LOG(LogFMOD, Warning, TEXT("Failed to load programmer sound url '%s'"), *SoundName);
+            }
+        }
+        else if (SoundName.Contains(TEXT(".")))
         {
             // Load via file
             FString SoundPath = SoundName;
@@ -658,6 +683,7 @@ void UFMODAudioComponent::PlayInternal(EFMODSystemContext::Type Context, bool bR
             if (EventDesc->getParameterDescriptionByName(TCHAR_TO_UTF8(*param), &paramDesc) == FMOD_OK)
             {
                 AmbientVolumeID = paramDesc.id;
+                LastVolume = -1.0f;     // Invalidate LastVolume so the AmbientVolumeParameter of the Event will be set later on
                 bApplyAmbientVolumes = true;
             }
         }
@@ -669,6 +695,7 @@ void UFMODAudioComponent::PlayInternal(EFMODSystemContext::Type Context, bool bR
             if (EventDesc->getParameterDescriptionByName(TCHAR_TO_UTF8(*Settings.AmbientLPFParameter), &paramDesc) == FMOD_OK)
             {
                 AmbientLPFID = paramDesc.id;
+                LastLPF = -1.0f;     // Invalidate LastLPF so the AmbientLPFParameter of the Event will be set later on
                 bApplyAmbientVolumes = true;
             }
         }
@@ -717,7 +744,6 @@ void UFMODAudioComponent::Stop()
     if (StudioInstance)
     {
         StudioInstance->stop(FMOD_STUDIO_STOP_ALLOWFADEOUT);
-        OnEventStopped.Broadcast();
     }
 
     wasOccluded = false;
