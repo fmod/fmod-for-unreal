@@ -1,6 +1,6 @@
 /* ======================================================================================== */
 /* FMOD Studio API - C header file.                                                         */
-/* Copyright (c), Firelight Technologies Pty, Ltd. 2004-2021.                               */
+/* Copyright (c), Firelight Technologies Pty, Ltd. 2004-2022.                               */
 /*                                                                                          */
 /* Use this header in conjunction with fmod_studio_common.h (which contains all the         */
 /* constants / callbacks) to develop using the C language.                                  */
