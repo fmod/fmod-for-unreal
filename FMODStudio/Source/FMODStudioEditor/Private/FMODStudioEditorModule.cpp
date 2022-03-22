@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2021.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2022.
 
 #include "FMODStudioEditorModule.h"
 
@@ -954,25 +954,28 @@ void FFMODStudioEditorModule::ReloadBanks()
 
 void FFMODStudioEditorModule::OnMainFrameLoaded(TSharedPtr<SWindow> InRootWindow, bool bIsNewProjectWindow)
 {
-    // Show a popup notification that allows the user to fix bad settings
-    const UFMODSettings& Settings = *GetDefault<UFMODSettings>();
-
-    if (Settings.Check() != UFMODSettings::Okay)
+    if (!bIsNewProjectWindow)
     {
-        FNotificationInfo Info(LOCTEXT("BadSettingsPopupTitle", "FMOD Settings Problem Detected"));
-        Info.bFireAndForget = false;
-        Info.bUseLargeFont = true;
-        Info.bUseThrobber = false;
-        Info.FadeOutDuration = 0.5f;
-        Info.ButtonDetails.Add(FNotificationButtonInfo(LOCTEXT("BadSettingsPopupSettings", "Settings..."),
-            LOCTEXT("BadSettingsPopupSettingsTT", "Open the settings editor"),
-            FSimpleDelegate::CreateRaw(this, &FFMODStudioEditorModule::OnBadSettingsPopupSettingsClicked)));
-        Info.ButtonDetails.Add(FNotificationButtonInfo(LOCTEXT("BadSettingsPopupDismiss", "Dismiss"), 
-            LOCTEXT("BadSettingsPopupDismissTT", "Dismiss this notification"),
-            FSimpleDelegate::CreateRaw(this, &FFMODStudioEditorModule::OnBadSettingsPopupDismissClicked)));
+        // Show a popup notification that allows the user to fix bad settings
+        const UFMODSettings& Settings = *GetDefault<UFMODSettings>();
 
-        BadSettingsNotification = FSlateNotificationManager::Get().AddNotification(Info);
-        BadSettingsNotification.Pin()->SetCompletionState(SNotificationItem::CS_Pending);
+        if (Settings.Check() != UFMODSettings::Okay)
+        {
+            FNotificationInfo Info(LOCTEXT("BadSettingsPopupTitle", "FMOD Settings Problem Detected"));
+            Info.bFireAndForget = false;
+            Info.bUseLargeFont = true;
+            Info.bUseThrobber = false;
+            Info.FadeOutDuration = 0.5f;
+            Info.ButtonDetails.Add(FNotificationButtonInfo(LOCTEXT("BadSettingsPopupSettings", "Settings..."),
+                LOCTEXT("BadSettingsPopupSettingsTT", "Open the settings editor"),
+                FSimpleDelegate::CreateRaw(this, &FFMODStudioEditorModule::OnBadSettingsPopupSettingsClicked)));
+            Info.ButtonDetails.Add(FNotificationButtonInfo(LOCTEXT("BadSettingsPopupDismiss", "Dismiss"), 
+                LOCTEXT("BadSettingsPopupDismissTT", "Dismiss this notification"),
+                FSimpleDelegate::CreateRaw(this, &FFMODStudioEditorModule::OnBadSettingsPopupDismissClicked)));
+
+            BadSettingsNotification = FSlateNotificationManager::Get().AddNotification(Info);
+            BadSettingsNotification.Pin()->SetCompletionState(SNotificationItem::CS_Pending);
+        }
     }
 }
 

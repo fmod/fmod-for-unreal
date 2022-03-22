@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2021.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2022.
 
 #include "FMODAssetTable.h"
 #include "FMODEvent.h"
@@ -7,6 +7,7 @@
 #include "FMODBank.h"
 #include "FMODBus.h"
 #include "FMODVCA.h"
+#include "FMODPort.h"
 #include "FMODUtils.h"
 #include "FMODSettings.h"
 #include "FMODFileCallbacks.h"
@@ -201,6 +202,10 @@ FString FFMODAssetTable::GetAssetClassName(UClass* AssetClass)
     {
         ClassName = TEXT("Reverbs");
     }
+    else if (AssetClass == UFMODPort::StaticClass())
+    {
+        ClassName = TEXT("Ports");
+    }
     return ClassName;
 }
 
@@ -232,6 +237,10 @@ bool FFMODAssetTable::MakeAssetCreateInfo(const FGuid &AssetGuid, const FString 
     else if (AssetType.Equals(TEXT("vca")))
     {
         CreateInfo->Class = UFMODVCA::StaticClass();
+    }
+    else if (AssetType.Equals(TEXT("port")))
+    {
+        CreateInfo->Class = UFMODPort::StaticClass();
     }
     else if (AssetType.Equals(TEXT("parameter")))
     {

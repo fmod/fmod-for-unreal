@@ -1,6 +1,6 @@
 /* ======================================================================================== */
 /* FMOD Core API - output development header file.                                          */
-/* Copyright (c), Firelight Technologies Pty, Ltd. 2004-2021.                               */
+/* Copyright (c), Firelight Technologies Pty, Ltd. 2004-2022.                               */
 /*                                                                                          */
 /* Use this header if you are wanting to develop your own output plugin to use with         */
 /* FMOD's output system.  With this header you can make your own output plugin that FMOD    */
@@ -113,7 +113,7 @@ struct FMOD_OUTPUT_OBJECT3DINFO
 #define FMOD_OUTPUT_FREE(_state, _ptr) \
     (_state)->free(_ptr, __FILE__, __LINE__)
 #define FMOD_OUTPUT_LOG(_state, _level, _location, _format, ...) \
-    (_state)->log(_level, __FILE__, __LINE__, _location, _format, __VA_ARGS__)
+    (_state)->log(_level, __FILE__, __LINE__, _location, _format, ##__VA_ARGS__)
 #define FMOD_OUTPUT_COPYPORT(_state, _id, _buffer, _length) \
     (_state)->copyport(_state, _id, _buffer, _length)
 #define FMOD_OUTPUT_REQUESTRESET(_state) \
