@@ -38,6 +38,16 @@ enum EFMOD_STUDIO_STOP_MODE
     IMMEDIATE
 };
 
+UENUM(BlueprintType) 
+enum EFMOD_STUDIO_PLAYBACK_STATE 
+{ 
+	PLAYBACK_PLAYING	UMETA(DisplayName = "Playing"), 
+	PLAYBACK_SUSTAINING	UMETA(DisplayName = "Sustaining"), 
+	PLAYBACK_STOPPED	UMETA(DisplayName = "Stopped"), 
+	PLAYBACK_STARTING	UMETA(DisplayName = "Starting"), 
+	PLAYBACK_STOPPING	UMETA(DisplayName = "Stopping") 
+}; 
+
 UCLASS()
 class FMODSTUDIO_API UFMODBlueprintStatics : public UBlueprintFunctionLibrary
 {
@@ -290,6 +300,12 @@ class FMODSTUDIO_API UFMODBlueprintStatics : public UBlueprintFunctionLibrary
 	 */
     UFUNCTION(BlueprintCallable, Category = "Audio|FMOD|EventInstance", meta = (UnsafeDuringActorConstruction = "true"))
     static void EventInstanceSetTransform(FFMODEventInstance EventInstance, const FTransform &Location);
+
+    /** Retrieves the playback state of a FMOD Event Instance
+	 * @param EventInstance - Event instance
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Audio|FMOD|EventInstance", meta = (UnsafeDuringActorConstruction = "true"))
+	static EFMOD_STUDIO_PLAYBACK_STATE EventInstanceGetPlaybackState(FFMODEventInstance EventInstance);
 
     /** List all output device names.
 	 */

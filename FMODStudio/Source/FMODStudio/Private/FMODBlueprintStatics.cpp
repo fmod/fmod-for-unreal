@@ -552,6 +552,20 @@ void UFMODBlueprintStatics::EventInstanceSetTransform(FFMODEventInstance EventIn
     }
 }
 
+EFMOD_STUDIO_PLAYBACK_STATE UFMODBlueprintStatics::EventInstanceGetPlaybackState(FFMODEventInstance EventInstance) 
+{ 
+	FMOD_STUDIO_PLAYBACK_STATE state; 
+	if (EventInstance.Instance) 
+	{ 
+		FMOD_RESULT Result = EventInstance.Instance->getPlaybackState(&state); 
+		if (Result != FMOD_OK) 
+		{ 
+			UE_LOG(LogFMOD, Warning, TEXT("Failed to get event instance playback state")); 
+		} 
+	} 
+	return (EFMOD_STUDIO_PLAYBACK_STATE)state; 
+}
+
 TArray<FString> UFMODBlueprintStatics::GetOutputDrivers()
 {
     TArray<FString> AllNames;
