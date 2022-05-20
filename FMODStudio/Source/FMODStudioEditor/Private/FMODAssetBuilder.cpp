@@ -486,7 +486,7 @@ UFMODAsset *FFMODAssetBuilder::CreateAsset(const AssetCreateInfo& CreateInfo, TA
     }
     else
     {
-        SanitizedPackagePath = ObjectTools::SanitizeInvalidChars(PackagePath, INVALID_OBJECTPATH_CHARACTERS);
+        SanitizedPackagePath = ObjectTools::SanitizeInvalidChars(PackagePath, FString(INVALID_OBJECTPATH_CHARACTERS) + TEXT("."));
         UE_LOG(LogFMOD, Log, TEXT("'%s' cannot be used as a UE4 asset path. %s. Using '%s' instead."), *PackagePath, *OutReason.ToString(),
             *SanitizedPackagePath);
     }
