@@ -1096,7 +1096,7 @@ void FFMODStudioModule::RefreshSettings()
     if (GIsEditor)
     {
         const UFMODSettings& Settings = *GetDefault<UFMODSettings>();
-        BankUpdateNotifier.SetFilePath(Settings.GetFullBankPath() / AssetTable.GetMasterStringsBankPath());
+        BankUpdateNotifier.SetFilePath(Settings.GetFullBankPath());
     }
 }
 
