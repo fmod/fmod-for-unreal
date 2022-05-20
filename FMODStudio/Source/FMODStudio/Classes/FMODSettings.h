@@ -1,10 +1,11 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2022.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2021.
 
 #pragma once
 
 #include "UObject/Class.h"
 #include "Engine/EngineTypes.h"
 #include "GenericPlatform/GenericPlatform.h"
+#include "fmod_common.h"
 #include "FMODSettings.generated.h"
 
 class Paths;
@@ -21,15 +22,86 @@ enum EFMODLogging
 UENUM()
 namespace EFMODSpeakerMode
 {
-enum Type
+    enum Type
+    {
+        // The speakers are stereo
+        Stereo,
+        // 5.1 speaker setup
+        Surround_5_1,
+        // 7.1 speaker setup
+        Surround_7_1,
+        // 7.1.4 speaker setup
+        Surround_7_1_4
+    };
+}
+
+UENUM()
+namespace EFMODOutput
 {
-    // The speakers are stereo
-    Stereo,
-    // 5.1 speaker setup
-    Surround_5_1,
-    // 7.1 speaker setup
-    Surround_7_1
-};
+    enum Type
+    {
+        /** Picks the best output mode for the platform.This is the default. */
+        TYPE_AUTODETECT,
+        /** All - Perform all mixing but discard the final output. */
+        TYPE_NOSOUND,
+        /** Win / UWP / Xbox One / Game Core - Windows Audio Session API. (Default on Windows, Xbox One, Game Core and UWP) */
+        TYPE_WASAPI,
+        /** Win - Low latency ASIO 2.0. */
+        TYPE_ASIO,
+        /** Linux - Pulse Audio. (Default on Linux if available) */
+        TYPE_PULSEAUDIO,
+        /** Linux - Advanced Linux Sound Architecture. (Default on Linux if PulseAudio isn't available) */
+        TYPE_ALSA,
+        /** Mac / iOS - Core Audio. (Default on Mac and iOS) */
+        TYPE_COREAUDIO,
+        /** Android - Java Audio Track. (Default on Android 2.2 and below) */
+        TYPE_AUDIOTRACK,
+        /** Android - OpenSL ES. (Default on Android 2.3 up to 7.1) */
+        TYPE_OPENSL,
+        /** PS4 / PS5 - Audio Out. (Default on PS4, PS5) */
+        TYPE_AUDIOOUT,
+        /** PS4 - Audio3D. */
+        TYPE_AUDIO3D,
+        /** Switch - nn::audio. (Default on Switch) */
+        TYPE_NNAUDIO,
+        /** Win10 / Xbox One / Game Core - Windows Sonic. */
+        TYPE_WINSONIC,
+        /** Android - AAudio. (Default on Android 8.1 and above) */
+        TYPE_AAUDIO,
+    };
+}
+
+UENUM()
+namespace EFMODPlatforms
+{
+    enum Type
+    {
+        Windows,
+        Linux,
+        Mac,
+        Android,
+        IOS,
+        PS4,
+        PS5,
+        Stadia,
+        Switch,
+        XboxOne,
+        XSX,
+        Editor
+    };
+}
+
+UENUM()
+namespace EFMODCodec
+{
+    enum Type
+    {
+        VORBIS,
+        FADPCM,
+        OPUS,
+        XMA,
+        AT9,
+    };
 }
 
 USTRUCT()
@@ -59,6 +131,56 @@ struct FCustomPoolSizes
         , PS4(0)
         , Switch(0)
         , XboxOne(0)
+    {
+    }
+};
+
+USTRUCT()
+struct FFMODPlatformSettings
+{
+    GENERATED_USTRUCT_BODY()
+
+    // Real Channel Count
+    UPROPERTY(config, EditAnywhere, Category = PlatformSettings, meta = (ClampMin = "0"))
+    int32 RealChannelCount;
+
+    /**
+    * Sample rate to use, or 0 to match system rate.
+    * eg. 0, 22050, 24000, 32000, 44100, 48000.
+    */
+    UPROPERTY(config, EditAnywhere, Category = PlatformSettings, meta = (ClampMin = "0"))
+    int32 SampleRate;
+
+    /**
+    * Project Output Format, should match the mode set up for the Studio project.
+    */
+    UPROPERTY(config, EditAnywhere, Category = PlatformSettings)
+    TEnumAsByte<EFMODSpeakerMode::Type> SpeakerMode;
+
+    /**
+    * Built-in output types that can be used to run the mixer.
+    */
+    UPROPERTY(config, EditAnywhere, Category = PlatformSettings)
+    TEnumAsByte<EFMODOutput::Type> OutputType;
+
+    /**
+     * Use specified memory pool size, units in bytes. Disabled by default.
+     * FMOD may become unstable if the limit is exceeded!
+     */
+    UPROPERTY(config, EditAnywhere, Category = PlatformSettings, meta = (ClampMin = "0"))
+    int32 CustomPoolSize;
+
+    /* Codecs
+    */
+    UPROPERTY(config, EditAnywhere, Category = PlatformSettings, meta = (ClampMin = "0"))
+    TMap<TEnumAsByte<EFMODCodec::Type>, int32> Codecs;
+
+    FFMODPlatformSettings()
+        : RealChannelCount(64)
+        , SampleRate(0)
+        , SpeakerMode(EFMODSpeakerMode::Surround_5_1)
+        , OutputType(EFMODOutput::TYPE_AUTODETECT)
+        , CustomPoolSize(0)
     {
     }
 };
@@ -94,20 +216,20 @@ class FMODSTUDIO_API UFMODSettings : public UObject
 
 public:
     /**
-	 * Whether to load all banks at startup.
-	 */
+     * Whether to load all banks at startup.
+     */
     UPROPERTY(config, EditAnywhere, Category = Basic)
     bool bLoadAllBanks;
 
     /**
-	 * Whether to load all bank sample data into memory at startup.
-	 */
+     * Whether to load all bank sample data into memory at startup.
+     */
     UPROPERTY(config, EditAnywhere, Category = Basic)
     bool bLoadAllSampleData;
 
     /**
-	 * Enable live update in non-final builds.
-	 */
+     * Enable live update in non-final builds.
+     */
     UPROPERTY(config, EditAnywhere, Category = Basic)
     bool bEnableLiveUpdate;
 
@@ -118,8 +240,8 @@ public:
     bool bEnableEditorLiveUpdate;
 
     /**
-	 * Path to find your studio bank output directory, relative to Content directory.
-	 */
+     * Path to find your studio bank output directory, relative to Content directory.
+     */
     UPROPERTY(config, EditAnywhere, Category = Basic, meta = (RelativeToGameContentDir))
     FDirectoryPath BankOutputDirectory;
 
@@ -128,82 +250,89 @@ public:
     TEnumAsByte<EFMODSpeakerMode::Type> OutputFormat;
 
     /**
+    * Built-in output types that can be used to run the mixer.
+    */
+    UPROPERTY(config, EditAnywhere, Category = Basic)
+    TEnumAsByte<EFMODOutput::Type> OutputType;
+
+    /**
     * Locales for localized banks. These should match the project locales configured in the FMOD Studio project.
     */
     UPROPERTY(config, EditAnywhere, Category = Localization)
     TArray<FFMODProjectLocale> Locales;
 
     /**
-	 * Whether to enable vol0virtual, which means voices with low volume will automatically go virtual to save CPU.
-	 */
+     * Whether to enable vol0virtual, which means voices with low volume will automatically go virtual to save CPU.
+     */
     UPROPERTY(config, EditAnywhere, Category = InitSettings)
     bool bVol0Virtual;
 
     /**
-	 * If vol0virtual is enabled, the signal level at which to make channels virtual.
-	 */
+     * If vol0virtual is enabled, the signal level at which to make channels virtual.
+     */
     UPROPERTY(config, EditAnywhere, Category = InitSettings)
     float Vol0VirtualLevel;
 
     /**
-	 * Sample rate to use, or 0 to match system rate.
-	 */
+     * Sample rate to use, or 0 to match system rate.
+     * eg. 0, 22050, 24000, 32000, 44100, 48000.
+     */
     UPROPERTY(config, EditAnywhere, Category = InitSettings)
     int32 SampleRate;
 
     /**
-	* Whether to match hardware sample rate where reasonable (44.1kHz to 48kHz).
-	*/
+    * Whether to match hardware sample rate where reasonable (44.1kHz to 48kHz).
+    */
     UPROPERTY(config, EditAnywhere, Category = InitSettings)
     bool bMatchHardwareSampleRate;
 
     /**
-	 * Number of actual software voices that can be used at once.
-	 */
+     * Number of actual software voices that can be used at once.
+     */
     UPROPERTY(config, EditAnywhere, Category = InitSettings)
     int32 RealChannelCount;
 
     /**
-	 * Total number of voices available that can be either real or virtual.
-	 */
+     * Total number of voices available that can be either real or virtual.
+     */
     UPROPERTY(config, EditAnywhere, Category = InitSettings)
     int32 TotalChannelCount;
 
     /**
-	 * DSP mixer buffer length (eg. 512, 1024) or 0 for system default.
-	 * When changing the Buffer Length, Buffer Count also needs to be set.
-	 */
+     * DSP mixer buffer length (eg. 512, 1024) or 0 for system default.
+     * When changing the Buffer Length, Buffer Count also needs to be set.
+     */
     UPROPERTY(config, EditAnywhere, Category = InitSettings)
     int32 DSPBufferLength;
 
     /**
-	 * DSP mixer buffer count (eg. 2, 4) or 0 for system default.
-	 * When changing the Buffer Count, Buffer Length also needs to be set.
-	 */
+     * DSP mixer buffer count (eg. 2, 4) or 0 for system default.
+     * When changing the Buffer Count, Buffer Length also needs to be set.
+     */
     UPROPERTY(config, EditAnywhere, Category = InitSettings)
     int32 DSPBufferCount;
 
     /**
-	 * File buffer size in bytes (2048 by default).
-	 */
+     * File buffer size in bytes (2048 by default).
+     */
     UPROPERTY(config, EditAnywhere, Category = InitSettings)
     int32 FileBufferSize;
 
     /**
-	 * Studio update period in milliseconds, or 0 for default (which means 20ms).
-	 */
+     * Studio update period in milliseconds, or 0 for default (which means 20ms).
+     */
     UPROPERTY(config, EditAnywhere, Category = InitSettings)
     int32 StudioUpdatePeriod;
 
     /**
-	 * Output device to choose at system start up, or empty for default.
-	 */
+     * Output device to choose at system start up, or empty for default.
+     */
     UPROPERTY(config, EditAnywhere, Category = InitSettings)
     FString InitialOutputDriverName;
 
     /**
-	 * Lock all mixer buses at startup, making sure they are created up front.
-	 */
+     * Lock all mixer buses at startup, making sure they are created up front.
+     */
     UPROPERTY(config, EditAnywhere, Category = InitSettings)
     bool bLockAllBuses;
 
@@ -215,8 +344,8 @@ public:
     FCustomPoolSizes MemoryPoolSizes;
 
     /**
-	 * Live update port to use, or 0 for default.
-	 */
+     * Live update port to use, or 0 for default.
+     */
     UPROPERTY(config, EditAnywhere, Category = Advanced, meta = (EditCondition = "bEnableLiveUpdate"))
     int32 LiveUpdatePort;
 
@@ -241,46 +370,46 @@ public:
     bool bEnableMemoryTracking;
 
     /**
-	 * Extra plugin files to load.  
-	 * The plugin files should sit alongside the FMOD dynamic libraries in the ThirdParty directory.
-	 */
+     * Extra plugin files to load.  
+     * The plugin files should sit alongside the FMOD dynamic libraries in the ThirdParty directory.
+     */
     UPROPERTY(config, EditAnywhere, Category = Advanced)
     TArray<FString> PluginFiles;
 
     /**
-	 * Directory for content to appear in content window. Be careful changing this!
-	 */
+     * Directory for content to appear in content window. Be careful changing this!
+     */
     UPROPERTY(config, EditAnywhere, Category = Advanced)
     FString ContentBrowserPrefix;
 
     /**
-	 * Force platform directory name, or leave empty for automatic (Desktop/Mobile/PS4/XBoxOne)
-	 */
+     * Force platform directory name, or leave empty for automatic (Desktop/Mobile/PS4/XBoxOne)
+     */
     UPROPERTY(config, EditAnywhere, Category = Advanced)
     FString ForcePlatformName;
 
     /**
-	 * Name of master bank.  The default in Studio is "Master Bank".
-	 */
+     * Name of master bank.  The default in Studio is "Master Bank".
+     */
     UPROPERTY(config, EditAnywhere, Category = Advanced)
     FString MasterBankName;
 
     /**
-	 * Skip bank files of the given name.
-	 * Can be used to load all banks except for a certain set, such as localization banks.
-	 */
+     * Skip bank files of the given name.
+     * Can be used to load all banks except for a certain set, such as localization banks.
+     */
     UPROPERTY(config, EditAnywhere, Category = Advanced)
     FString SkipLoadBankName;
 
-	/*
+    /*
     * Specify the key for loading sounds from encrypted banks.
-	*/
-	UPROPERTY(config, EditAnywhere, Category = Advanced, meta = (DisplayName = "Encryption Key"))
-	FString StudioBankKey;
+    */
+    UPROPERTY(config, EditAnywhere, Category = Advanced, meta = (DisplayName = "Encryption Key"))
+    FString StudioBankKey;
 
     /**
-	* Force wav writer output, for debugging only.  Setting this will prevent normal sound output!
-	*/
+    * Force wav writer output, for debugging only.  Setting this will prevent normal sound output!
+    */
     UPROPERTY(config, EditAnywhere, Category = Advanced)
     FString WavWriterPath;
 
@@ -308,6 +437,12 @@ public:
     UPROPERTY(config, EditAnywhere, Category = Advanced)
     FString AmbientLPFParameter;
 
+    /*
+    * Used to specify platform specific settings.
+    */
+    UPROPERTY(config, EditAnywhere, Category = PlatformSettings)
+    TMap<TEnumAsByte<EFMODPlatforms::Type>, FFMODPlatformSettings> Platforms;
+
     /** Is the bank path set up . */
     bool IsBankPathSet() const { return !BankOutputDirectory.Path.IsEmpty(); }
 
@@ -323,7 +458,26 @@ public:
     /** Get the master strings bank filename. */
     FString GetMasterStringsBankFilename() const;
 
+    /** Get the speaker mode for the current platform. */
+    EFMODSpeakerMode::Type GetSpeakerMode() const;
+
+    /** Get the output type for the current platform. */
+    EFMODOutput::Type GetOutputType() const;
+
+    /** Get the sample rate for the current platform. */
     FString GetFullContentPath() const;
+
+    /** Get the sample rate for the current platform. */
+    int32 GetSampleRate() const;
+
+    /** Get the custom memory pool size for the current platform. */
+    int32 GetMemoryPoolSize() const;
+
+    /** Get the real channel count for the current platform. */
+    int32 GetRealChannelCount() const;
+
+    /** Set the maximum codecs for the current platform. */
+    bool SetCodecs(FMOD_ADVANCEDSETTINGS& advSettings) const;
 
     /** List of generated folder names that contain FMOD uassets. */
     TArray<FString> GeneratedFolders = {

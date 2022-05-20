@@ -7,6 +7,8 @@
 
 FString FMODPlatform_GetDllPath(const TCHAR *ShortName, bool bExplicitPath, bool bUseLibPrefix);
 
+EFMODPlatforms::Type FMODPlatform_CurrentPlatform();
+
 FString FMODPlatform_PlatformName();
 
 void FMODPlatform_SetRealChannelCount(FMOD_ADVANCEDSETTINGS* advSettings);
