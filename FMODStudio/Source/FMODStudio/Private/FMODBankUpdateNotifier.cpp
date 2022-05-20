@@ -18,7 +18,7 @@ void FFMODBankUpdateNotifier::SetFilePath(const FString &InPath)
 {
     FilePath = InPath;
     NextRefreshTime = FDateTime::MinValue();
-    FileTime = MostRecentFileTime();
+    FileTime = FDateTime::MinValue();
 }
 
 void FFMODBankUpdateNotifier::Update(float DeltaTime)

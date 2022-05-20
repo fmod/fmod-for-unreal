@@ -487,13 +487,19 @@ void FFMODStudioModule::StartupModule()
 
         const UFMODSettings &Settings = *GetDefault<UFMODSettings>();
 
+        int32 size = Settings.GetMemoryPoolSize();
+
+        if (size == 0)
+        {
 #if defined(FMOD_PLATFORM_HEADER)
-        int size = FMODPlatform_MemoryPoolSize();
+            size = FMODPlatform_MemoryPoolSize();
 #elif PLATFORM_IOS || PLATFORM_TVOS || PLATFORM_ANDROID
-        int size = Settings.MemoryPoolSizes.Mobile;
+            size = Settings.MemoryPoolSizes.Mobile;
 #else
-        int size = Settings.MemoryPoolSizes.Desktop;
+            size = Settings.MemoryPoolSizes.Desktop;
 #endif
+        }
+
         if (!GIsEditor && size > 0)
         {
             MemPool = FMemory::Malloc(size);
@@ -546,10 +552,49 @@ inline FMOD_SPEAKERMODE ConvertSpeakerMode(EFMODSpeakerMode::Type Mode)
             return FMOD_SPEAKERMODE_5POINT1;
         case EFMODSpeakerMode::Surround_7_1:
             return FMOD_SPEAKERMODE_7POINT1;
+        case EFMODSpeakerMode::Surround_7_1_4:
+            return FMOD_SPEAKERMODE_7POINT1POINT4;
         default:
             check(0);
             return FMOD_SPEAKERMODE_DEFAULT;
     };
+}
+
+inline FMOD_OUTPUTTYPE ConvertOutputType(EFMODOutput::Type output)
+{
+    switch (output)
+    {
+    case EFMODOutput::TYPE_AUTODETECT:
+        return FMOD_OUTPUTTYPE_AUTODETECT;
+    case EFMODOutput::TYPE_NOSOUND:
+        return FMOD_OUTPUTTYPE_NOSOUND;
+    case EFMODOutput::TYPE_WASAPI:
+        return FMOD_OUTPUTTYPE_WASAPI;
+    case EFMODOutput::TYPE_ASIO:
+        return FMOD_OUTPUTTYPE_ASIO;
+    case EFMODOutput::TYPE_PULSEAUDIO:
+        return FMOD_OUTPUTTYPE_PULSEAUDIO;
+    case EFMODOutput::TYPE_ALSA:
+        return FMOD_OUTPUTTYPE_ALSA;
+    case EFMODOutput::TYPE_COREAUDIO:
+        return FMOD_OUTPUTTYPE_COREAUDIO;
+    case EFMODOutput::TYPE_AUDIOTRACK:
+        return FMOD_OUTPUTTYPE_AUDIOTRACK;
+    case EFMODOutput::TYPE_OPENSL:
+        return FMOD_OUTPUTTYPE_OPENSL;
+    case EFMODOutput::TYPE_AUDIOOUT:
+        return FMOD_OUTPUTTYPE_AUDIOOUT;
+    case EFMODOutput::TYPE_AUDIO3D:
+        return FMOD_OUTPUTTYPE_AUDIO3D;
+    case EFMODOutput::TYPE_NNAUDIO:
+        return FMOD_OUTPUTTYPE_NNAUDIO;
+    case EFMODOutput::TYPE_WINSONIC:
+        return FMOD_OUTPUTTYPE_WINSONIC;
+    case EFMODOutput::TYPE_AAUDIO:
+        return FMOD_OUTPUTTYPE_AAUDIO;
+    default:
+        return FMOD_OUTPUTTYPE_AUTODETECT;
+    }
 }
 
 void FFMODStudioModule::CreateStudioSystem(EFMODSystemContext::Type Type)
@@ -565,7 +610,6 @@ void FFMODStudioModule::CreateStudioSystem(EFMODSystemContext::Type Type)
     const UFMODSettings &Settings = *GetDefault<UFMODSettings>();
     bLoadAllSampleData = Settings.bLoadAllSampleData;
 
-    FMOD_SPEAKERMODE OutputMode = ConvertSpeakerMode(Settings.OutputFormat);
     FMOD_STUDIO_INITFLAGS StudioInitFlags = FMOD_STUDIO_INIT_NORMAL;
     FMOD_INITFLAGS InitFlags = FMOD_INIT_NORMAL;
 
@@ -593,6 +637,21 @@ void FFMODStudioModule::CreateStudioSystem(EFMODSystemContext::Type Type)
     FMOD::System *lowLevelSystem = nullptr;
     verifyfmod(StudioSystem[Type]->getCoreSystem(&lowLevelSystem));
 
+    FTCHARToUTF8 WavWriterDestUTF8(*Settings.WavWriterPath);
+    void *InitData = nullptr;
+    FMOD_OUTPUTTYPE outputType;
+    if (Type == EFMODSystemContext::Runtime && Settings.WavWriterPath.Len() > 0)
+    {
+        UE_LOG(LogFMOD, Log, TEXT("Running with Wav Writer: %s"), *Settings.WavWriterPath);
+        outputType = FMOD_OUTPUTTYPE_WAVWRITER;
+        InitData = (void *)WavWriterDestUTF8.Get();
+    }
+    else
+    {
+        outputType = ConvertOutputType(Settings.GetOutputType());
+    }
+    verifyfmod(lowLevelSystem->setOutput(outputType));
+
     int DriverIndex = 0;
     if (!Settings.InitialOutputDriverName.IsEmpty())
     {
@@ -612,17 +671,8 @@ void FFMODStudioModule::CreateStudioSystem(EFMODSystemContext::Type Type)
         }
         verifyfmod(lowLevelSystem->setDriver(DriverIndex));
     }
+    int SampleRate = Settings.GetSampleRate();
 
-    FTCHARToUTF8 WavWriterDestUTF8(*Settings.WavWriterPath);
-    void *InitData = nullptr;
-    if (Type == EFMODSystemContext::Runtime && Settings.WavWriterPath.Len() > 0)
-    {
-        UE_LOG(LogFMOD, Log, TEXT("Running with Wav Writer: %s"), *Settings.WavWriterPath);
-        verifyfmod(lowLevelSystem->setOutput(FMOD_OUTPUTTYPE_WAVWRITER));
-        InitData = (void *)WavWriterDestUTF8.Get();
-    }
-
-    int SampleRate = Settings.SampleRate;
     if (Settings.bMatchHardwareSampleRate)
     {
         int DefaultSampleRate = 0;
@@ -638,8 +688,16 @@ void FFMODStudioModule::CreateStudioSystem(EFMODSystemContext::Type Type)
         }
     }
 
+    if (outputType == FMOD_OUTPUTTYPE_AUDIO3D || outputType == FMOD_OUTPUTTYPE_AUDIOOUT || outputType == FMOD_OUTPUTTYPE_WINSONIC)
+    {
+        SampleRate = 48000;
+        UE_LOG(LogFMOD, Log, TEXT("Overriding SampleRate to 48KHz for 3D Audio."));
+    }
+
+    FMOD_SPEAKERMODE OutputMode = ConvertSpeakerMode(Settings.GetSpeakerMode());
+
     verifyfmod(lowLevelSystem->setSoftwareFormat(SampleRate, OutputMode, 0));
-    verifyfmod(lowLevelSystem->setSoftwareChannels(Settings.RealChannelCount));
+    verifyfmod(lowLevelSystem->setSoftwareChannels(Settings.GetRealChannelCount()));
     AttachFMODFileSystem(lowLevelSystem, Settings.FileBufferSize);
 
     if (Settings.DSPBufferLength > 0 && Settings.DSPBufferCount > 0)
@@ -654,13 +712,18 @@ void FFMODStudioModule::CreateStudioSystem(EFMODSystemContext::Type Type)
         advSettings.vol0virtualvol = Settings.Vol0VirtualLevel;
         InitFlags |= FMOD_INIT_VOL0_BECOMES_VIRTUAL;
     }
+
+    if (!Settings.SetCodecs(advSettings))
+    {
 #if defined(FMOD_PLATFORM_HEADER)
-    FMODPlatform_SetRealChannelCount(&advSettings);
+        FMODPlatform_SetRealChannelCount(&advSettings);
 #elif PLATFORM_IOS || PLATFORM_TVOS || PLATFORM_ANDROID
-    advSettings.maxFADPCMCodecs = Settings.RealChannelCount;
+        advSettings.maxFADPCMCodecs = Settings.RealChannelCount;
 #else
-    advSettings.maxVorbisCodecs = Settings.RealChannelCount;
+        advSettings.maxVorbisCodecs = Settings.RealChannelCount;
 #endif
+    }
+
     if (Type == EFMODSystemContext::Runtime)
     {
         advSettings.profilePort = Settings.LiveUpdatePort;
