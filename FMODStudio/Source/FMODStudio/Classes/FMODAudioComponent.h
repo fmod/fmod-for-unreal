@@ -134,7 +134,7 @@ class FMODSTUDIO_API UFMODAudioComponent : public USceneComponent
 public:
 
     /** The event asset to use for this sound. */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = FMODAudio)
+    UPROPERTY(EditAnywhere, Interp, BlueprintReadWrite, Category = FMODAudio)
     UFMODEvent* Event;
 
     /** Event parameter cache. */
