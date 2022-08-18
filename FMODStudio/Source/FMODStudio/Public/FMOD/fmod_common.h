@@ -5,7 +5,7 @@
 /* This header is included by fmod.hpp (C++ interface) and fmod.h (C interface)             */
 /*                                                                                          */
 /* For more detail visit:                                                                   */
-/* https://fmod.com/resources/documentation-api?version=2.0&page=core-api-common.html       */
+/* https://fmod.com/docs/2.01/api/core-api-common.html                                      */
 /* ======================================================================================== */
 #ifndef _FMOD_COMMON_H
 #define _FMOD_COMMON_H
@@ -58,7 +58,7 @@ typedef unsigned long long         FMOD_PORT_INDEX;
 /*
     FMOD constants
 */
-#define FMOD_VERSION    0x00020116                     /* 0xaaaabbcc -> aaaa = product version, bb = major version, cc = minor version.*/
+#define FMOD_VERSION    0x00020117                     /* 0xaaaabbcc -> aaaa = product version, bb = major version, cc = minor version.*/
 
 typedef unsigned int FMOD_DEBUG_FLAGS;
 #define FMOD_DEBUG_LEVEL_NONE                       0x00000000
