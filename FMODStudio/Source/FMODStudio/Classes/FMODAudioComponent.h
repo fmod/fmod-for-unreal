@@ -316,9 +316,16 @@ public:
 
 private:
 // Begin ActorComponent interface.
+    /** Called when a component is registered, after Scene is set, but before CreateRenderState_Concurrent or OnCreatePhysicsState are called. */
     virtual void OnRegister() override;
+
+    /** Called when a component is unregistered. Called after DestroyRenderState_Concurrent and OnDestroyPhysicsState are called. */
     virtual void OnUnregister() override;
+
+    /** Overridable function called whenever this actor is being removed from a level. */
     virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+
+    /** Function called every frame on this ActorComponent. Only executes if the component is registered, and also PrimaryComponentTick.bCanEverTick must be set to true. */
     virtual void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
 // End ActorComponent interface.
 
@@ -341,30 +348,48 @@ private:
         }
         return *Module;
     }
+    /** Stored reference to the current IFMODStudioModule. */
     IFMODStudioModule* Module;
 
     // Settings for ambient volume effects.
+    /** Timer used for volumes fading in and out. Used for automating volume and/or LPF with Ambient Zones. */
     double InteriorLastUpdateTime;
+    /** Previous interior volume value. Used for automating volume and/or LPF with Ambient Zones. */
     float SourceInteriorVolume;
+    /** Previous interior LPF value. Used for automating volume and/or LPF with Ambient Zones. */
     float SourceInteriorLPF;
+    /** Current interior volume value. Used for automating volume and/or LPF with Ambient Zones. */
     float CurrentInteriorVolume;
+    /** Current interior LPF value. Used for automating volume and/or LPF with Ambient Zones. */
     float CurrentInteriorLPF;
+    /** Calculated Ambient volume level for that frame. Used for automating volume and/or LPF with Ambient Zones. */
     float AmbientVolume;
+    /** Calculated Ambient LPF level for that frame. Used for automating volume and/or LPF with Ambient Zones. */
     float AmbientLPF;
+    /** Previously set Volume value. Used for automating volume and/or LPF with Ambient Zones. */
     float LastVolume;
+    /** Previously set LPF value. Used for automating volume and/or LPF with Ambient Zones. */
     float LastLPF;
+    /** Was the object occluded in the previous frame. */
     bool wasOccluded;
+    /** Stored ID of the Occlusion parameter of the Event (if applicable). */
     FMOD_STUDIO_PARAMETER_ID OcclusionID;
+    /** Stored ID of the Volume parameter of the Event (if applicable). */
     FMOD_STUDIO_PARAMETER_ID AmbientVolumeID;
+    /** Stored ID of the LPF parameter of the Event (if applicable). */
     FMOD_STUDIO_PARAMETER_ID AmbientLPFID;
 
     // Tempo and marker callbacks.
+    /** A scope lock used specifically for callbacks. */
     FCriticalSection CallbackLock;
+    /** Stores the Timeline Markers as they are triggered. */
     TArray<FTimelineMarkerProperties> CallbackMarkerQueue;
+    /** Stores the Timeline Beats as they are triggered. */
     TArray<FTimelineBeatProperties> CallbackBeatQueue;
 
-    // Direct assignment of programmer sound from other C++ code.
+    /** Direct assignment of programmer sound from other C++ code. */
     FMOD::Sound *ProgrammerSound;
     bool NeedDestroyProgrammerSoundCallback;
+    /** The length of the current Event in milliseconds. */
     int32 EventLength;
 };

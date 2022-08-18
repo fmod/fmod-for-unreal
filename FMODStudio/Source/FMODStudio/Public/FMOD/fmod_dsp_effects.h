@@ -6,7 +6,7 @@
 /* and generators.                                                                                               */
 /*                                                                                                               */
 /* For more detail visit:                                                                                        */
-/* https://fmod.com/resources/documentation-api?version=2.0&page=core-api-common-dsp-effects.html#fmod_dsp_type  */
+/* https://fmod.com/docs/2.02/api/core-api-common-dsp-effects.html#fmod_dsp_type                                 */
 /* ============================================================================================================= */
 
 #ifndef _FMOD_DSP_EFFECTS_H
