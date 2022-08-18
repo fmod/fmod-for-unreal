@@ -310,6 +310,7 @@ void UFMODAudioComponent::CacheDefaultParameterValues()
         for (const FMOD_STUDIO_PARAMETER_DESCRIPTION &ParameterDescription : ParameterDescriptions)
         {
             if (!ParameterCache.Find(ParameterDescription.name) && 
+                ((ParameterDescription.flags & FMOD_STUDIO_PARAMETER_GLOBAL) == 0) &&
                 (ParameterDescription.type == FMOD_STUDIO_PARAMETER_GAME_CONTROLLED) &&
                 ParameterDescription.name != Settings.OcclusionParameter && 
                 ParameterDescription.name != Settings.AmbientVolumeParameter && 
