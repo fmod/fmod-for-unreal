@@ -8,7 +8,7 @@
 /* plugin.                                                                                  */
 /*                                                                                          */
 /* For more detail visit:                                                                   */
-/* https://fmod.com/resources/documentation-api?version=2.0&page=plugin-api-output.html     */
+/* https://fmod.com/docs/2.02/api/plugin-api-output.html                                    */
 /* ======================================================================================== */
 #ifndef _FMOD_OUTPUT_H
 #define _FMOD_OUTPUT_H
