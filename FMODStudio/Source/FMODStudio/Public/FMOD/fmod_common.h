@@ -5,7 +5,7 @@
 /* This header is included by fmod.hpp (C++ interface) and fmod.h (C interface)             */
 /*                                                                                          */
 /* For more detail visit:                                                                   */
-/* https://fmod.com/resources/documentation-api?version=2.0&page=core-api-common.html       */
+/* https://fmod.com/docs/2.02/api/core-api-common.html                                      */
 /* ======================================================================================== */
 #ifndef _FMOD_COMMON_H
 #define _FMOD_COMMON_H
@@ -52,12 +52,11 @@ typedef struct FMOD_POLYGON        FMOD_POLYGON;
 typedef struct FMOD_GEOMETRY       FMOD_GEOMETRY;
 typedef struct FMOD_SYNCPOINT      FMOD_SYNCPOINT;
 typedef struct FMOD_ASYNCREADINFO  FMOD_ASYNCREADINFO;
-typedef unsigned long long         FMOD_PORT_INDEX;
 
 /*
     FMOD constants
 */
-#define FMOD_VERSION    0x00020207                     /* 0xaaaabbcc -> aaaa = product version, bb = major version, cc = minor version.*/
+#define FMOD_VERSION    0x00020208                     /* 0xaaaabbcc -> aaaa = product version, bb = major version, cc = minor version.*/
 
 typedef unsigned int FMOD_DEBUG_FLAGS;
 #define FMOD_DEBUG_LEVEL_NONE                       0x00000000
@@ -87,6 +86,7 @@ typedef unsigned int FMOD_INITFLAGS;
 #define FMOD_INIT_STREAM_FROM_UPDATE                0x00000001
 #define FMOD_INIT_MIX_FROM_UPDATE                   0x00000002
 #define FMOD_INIT_3D_RIGHTHANDED                    0x00000004
+#define FMOD_INIT_CLIP_OUTPUT                       0x00000008
 #define FMOD_INIT_CHANNEL_LOWPASS                   0x00000100
 #define FMOD_INIT_CHANNEL_DISTANCEFILTER            0x00000200
 #define FMOD_INIT_PROFILE_ENABLE                    0x00010000
@@ -181,6 +181,10 @@ typedef unsigned int FMOD_CHANNELMASK;
 #define FMOD_CHANNELMASK_7POINT0                    (FMOD_CHANNELMASK_FRONT_LEFT | FMOD_CHANNELMASK_FRONT_RIGHT | FMOD_CHANNELMASK_FRONT_CENTER  | FMOD_CHANNELMASK_SURROUND_LEFT | FMOD_CHANNELMASK_SURROUND_RIGHT | FMOD_CHANNELMASK_BACK_LEFT      | FMOD_CHANNELMASK_BACK_RIGHT)
 #define FMOD_CHANNELMASK_7POINT1                    (FMOD_CHANNELMASK_FRONT_LEFT | FMOD_CHANNELMASK_FRONT_RIGHT | FMOD_CHANNELMASK_FRONT_CENTER  | FMOD_CHANNELMASK_LOW_FREQUENCY | FMOD_CHANNELMASK_SURROUND_LEFT  | FMOD_CHANNELMASK_SURROUND_RIGHT | FMOD_CHANNELMASK_BACK_LEFT | FMOD_CHANNELMASK_BACK_RIGHT)
 
+typedef unsigned long long FMOD_PORT_INDEX;
+#define FMOD_PORT_INDEX_NONE                        0xFFFFFFFFFFFFFFFF
+#define FMOD_PORT_INDEX_FLAG_VR_CONTROLLER          0x1000000000000000
+
 typedef int FMOD_THREAD_PRIORITY;
 /* Platform specific priority range */
 #define FMOD_THREAD_PRIORITY_PLATFORM_MIN           (-32 * 1024)
@@ -244,7 +248,6 @@ typedef long long FMOD_THREAD_AFFINITY;
 #define FMOD_THREAD_AFFINITY_STUDIO_LOAD_SAMPLE     FMOD_THREAD_AFFINITY_GROUP_C
 #define FMOD_THREAD_AFFINITY_CONVOLUTION1           FMOD_THREAD_AFFINITY_GROUP_C
 #define FMOD_THREAD_AFFINITY_CONVOLUTION2           FMOD_THREAD_AFFINITY_GROUP_C
-
 /* Core mask, valid up to 1 << 62 */
 #define FMOD_THREAD_AFFINITY_CORE_ALL               0
 #define FMOD_THREAD_AFFINITY_CORE_0                 (1 << 0)
@@ -294,7 +297,6 @@ typedef long long FMOD_THREAD_AFFINITY;
 #define FMOD_MAX_SYSTEMS                            8
 #define FMOD_MAX_LISTENERS                          8
 #define FMOD_REVERB_MAXINSTANCES                    4
-#define FMOD_PORT_INDEX_NONE                        0xFFFFFFFFFFFFFFFF
 
 typedef enum FMOD_THREAD_TYPE
 {
