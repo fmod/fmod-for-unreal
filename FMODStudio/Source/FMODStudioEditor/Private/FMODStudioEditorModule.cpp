@@ -521,12 +521,12 @@ void FFMODStudioEditorModule::ShowVersion()
 
 void FFMODStudioEditorModule::OpenIntegrationDocs()
 {
-    FPlatformProcess::LaunchFileInDefaultExternalApplication(TEXT("https://fmod.com/resources/documentation-ue4"));
+    FPlatformProcess::LaunchFileInDefaultExternalApplication(TEXT("https://www.fmod.com/docs/unreal"));
 }
 
 void FFMODStudioEditorModule::OpenAPIDocs()
 {
-    FPlatformProcess::LaunchFileInDefaultExternalApplication(TEXT("https://fmod.com/resources/documentation-api"));
+    FPlatformProcess::LaunchFileInDefaultExternalApplication(TEXT("https://www.fmod.com/docs/api"));
 }
 
 void FFMODStudioEditorModule::OpenVideoTutorials()
