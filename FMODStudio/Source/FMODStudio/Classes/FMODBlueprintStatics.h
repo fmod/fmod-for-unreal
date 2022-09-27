@@ -94,7 +94,7 @@ class FMODSTUDIO_API UFMODBlueprintStatics : public UBlueprintFunctionLibrary
 	 * @param bBlocking - determines whether the bank will load synchronously
 	 * @param bLoadSampleData - determines whether sample data will be preloaded immediately
 	 */
-    UFUNCTION(BlueprintCallable, Category = "Audio|FMOD", meta = (UnsafeDuringActorConstruction = "true"))
+    UFUNCTION(BlueprintCallable, Category = "Audio|FMOD", meta = (UnsafeDuringActorConstruction = "true", bBlocking = "true"))
     static void LoadBank(class UFMODBank *Bank, bool bBlocking, bool bLoadSampleData);
 
     /** Unloads a bank.
