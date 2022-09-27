@@ -706,6 +706,11 @@ void FFMODStudioModule::CreateStudioSystem(EFMODSystemContext::Type Type)
     advSettings.randomSeed = FMath::Rand();
     verifyfmod(lowLevelSystem->setAdvancedSettings(&advSettings));
 
+    if (Settings.bEnableAPIErrorLogging)
+    {
+        verifyfmod(lowLevelSystem->setCallback(FMODErrorCallback, FMOD_SYSTEM_CALLBACK_ERROR));
+    }
+
     FMOD_STUDIO_ADVANCEDSETTINGS advStudioSettings = { 0 };
     advStudioSettings.cbsize = sizeof(advStudioSettings);
     advStudioSettings.studioupdateperiod = Settings.StudioUpdatePeriod;

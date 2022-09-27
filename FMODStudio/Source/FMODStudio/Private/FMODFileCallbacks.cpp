@@ -1,6 +1,7 @@
 // Copyright (c), Firelight Technologies Pty, Ltd. 2012-2015.
 
 #include "FMODFileCallbacks.h"
+#include "fmod_errors.h"
 #include "FMODUtils.h"
 #include "HAL/FileManager.h"
 #include "GenericPlatform/GenericPlatformProcess.h"
@@ -39,6 +40,22 @@ FMOD_RESULT F_CALLBACK FMODLogCallback(FMOD_DEBUG_FLAGS flags, const char *file,
     {
         UE_LOG(LogFMOD, Log, TEXT("%s(%d) - %s"), UTF8_TO_TCHAR(file), line, UTF8_TO_TCHAR(message));
     }
+    return FMOD_OK;
+}
+
+FMOD_RESULT F_CALLBACK FMODErrorCallback(FMOD_SYSTEM *system, FMOD_SYSTEM_CALLBACK_TYPE type, void *commanddata1, void* commanddata2, void *userdata)
+{
+    FMOD_ERRORCALLBACK_INFO *callbackInfo = (FMOD_ERRORCALLBACK_INFO *)commanddata1;
+
+    if ((callbackInfo->instancetype == FMOD_ERRORCALLBACK_INSTANCETYPE_CHANNEL || callbackInfo->instancetype == FMOD_ERRORCALLBACK_INSTANCETYPE_CHANNELCONTROL) 
+        && callbackInfo->result == FMOD_ERR_INVALID_HANDLE)
+    {
+        return FMOD_OK;
+    }
+
+    UE_LOG(LogFMOD, Error, TEXT("%s(%s) returned error %d (\"%s\") for instance type: %d (0x%d)."),
+        UTF8_TO_TCHAR(callbackInfo->functionname), UTF8_TO_TCHAR(callbackInfo->functionparams), (int)callbackInfo->result,
+        UTF8_TO_TCHAR(FMOD_ErrorString(callbackInfo->result)), (int)callbackInfo->instancetype, callbackInfo->instance);
     return FMOD_OK;
 }
 

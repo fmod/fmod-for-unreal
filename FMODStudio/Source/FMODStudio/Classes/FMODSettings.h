@@ -206,13 +206,20 @@ struct FFMODProjectLocale
     * Default locale at startup. Only one locale should be marked as default.
     */
     UPROPERTY(config, EditAnywhere, Category = Localization)
-    bool bDefault;
+    bool bDefault = false;
 };
 
 UCLASS(config = Engine, defaultconfig)
 class FMODSTUDIO_API UFMODSettings : public UObject
 {
     GENERATED_UCLASS_BODY()
+
+    friend class SSettingsMessage;
+    friend class FFMODStudioEditorModule;
+    friend class FFMODAssetTable;
+    friend class FFMODStudioModule;
+    friend class FFMODAssetBuilder;
+    friend class UFMODGenerateAssetsCommandlet;
 
 public:
     /**
@@ -336,7 +343,7 @@ public:
     UPROPERTY(config, EditAnywhere, Category = InitSettings)
     bool bLockAllBuses;
 
-    /** 
+    /**
      * Use specified memory pool size for platform, units in bytes. Disabled by default.
      * FMOD may become unstable if the limit is exceeded!
      */
@@ -364,13 +371,19 @@ public:
     int32 ReloadBanksDelay;
 
     /**
+     * Will log internal API errors when enabled.
+     */
+    UPROPERTY(config, EditAnywhere, Category = Advanced, meta = (DisplayName = "Enable API Error Logging"))
+    bool bEnableAPIErrorLogging;
+
+    /**
     * Enable memory tracking.
     */
     UPROPERTY(config, EditAnywhere, Category = Advanced)
     bool bEnableMemoryTracking;
 
     /**
-     * Extra plugin files to load.  
+     * Extra plugin files to load.
      * The plugin files should sit alongside the FMOD dynamic libraries in the ThirdParty directory.
      */
     UPROPERTY(config, EditAnywhere, Category = Advanced)
@@ -443,6 +456,7 @@ public:
     UPROPERTY(config, EditAnywhere, Category = PlatformSettings)
     TMap<TEnumAsByte<EFMODPlatforms::Type>, FFMODPlatformSettings> Platforms;
 
+private:
     /** Is the bank path set up . */
     bool IsBankPathSet() const { return !BankOutputDirectory.Path.IsEmpty(); }
 
