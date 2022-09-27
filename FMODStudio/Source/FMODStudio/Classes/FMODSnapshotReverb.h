@@ -14,10 +14,12 @@ class FMODSTUDIO_API UFMODSnapshotReverb : public UReverbEffect
 {
     GENERATED_UCLASS_BODY()
 
+public:
     /** The unique Guid, which matches the one exported from FMOD Studio */
     UPROPERTY()
     FGuid AssetGuid;
 
+private:
     /** Non default instances of UFMODAsset are assets */
     virtual bool IsAsset() const override;
 

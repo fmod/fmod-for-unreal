@@ -2,8 +2,8 @@
     "FileVersion" : 3,
 	
 	"FriendlyName" : "FMOD Studio Integration",
-	"Version" : 20208,
-	"VersionName" : "2.02.08",
+	"Version" : 20209,
+	"VersionName" : "2.02.09",
 	"CreatedBy" : "Firelight Technologies",
 	"CreatedByURL" : "http://fmod.com",
 	"Description" : "FMOD Studio Integration.",
