@@ -56,7 +56,7 @@ typedef struct FMOD_ASYNCREADINFO  FMOD_ASYNCREADINFO;
 /*
     FMOD constants
 */
-#define FMOD_VERSION    0x00020208                     /* 0xaaaabbcc -> aaaa = product version, bb = major version, cc = minor version.*/
+#define FMOD_VERSION    0x00020209                     /* 0xaaaabbcc -> aaaa = product version, bb = major version, cc = minor version.*/
 
 typedef unsigned int FMOD_DEBUG_FLAGS;
 #define FMOD_DEBUG_LEVEL_NONE                       0x00000000
@@ -128,6 +128,7 @@ typedef unsigned int FMOD_SYSTEM_CALLBACK_TYPE;
 #define FMOD_SYSTEM_CALLBACK_BUFFEREDNOMIX          0x00002000
 #define FMOD_SYSTEM_CALLBACK_DEVICEREINITIALIZE     0x00004000
 #define FMOD_SYSTEM_CALLBACK_OUTPUTUNDERRUN         0x00008000
+#define FMOD_SYSTEM_CALLBACK_RECORDPOSITIONCHANGED  0x00010000
 #define FMOD_SYSTEM_CALLBACK_ALL                    0xFFFFFFFF
 
 typedef unsigned int FMOD_MODE;

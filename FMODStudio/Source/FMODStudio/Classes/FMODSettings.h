@@ -206,13 +206,18 @@ struct FFMODProjectLocale
     * Default locale at startup. Only one locale should be marked as default.
     */
     UPROPERTY(config, EditAnywhere, Category = Localization)
-    bool bDefault;
+    bool bDefault = false;
 };
 
 UCLASS(config = Engine, defaultconfig)
 class FMODSTUDIO_API UFMODSettings : public UObject
 {
     GENERATED_UCLASS_BODY()
+
+    friend class SSettingsMessage;
+    friend class FFMODStudioEditorModule;
+    friend class FFMODAssetTable;
+    friend class FFMODStudioModule;
 
 public:
     /**
@@ -364,6 +369,12 @@ public:
     int32 ReloadBanksDelay;
 
     /**
+     * Will log internal API errors when enabled.
+     */
+    UPROPERTY(config, EditAnywhere, Category = Advanced, meta = (DisplayName = "Enable API Error Logging"))
+    bool bEnableAPIErrorLogging;
+
+    /**
     * Enable memory tracking.
     */
     UPROPERTY(config, EditAnywhere, Category = Advanced)
@@ -443,6 +454,7 @@ public:
     UPROPERTY(config, EditAnywhere, Category = PlatformSettings)
     TMap<TEnumAsByte<EFMODPlatforms::Type>, FFMODPlatformSettings> Platforms;
 
+private:
     /** Is the bank path set up . */
     bool IsBankPathSet() const { return !BankOutputDirectory.Path.IsEmpty(); }
 

@@ -131,8 +131,11 @@ UCLASS(Blueprintable, ClassGroup = (Audio, Common), hidecategories = (Object, Ac
 class FMODSTUDIO_API UFMODAudioComponent : public USceneComponent
 {
     GENERATED_UCLASS_BODY()
-public:
 
+    friend struct FFMODEventControlExecutionToken;
+    friend FMOD_RESULT F_CALLBACK UFMODAudioComponent_EventCallback(FMOD_STUDIO_EVENT_CALLBACK_TYPE type, FMOD_STUDIO_EVENTINSTANCE *event, void *parameters);
+
+public:
     /** The event asset to use for this sound. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = FMODAudio)
     TAssetPtr<class UFMODEvent> Event;
@@ -140,7 +143,6 @@ public:
     /** Event parameter cache. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, SimpleDisplay, Category = FMODAudio)
     TMap<FName, float> ParameterCache;
-    bool bDefaultParameterValuesCached;
 
     /** Sound name used for programmer sound.  Will look up the name in any loaded audio table. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = FMODAudio)
@@ -149,9 +151,6 @@ public:
     /** Enable timeline callbacks for this sound, so that OnTimelineMarker and OnTimelineBeat can be used. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = FMODAudio)
     uint32 bEnableTimelineCallbacks : 1;
-
-    /** Stored properties to apply next time we create an instance. */
-    float StoredProperties[EFMODEventProperty::Count];
 
     /** Auto destroy this component on completion. */
     UPROPERTY()
@@ -252,12 +251,6 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Audio|FMOD|Components")
     int32 GetTimelinePosition();
 
-    /** Called when the event has finished stopping. */
-    void OnPlaybackCompleted();
-
-    /** Update gain and low-pass based on interior volumes. */
-    void UpdateInteriorVolumes();
-
     /** Set the sound name to use for programmer sound.  Will look up the name in any loaded audio table. */
     UFUNCTION(BlueprintCallable, Category = "Audio|FMOD|Components")
     void SetProgrammerSoundName(FString Value);
@@ -273,21 +266,50 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = FMODAudio)
     struct FFMODOcclusionDetails OcclusionDetails;
 
+    /** Actual Studio instance handle. */
+    FMOD::Studio::EventInstance *StudioInstance;
+
+// Begin UObject interface.
+#if WITH_EDITOR
+    virtual void PostEditChangeProperty(FPropertyChangedEvent &e) override;
+#endif // WITH_EDITOR
+    virtual void PostLoad() override;
+// End UObject interface.
+
+// Begin USceneComponent Interface
+    virtual void Activate(bool bReset = false) override;
+    virtual void Deactivate() override;
+// End USceneComponent Interface
+
+protected:
+// Begin UObject interface.
+    virtual void OnUpdateTransform(EUpdateTransformFlags UpdateTransformFlags, ETeleportType Teleport = ETeleportType::None) override;
+// End UObject interface.
+
+// Begin USceneComponent Interface
+    virtual FString GetDetailedInfoInternal() const override;
+// End USceneComponent Interface
+
+private:
+    bool bDefaultParameterValuesCached;
+
+    /** Stored properties to apply next time we create an instance. */
+    float StoredProperties[EFMODEventProperty::Count];
+    
+    /** Internal play function which can play events in the editor. */
+    void PlayInternal(EFMODSystemContext::Type Context);
+
+    /** Cache default event parameter values. */
+    void CacheDefaultParameterValues();
+
+    /** Update gain and low-pass based on interior volumes. */
+    void UpdateInteriorVolumes();
+
     /** Update attenuation if we have it set. */
     void UpdateAttenuation();
 
     /** Apply Volume and LPF into event. */
     void ApplyVolumeLPF();
-
-    /** Cache default event parameter values. */
-    void CacheDefaultParameterValues();
-
-public:
-    /** Internal play function which can play events in the editor. */
-    void PlayInternal(EFMODSystemContext::Type Context);
-
-    /** Actual Studio instance handle. */
-    FMOD::Studio::EventInstance *StudioInstance;
 
     /** Timeline Marker callback. */
     void EventCallbackAddMarker(struct FMOD_STUDIO_TIMELINE_MARKER_PROPERTIES *props);
@@ -300,21 +322,10 @@ public:
 
     /** Programmer Sound Destroy callback. */
     void EventCallbackDestroyProgrammerSound(struct FMOD_STUDIO_PROGRAMMER_SOUND_PROPERTIES *props);
+    
+    /** Called when the event has finished stopping. */
+    void OnPlaybackCompleted();
 
-// Begin UObject interface.
-#if WITH_EDITOR
-    virtual void PostEditChangeProperty(FPropertyChangedEvent &e) override;
-#endif // WITH_EDITOR
-    virtual void PostLoad() override;
-    virtual FString GetDetailedInfoInternal() const override;
-    // End UObject interface.
-    // Begin USceneComponent Interface
-    virtual void Activate(bool bReset = false) override;
-    virtual void Deactivate() override;
-    virtual void OnUpdateTransform(EUpdateTransformFlags UpdateTransformFlags, ETeleportType Teleport = ETeleportType::None) override;
-    // End USceneComponent Interface
-
-private:
 // Begin ActorComponent interface.
     /** Called when a component is registered, after Scene is set, but before CreateRenderState_Concurrent or OnCreatePhysicsState are called. */
     virtual void OnRegister() override;

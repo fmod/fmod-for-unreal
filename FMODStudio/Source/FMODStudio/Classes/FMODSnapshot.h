@@ -13,6 +13,7 @@ class FMODSTUDIO_API UFMODSnapshot : public UFMODEvent
 {
     GENERATED_UCLASS_BODY()
 
+private:
     /** Descriptive name */
     virtual FString GetDesc() override;
 };
