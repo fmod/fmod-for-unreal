@@ -3,7 +3,7 @@
 #include "FMODGenerateAssetsCommandlet.h"
 
 #include "FMODSettings.h"
-#include "AssetRegistryModule.h"
+#include "AssetRegistry/AssetRegistryModule.h"
 #include "Editor.h"
 #include "Editor/UnrealEd/Public/FileHelpers.h"
 #include "HAL/PlatformFileManager.h"

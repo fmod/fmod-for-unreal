@@ -85,12 +85,6 @@ FString UFMODSettings::GetFullBankPath() const
         FString PlatformName = FMODPlatform_PlatformName();
 #elif PLATFORM_IOS || PLATFORM_TVOS || PLATFORM_ANDROID
         FString PlatformName = "Mobile";
-#elif PLATFORM_PS4
-        FString PlatformName = "PS4";
-#elif PLATFORM_XBOXONE
-        FString PlatformName = "XboxOne";
-#elif PLATFORM_SWITCH
-        FString PlatformName = "Switch";
 #else
         FString PlatformName = "Desktop";
 #endif
