@@ -56,7 +56,7 @@ typedef struct FMOD_ASYNCREADINFO  FMOD_ASYNCREADINFO;
 /*
     FMOD constants
 */
-#define FMOD_VERSION    0x00020209                     /* 0xaaaabbcc -> aaaa = product version, bb = major version, cc = minor version.*/
+#define FMOD_VERSION    0x00020210                     /* 0xaaaabbcc -> aaaa = product version, bb = major version, cc = minor version.*/
 
 typedef unsigned int FMOD_DEBUG_FLAGS;
 #define FMOD_DEBUG_LEVEL_NONE                       0x00000000
@@ -639,6 +639,14 @@ typedef enum FMOD_DSP_RESAMPLER
     FMOD_DSP_RESAMPLER_FORCEINT = 65536
 } FMOD_DSP_RESAMPLER;
 
+typedef enum FMOD_DSP_CALLBACK_TYPE
+{
+    FMOD_DSP_CALLBACK_DATAPARAMETERRELEASE,
+
+    FMOD_DSP_CALLBACK_MAX,
+    FMOD_DSP_CALLBACK_FORCEINT = 65536
+} FMOD_DSP_CALLBACK_TYPE;
+
 typedef enum FMOD_DSPCONNECTION_TYPE
 {
     FMOD_DSPCONNECTION_TYPE_STANDARD,
@@ -702,6 +710,7 @@ typedef enum FMOD_PORT_TYPE
 typedef FMOD_RESULT (F_CALL *FMOD_DEBUG_CALLBACK)           (FMOD_DEBUG_FLAGS flags, const char *file, int line, const char* func, const char* message);
 typedef FMOD_RESULT (F_CALL *FMOD_SYSTEM_CALLBACK)          (FMOD_SYSTEM *system, FMOD_SYSTEM_CALLBACK_TYPE type, void *commanddata1, void* commanddata2, void *userdata);
 typedef FMOD_RESULT (F_CALL *FMOD_CHANNELCONTROL_CALLBACK)  (FMOD_CHANNELCONTROL *channelcontrol, FMOD_CHANNELCONTROL_TYPE controltype, FMOD_CHANNELCONTROL_CALLBACK_TYPE callbacktype, void *commanddata1, void *commanddata2);
+typedef FMOD_RESULT (F_CALL *FMOD_DSP_CALLBACK)             (FMOD_DSP *dsp, FMOD_DSP_CALLBACK_TYPE type, void *data);
 typedef FMOD_RESULT (F_CALL *FMOD_SOUND_NONBLOCK_CALLBACK)  (FMOD_SOUND *sound, FMOD_RESULT result);
 typedef FMOD_RESULT (F_CALL *FMOD_SOUND_PCMREAD_CALLBACK)   (FMOD_SOUND *sound, void *data, unsigned int datalen);
 typedef FMOD_RESULT (F_CALL *FMOD_SOUND_PCMSETPOS_CALLBACK) (FMOD_SOUND *sound, int subsound, unsigned int position, FMOD_TIMEUNIT postype);
@@ -872,6 +881,12 @@ typedef struct FMOD_CPU_USAGE
     float           convolution2;
 } FMOD_CPU_USAGE;
 
+typedef struct FMOD_DSP_DATA_PARAMETER_INFO
+{
+    void           *data;
+    unsigned int    length;
+    int             index;
+} FMOD_DSP_DATA_PARAMETER_INFO;
 
 /*
     FMOD optional headers for plugin development
