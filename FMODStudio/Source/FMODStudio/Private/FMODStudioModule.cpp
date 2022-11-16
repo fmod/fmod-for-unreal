@@ -951,6 +951,23 @@ void FFMODStudioModule::UpdateWorldListeners(UWorld *World, int *ListenerIndex)
 				ListenerAttenuationTransform.SetLocation(ControlledPawn->GetPawnViewLocation()); // head
 			}
 
+#if WITH_EDITOR
+			if (bSimulating)
+			{
+				for (FLevelEditorViewportClient* LevelVC : GEditor->GetLevelViewportClients())
+				{
+					if (LevelVC && LevelVC->IsPerspective())
+					{
+						ListenerTransform.SetLocation(LevelVC->GetViewLocation());
+						ListenerTransform.SetRotation(LevelVC->GetViewRotation().Quaternion());
+						break;
+					}
+				}
+
+				ListenerAttenuationTransform = ListenerTransform;
+			}
+#endif
+
             SetListenerPosition(*ListenerIndex, World, ListenerTransform, ListenerAttenuationTransform, DeltaSeconds);
 
             (*ListenerIndex)++;
