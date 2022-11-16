@@ -70,12 +70,16 @@ class FMODSTUDIO_API UFMODBlueprintStatics : public UBlueprintFunctionLibrary
 	 * @param LocationType - Specifies whether Location is a relative offset or an absolute world position
 	 * @param bStopWhenAttachedToDestroyed - Specifies whether the sound should stop playing when the owner of the attach to component is destroyed.
 	 * @param bAutoPlay - Start the event automatically.
-	 * @param bAutoDestroy - Automatically destroy the audio component when the sound is stopped.
+	 * @param bAutoDestroy - Automatically destroy the audio component when the sound is stopped.     
+     * @param bEnableOcclusion - Whether to enable occlusion for event.
+	 * @param OcclusionTraceChannel - If occlusion is enabled, which collision channel should be used for determining occlusion.
+	 * @param bUseComplexCollisionForOcclusion - If occlusion is enabled, should the simple or complex collision of objects be used to determine occlusion.
 	 */
     UFUNCTION(BlueprintCallable, Category = "Audio|FMOD",
         meta = (AdvancedDisplay = "2", UnsafeDuringActorConstruction = "true", bAutoPlay = "true", bAutoDestroy = "true"))
     static class UFMODAudioComponent *PlayEventAttached(UFMODEvent *Event, USceneComponent *AttachToComponent, FName AttachPointName,
-        FVector Location, EAttachLocation::Type LocationType, bool bStopWhenAttachedToDestroyed, bool bAutoPlay, bool bAutoDestroy);
+		FVector Location, EAttachLocation::Type LocationType, bool bStopWhenAttachedToDestroyed, bool bAutoPlay, bool bAutoDestroy,
+		bool bEnableOcclusion = false, ECollisionChannel OcclusionTraceChannel = ECollisionChannel::ECC_Visibility, bool bUseComplexCollisionForOcclusion = false);
 
     /** Find an asset by name.
 	 * @param EventName - The asset name

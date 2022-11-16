@@ -59,7 +59,8 @@ FFMODEventInstance UFMODBlueprintStatics::PlayEventAtLocation(
 }
 
 class UFMODAudioComponent *UFMODBlueprintStatics::PlayEventAttached(class UFMODEvent *Event, class USceneComponent *AttachToComponent,
-    FName AttachPointName, FVector Location, EAttachLocation::Type LocationType, bool bStopWhenAttachedToDestroyed, bool bAutoPlay, bool bAutoDestroy)
+	FName AttachPointName, FVector Location, EAttachLocation::Type LocationType, bool bStopWhenAttachedToDestroyed, bool bAutoPlay, bool bAutoDestroy,
+	bool bEnableOcclusion /* = false */, ECollisionChannel OcclusionTraceChannel /* ECollisionChannel:: ECC_Visibility */, bool bUseComplexCollisionForOcclusion /* = false*/)
 {
     if (!IFMODStudioModule::Get().UseSound())
     {
@@ -103,6 +104,14 @@ class UFMODAudioComponent *UFMODBlueprintStatics::PlayEventAttached(class UFMODE
 #if WITH_EDITORONLY_DATA
     AudioComponent->bVisualizeComponent = false;
 #endif
+	
+    // Create and apply Occlusion details.
+    FFMODOcclusionDetails OcclusionDetails = FFMODOcclusionDetails();
+	OcclusionDetails.bEnableOcclusion = bEnableOcclusion;
+	OcclusionDetails.bUseComplexCollisionForOcclusion = bUseComplexCollisionForOcclusion;
+	OcclusionDetails.OcclusionTraceChannel = OcclusionTraceChannel;
+	AudioComponent->OcclusionDetails = OcclusionDetails;
+
     AudioComponent->RegisterComponentWithWorld(AttachToComponent->GetWorld());
 
     AudioComponent->AttachToComponent(AttachToComponent, FAttachmentTransformRules::KeepRelativeTransform, AttachPointName);
