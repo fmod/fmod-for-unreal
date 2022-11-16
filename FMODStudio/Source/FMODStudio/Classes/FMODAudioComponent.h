@@ -326,6 +326,7 @@ private:
     /** Called when the event has finished stopping. */
     void OnPlaybackCompleted();
 
+protected:
 // Begin ActorComponent interface.
     /** Called when a component is registered, after Scene is set, but before CreateRenderState_Concurrent or OnCreatePhysicsState are called. */
     virtual void OnRegister() override;
@@ -339,6 +340,8 @@ private:
     /** Function called every frame on this ActorComponent. Only executes if the component is registered, and also PrimaryComponentTick.bCanEverTick must be set to true. */
     virtual void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
 // End ActorComponent interface.
+
+private:
 
 #if WITH_EDITORONLY_DATA
     void UpdateSpriteTexture();
