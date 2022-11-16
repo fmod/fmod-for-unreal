@@ -212,7 +212,7 @@ public:
     virtual FMOD::Studio::EventInstance *CreateAuditioningInstance(const UFMODEvent *Event) override;
     virtual void StopAuditioningInstance() override;
 
-    virtual void SetListenerPosition(int ListenerIndex, UWorld *World, const FTransform &ListenerTransform, float DeltaSeconds) override;
+    virtual void SetListenerPosition(int ListenerIndex, UWorld *World, const FTransform &ListenerTransform, const FTransform &listenerAttenuationTransform, float DeltaSeconds) override;
     virtual void FinishSetListenerPosition(int ListenerCount) override;
 
     virtual const FFMODListener &GetNearestListener(const FVector &Location) override;
@@ -934,7 +934,15 @@ void FFMODStudioModule::UpdateWorldListeners(UWorld *World, int *ListenerIndex)
             ListenerTransform.SetTranslation(Location);
             ListenerTransform.NormalizeRotation();
 
-            SetListenerPosition(*ListenerIndex, World, ListenerTransform, DeltaSeconds);
+			APawn* ControlledPawn = PlayerController->GetPawn();
+			FTransform ListenerAttenuationTransform(FTransform::Identity);
+			if (IsValid(ControlledPawn))
+			{
+				ListenerAttenuationTransform = ControlledPawn->GetActorTransform(); // actor
+				ListenerAttenuationTransform.SetLocation(ControlledPawn->GetPawnViewLocation()); // head
+			}
+
+            SetListenerPosition(*ListenerIndex, World, ListenerTransform, ListenerAttenuationTransform, DeltaSeconds);
 
             (*ListenerIndex)++;
         }
@@ -971,7 +979,7 @@ const FFMODListener &FFMODStudioModule::GetNearestListener(const FVector &Locati
 }
 
 // Partially copied from FAudioDevice::SetListener
-void FFMODStudioModule::SetListenerPosition(int ListenerIndex, UWorld *World, const FTransform &ListenerTransform, float DeltaSeconds)
+void FFMODStudioModule::SetListenerPosition(int ListenerIndex, UWorld *World, const FTransform &ListenerTransform, const FTransform &ListenerAttenuationTransform, float DeltaSeconds)
 {
     FMOD::Studio::System *System = IFMODStudioModule::Get().GetStudioSystem(EFMODSystemContext::Runtime);
     if (System && ListenerIndex < MAX_LISTENERS)
@@ -1009,7 +1017,10 @@ void FFMODStudioModule::SetListenerPosition(int ListenerIndex, UWorld *World, co
         Attributes.forward = FMODUtils::ConvertUnitVector(Forward);
         Attributes.up = FMODUtils::ConvertUnitVector(Up);
         Attributes.velocity = FMODUtils::ConvertWorldVector(Listeners[ListenerIndex].Velocity);
-        verifyfmod(System->setListenerAttributes(ListenerIndex, &Attributes));
+
+        FMOD_VECTOR AttenuationLocation = FMODUtils::ConvertWorldVector(ListenerAttenuationTransform.GetTranslation());
+
+        verifyfmod(System->setListenerAttributes(ListenerIndex, &Attributes, &AttenuationLocation));
         bListenerMoved = true;
     }
 }

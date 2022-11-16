@@ -127,7 +127,7 @@ public:
     /**
 	 * Called to change the listener position for editor mode
 	 */
-    virtual void SetListenerPosition(int ListenerIndex, UWorld *World, const FTransform &ListenerTransform, float DeltaSeconds) = 0;
+    virtual void SetListenerPosition(int ListenerIndex, UWorld *World, const FTransform &ListenerTransform, const FTransform& ListenerAttenuationTransform, float DeltaSeconds) = 0;
 
     /**
 	 * Called to change the listener position for editor mode
