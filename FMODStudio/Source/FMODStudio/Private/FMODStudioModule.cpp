@@ -41,6 +41,10 @@
 #include <AVFoundation/AVAudioSession.h>
 #endif
 
+#if WITH_EDITOR
+#include "LevelEditorViewport.h"
+#endif
+
 #define LOCTEXT_NAMESPACE "FMODStudio"
 
 DEFINE_LOG_CATEGORY(LogFMOD);
@@ -876,6 +880,11 @@ void FFMODStudioModule::UpdateListeners()
 #if WITH_EDITOR
     if (bSimulating)
     {
+        if (GEngine && GEngine->GameViewport)
+        {
+            UpdateWorldListeners(GEngine->GameViewport->GetWorld(), &ListenerIndex);
+        }
+
         return;
     }
 
