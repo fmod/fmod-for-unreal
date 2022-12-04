@@ -102,6 +102,8 @@ struct FFMODOcclusionDetails
 
 /** called when an event stops, either because it played to completion or because a Stop() call turned it off early */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnEventStopped);
+/** called when a sound stops */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnSoundStopped);
 /** called when we reach a named marker on the timeline */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnTimelineMarker, FString, Name, int32, Position);
 /** called when we reach a beat on the timeline */
@@ -169,6 +171,10 @@ public:
     /** Called when an event stops, either because it played to completion or because a Stop() call turned it off early. */
     UPROPERTY(BlueprintAssignable)
     FOnEventStopped OnEventStopped;
+
+    /** Called when a sound stops. */
+    UPROPERTY(BlueprintAssignable)
+    FOnSoundStopped OnSoundStopped;
 
     /** Called when we reach a named marker (if bEnableTimelineCallbacks is true). */
     UPROPERTY(BlueprintAssignable)
@@ -325,6 +331,9 @@ private:
 
     /** Called when the event has finished stopping. */
     void OnPlaybackCompleted();
+
+    void EventCallbackSoundStopped();
+    bool TriggerSoundStoppedDelegate;
 
 // Begin ActorComponent interface.
     /** Called when a component is registered, after Scene is set, but before CreateRenderState_Concurrent or OnCreatePhysicsState are called. */
