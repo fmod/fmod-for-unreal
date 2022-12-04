@@ -405,6 +405,14 @@ void UFMODAudioComponent::TickComponent(float DeltaTime, enum ELevelTick TickTyp
                 }
             }
 
+            if (TriggerSoundStoppedDelegate)
+            {
+                FScopeLock Lock(&CallbackLock);
+                TriggerSoundStoppedDelegate = false;
+
+                OnSoundStopped.Broadcast();
+            }
+
             StudioInstance->getPlaybackState(&state);
         }
 
@@ -477,6 +485,10 @@ FMOD_RESULT F_CALLBACK UFMODAudioComponent_EventCallback(FMOD_STUDIO_EVENT_CALLB
         else if (type == FMOD_STUDIO_EVENT_CALLBACK_DESTROY_PROGRAMMER_SOUND)
         {
             Component->EventCallbackDestroyProgrammerSound((FMOD_STUDIO_PROGRAMMER_SOUND_PROPERTIES *)parameters);
+        }
+        else if (type == FMOD_STUDIO_EVENT_CALLBACK_SOUND_STOPPED)
+        {
+            Component->EventCallbackSoundStopped();
         }
     }
     return FMOD_OK;
@@ -617,6 +629,12 @@ void UFMODAudioComponent::EventCallbackCreateProgrammerSound(FMOD_STUDIO_PROGRAM
             }
         }
     }
+}
+
+void UFMODAudioComponent::EventCallbackSoundStopped()
+{
+    FScopeLock Lock(&CallbackLock);
+    TriggerSoundStoppedDelegate = true;
 }
 
 void UFMODAudioComponent::EventCallbackDestroyProgrammerSound(FMOD_STUDIO_PROGRAMMER_SOUND_PROPERTIES *props)
