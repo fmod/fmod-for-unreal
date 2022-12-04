@@ -208,6 +208,8 @@ void FFMODAssetBuilder::BuildAssets(const UFMODSettings& InSettings, const FStri
     }
 }
 
+const FString BankExtensions[] = { TEXT(".assets"), TEXT(".streams"), TEXT(".bank")};
+
 void FFMODAssetBuilder::BuildBankLookup(const FString &AssetName, const FString &PackagePath, const UFMODSettings &InSettings,
     TArray<UObject*>& AssetsToSave)
 {
@@ -299,14 +301,14 @@ void FFMODAssetBuilder::BuildBankLookup(const FString &AssetName, const FString 
             }
 
             FString CurFilename = FPaths::GetCleanFilename(BankPath);
-            FString PathPart;
-            FString FilenamePart;
-            FString ExtensionPart;
-            FPaths::Split(BankPath, PathPart, FilenamePart, ExtensionPart);
-            FString RelativeBankPath = BankPath.RightChop(InSettings.GetFullBankPath().Len() + 1);
+            FString FilenamePart = CurFilename;
+
+            for (const FString& extension : BankExtensions)
+            {
+                FilenamePart.ReplaceInline(*extension, TEXT(""));
+            }
 
             FString InnerRowName("<NON-LOCALIZED>");
-
             for (const FFMODProjectLocale &Locale : InSettings.Locales)
             {
                 if (FilenamePart.EndsWith(FString("_") + Locale.LocaleCode))
@@ -317,6 +319,7 @@ void FFMODAssetBuilder::BuildBankLookup(const FString &AssetName, const FString 
             }
 
             FFMODLocalizedBankRow *InnerRow = Row->Banks->FindRow<FFMODLocalizedBankRow>(FName(*InnerRowName), nullptr, false);
+            FString RelativeBankPath = BankPath.RightChop(InSettings.GetFullBankPath().Len() + 1);
 
             if (InnerRow)
             {
