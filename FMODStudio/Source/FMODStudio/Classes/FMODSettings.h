@@ -83,7 +83,7 @@ namespace EFMODPlatforms
         IOS,
         PS4,
         PS5,
-        Stadia,
+        Deprecated,
         Switch,
         XboxOne,
         XSX,
