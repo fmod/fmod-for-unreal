@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2022.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2023.
 
 #pragma once
 
@@ -44,6 +44,9 @@ private:
         FString AssetName;
         FString PackagePath;
         FString Path;
+        AssetCreateInfo()
+            : Class(nullptr)
+        {}
     };
 
     struct BankLocalization

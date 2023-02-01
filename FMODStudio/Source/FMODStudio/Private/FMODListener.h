@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2022.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2023.
 
 #pragma once
 
@@ -12,14 +12,14 @@ struct FInteriorSettings;
 struct FFMODInteriorSettings
 {
     uint32 bIsWorldSettings : 1;
-    float ExteriorVolume;
-    float ExteriorTime;
-    float ExteriorLPF;
-    float ExteriorLPFTime;
-    float InteriorVolume;
-    float InteriorTime;
-    float InteriorLPF;
-    float InteriorLPFTime;
+    float ExteriorVolume = 0;
+    float ExteriorTime = 0;
+    float ExteriorLPF = 0;
+    float ExteriorLPFTime = 0;
+    float InteriorVolume = 0;
+    float InteriorTime = 0;
+    float InteriorLPF = 0;
+    float InteriorLPFTime = 0;
 
     FFMODInteriorSettings();
     bool operator==(const FInteriorSettings &Other) const;
@@ -30,23 +30,23 @@ struct FFMODInteriorSettings
 /** A direct copy of FListener (which doesn't have external linkage, unfortunately) **/
 struct FFMODListener
 {
-    FTransform Transform;
-    FVector Velocity;
+    FTransform Transform = FTransform::Identity;
+    FVector Velocity = FVector().ZeroVector;
 
-    struct FFMODInteriorSettings InteriorSettings;
+    struct FFMODInteriorSettings InteriorSettings = FFMODInteriorSettings();
     /** The volume the listener resides in */
-    class AAudioVolume *Volume;
+    class AAudioVolume *Volume = nullptr;
 
     /** The times of interior volumes fading in and out */
-    double InteriorStartTime;
-    double InteriorEndTime;
-    double ExteriorEndTime;
-    double InteriorLPFEndTime;
-    double ExteriorLPFEndTime;
-    float InteriorVolumeInterp;
-    float InteriorLPFInterp;
-    float ExteriorVolumeInterp;
-    float ExteriorLPFInterp;
+    double InteriorStartTime = 0.0f;
+    double InteriorEndTime = 0.0f;
+    double ExteriorEndTime = 0.0f;
+    double InteriorLPFEndTime = 0.0f;
+    double ExteriorLPFEndTime = 0.0f;
+    float InteriorVolumeInterp = 0.0f;
+    float InteriorLPFInterp = 0.0f;
+    float ExteriorVolumeInterp = 0.0f;
+    float ExteriorLPFInterp = 0.0f;
 
     FVector GetUp() const { return Transform.GetUnitAxis(EAxis::Z); }
     FVector GetFront() const { return Transform.GetUnitAxis(EAxis::Y); }
@@ -66,20 +66,4 @@ struct FFMODListener
 	 * Apply the interior settings to ambient sounds
 	 */
     void ApplyInteriorSettings(class AAudioVolume *Volume, const FInteriorSettings &Settings);
-
-    FFMODListener()
-        : Transform(FTransform::Identity)
-        , Velocity(ForceInit)
-        , Volume(NULL)
-        , InteriorStartTime(0.0)
-        , InteriorEndTime(0.0)
-        , ExteriorEndTime(0.0)
-        , InteriorLPFEndTime(0.0)
-        , ExteriorLPFEndTime(0.0)
-        , InteriorVolumeInterp(0.f)
-        , InteriorLPFInterp(0.f)
-        , ExteriorVolumeInterp(0.f)
-        , ExteriorLPFInterp(0.f)
-    {
-    }
 };

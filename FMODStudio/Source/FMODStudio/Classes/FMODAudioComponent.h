@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2022.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2023.
 
 #pragma once
 
@@ -37,6 +37,9 @@ struct FTimelineMarkerProperties
 {
     FString Name;
     int32 Position;
+    FTimelineMarkerProperties()
+        : Position(0)
+    {}
 };
 
 /** Used to store callback info from FMOD thread to our event */
@@ -48,27 +51,31 @@ struct FTimelineBeatProperties
     float Tempo;
     int32 TimeSignatureUpper;
     int32 TimeSignatureLower;
+    FTimelineBeatProperties()
+        : Bar(0)
+        , Beat(0)
+        , Position(0)
+        , Tempo(0.0f)
+        , TimeSignatureUpper(0)
+        , TimeSignatureLower(0)
+    {}
 };
 
 USTRUCT(BlueprintType)
 struct FFMODAttenuationDetails
 {
     GENERATED_USTRUCT_BODY()
-
     /** Should we use Attenuation set in Studio or be able to modify in Editor. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FMOD|Attenuation")
     uint32 bOverrideAttenuation : 1;
-
     /** Override the event's 3D minimum distance. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FMOD|Attenuation",
-        meta = (ClampMin = "0.0", UIMin = "0.0", EditCondition = "bOverrideAttenuation"))
+    meta = (ClampMin = "0.0", UIMin = "0.0", EditCondition = "bOverrideAttenuation"))
     float MinimumDistance;
-
     /** Override the event's 3D maximum distance. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FMOD|Attenuation",
-        meta = (ClampMin = "0.0", UIMin = "0.0", EditCondition = "bOverrideAttenuation"))
+    meta = (ClampMin = "0.0", UIMin = "0.0", EditCondition = "bOverrideAttenuation"))
     float MaximumDistance;
-
     FFMODAttenuationDetails()
         : bOverrideAttenuation(false)
         , MinimumDistance(1.0f)
@@ -80,19 +87,15 @@ USTRUCT(BlueprintType)
 struct FFMODOcclusionDetails
 {
     GENERATED_USTRUCT_BODY()
-
     /** Enable Occlusion Settings. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FMOD|Occlusion")
     bool bEnableOcclusion;
-
     /* Which trace channel to use for audio occlusion checks. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FMOD|Occlusion", meta = (EditCondition = "bEnableOcclusion"))
     TEnumAsByte<enum ECollisionChannel> OcclusionTraceChannel;
-
     /** Whether or not to enable complex geometry occlusion checks. */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="FMOD|Occlusion", meta=(EditCondition = "bEnableOcclusion"))
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FMOD|Occlusion", meta = (EditCondition = "bEnableOcclusion"))
     bool bUseComplexCollisionForOcclusion;
-
     FFMODOcclusionDetails()
         : bEnableOcclusion(false)
         , OcclusionTraceChannel(ECC_Visibility)
@@ -112,7 +115,6 @@ namespace FMOD
 {
 class DSP;
 class Sound;
-
 namespace Studio
 {
 class EventDescription;
@@ -164,7 +166,7 @@ public:
     uint32 bApplyAmbientVolumes : 1;
 
     /** Whether we apply gain and low-pass based on occlusion onto a parameter. */
-    uint32 bApplyOcclusionParameter:1;
+    uint32 bApplyOcclusionParameter : 1;
 
     /** Called when an event stops, either because it played to completion or because a Stop() call turned it off early. */
     UPROPERTY(BlueprintAssignable)
@@ -295,7 +297,7 @@ private:
 
     /** Stored properties to apply next time we create an instance. */
     float StoredProperties[EFMODEventProperty::Count];
-    
+
     /** Internal play function which can play events in the editor. */
     void PlayInternal(EFMODSystemContext::Type Context);
 
@@ -322,7 +324,7 @@ private:
 
     /** Programmer Sound Destroy callback. */
     void EventCallbackDestroyProgrammerSound(struct FMOD_STUDIO_PROGRAMMER_SOUND_PROPERTIES *props);
-    
+
     /** Called when the event has finished stopping. */
     void OnPlaybackCompleted();
 
@@ -365,12 +367,12 @@ private:
     // Settings for ambient volume effects.
     /** Timer used for volumes fading in and out. Used for automating volume and/or LPF with Ambient Zones. */
     double InteriorLastUpdateTime;
-    /** Previous interior volume value. Used for automating volume and/or LPF with Ambient Zones. */
-    float SourceInteriorVolume;
     /** Previous interior LPF value. Used for automating volume and/or LPF with Ambient Zones. */
     float SourceInteriorLPF;
     /** Current interior volume value. Used for automating volume and/or LPF with Ambient Zones. */
     float CurrentInteriorVolume;
+    /** Previous interior volume value. Used for automating volume and/or LPF with Ambient Zones. */
+    float SourceInteriorVolume;
     /** Current interior LPF value. Used for automating volume and/or LPF with Ambient Zones. */
     float CurrentInteriorLPF;
     /** Calculated Ambient volume level for that frame. Used for automating volume and/or LPF with Ambient Zones. */

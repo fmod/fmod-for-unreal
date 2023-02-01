@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2022.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2023.
 
 #include "FMODBlueprintStatics.h"
 #include "FMODAudioComponent.h"
@@ -27,7 +27,7 @@ FFMODEventInstance UFMODBlueprintStatics::PlayEvent2D(UObject *WorldContextObjec
 }
 
 FFMODEventInstance UFMODBlueprintStatics::PlayEventAtLocation(
-    UObject *WorldContextObject, class UFMODEvent *Event, const FTransform &Location, bool bAutoPlay)
+    UObject *WorldContextObject, UFMODEvent *Event, const FTransform &Location, bool bAutoPlay)
 {
     FFMODEventInstance Instance;
     Instance.Instance = nullptr;
