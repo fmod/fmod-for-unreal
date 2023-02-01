@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2022.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2023.
 
 #pragma once
 
@@ -282,6 +282,9 @@ public:
     /** Cache default event parameter values. */
     void CacheDefaultParameterValues();
 
+    /** Check that only player driven parameters are added to the cache. */
+    void UpdateCachedParameterValues();
+
 public:
     /** Internal play function which can play events in the editor. */
     void PlayInternal(EFMODSystemContext::Type Context, bool bReset = false);
@@ -331,6 +334,9 @@ private:
 
     /** Release the Studio Instance. */
     void ReleaseEventInstance();
+
+    /** Check if a parameter is game controlled or automated to determine if it should be cached. */
+    bool ShouldCacheParameter(const FMOD_STUDIO_PARAMETER_DESCRIPTION& ParameterDescription);
 
     /** Return a cached reference to the current IFMODStudioModule.*/
     IFMODStudioModule& GetStudioModule()

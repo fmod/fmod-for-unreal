@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2022.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2023.
 
 #include "FMODAudioComponent.h"
 #include "FMODStudioModule.h"
@@ -125,6 +125,7 @@ void UFMODAudioComponent::PostEditChangeProperty(FPropertyChangedEvent &e)
         ParameterCache.Empty();
         bDefaultParameterValuesCached = false;
     }
+    UpdateCachedParameterValues();
 
 #if WITH_EDITORONLY_DATA
     UpdateSpriteTexture();
@@ -300,27 +301,54 @@ void UFMODAudioComponent::ApplyVolumeLPF()
     }
 }
 
+bool UFMODAudioComponent::ShouldCacheParameter(const FMOD_STUDIO_PARAMETER_DESCRIPTION& ParameterDescription)
+{
+    const UFMODSettings& Settings = *GetDefault<UFMODSettings>();
+
+    if (((ParameterDescription.flags & FMOD_STUDIO_PARAMETER_GLOBAL) == 0) &&
+        (ParameterDescription.type == FMOD_STUDIO_PARAMETER_GAME_CONTROLLED) &&
+        ParameterDescription.name != Settings.OcclusionParameter &&
+        ParameterDescription.name != Settings.AmbientVolumeParameter &&
+        ParameterDescription.name != Settings.AmbientLPFParameter)
+    {
+        return true;
+    }
+    return false;
+}
+
 void UFMODAudioComponent::CacheDefaultParameterValues()
 {
     if (Event)
     {
-        const UFMODSettings &Settings = *GetDefault<UFMODSettings>();
         TArray<FMOD_STUDIO_PARAMETER_DESCRIPTION> ParameterDescriptions;
         Event->GetParameterDescriptions(ParameterDescriptions);
         for (const FMOD_STUDIO_PARAMETER_DESCRIPTION &ParameterDescription : ParameterDescriptions)
         {
-            if (!ParameterCache.Find(ParameterDescription.name) && 
-                ((ParameterDescription.flags & FMOD_STUDIO_PARAMETER_GLOBAL) == 0) &&
-                (ParameterDescription.type == FMOD_STUDIO_PARAMETER_GAME_CONTROLLED) &&
-                ParameterDescription.name != Settings.OcclusionParameter && 
-                ParameterDescription.name != Settings.AmbientVolumeParameter && 
-                ParameterDescription.name != Settings.AmbientLPFParameter)
+            if (ShouldCacheParameter(ParameterDescription))
             {
                 ParameterCache.Add(ParameterDescription.name, ParameterDescription.defaultvalue);
             }
         }
+        bDefaultParameterValuesCached = true;
     }
-    bDefaultParameterValuesCached = true;
+}
+
+void UFMODAudioComponent::UpdateCachedParameterValues()
+{
+    if (bDefaultParameterValuesCached)
+    {
+        TArray<FMOD_STUDIO_PARAMETER_DESCRIPTION> ParameterDescriptions;
+        Event->GetParameterDescriptions(ParameterDescriptions);
+        for (const FMOD_STUDIO_PARAMETER_DESCRIPTION& ParameterDescription : ParameterDescriptions)
+        {
+            if (ParameterCache.Find(ParameterDescription.name) && !ShouldCacheParameter(ParameterDescription))
+            {
+                ParameterCache.Remove(ParameterDescription.name);
+                FString paramName(ParameterDescription.name);
+                UE_LOG(LogFMOD, Warning, TEXT("Parameter '%s' is driven elsewhere and cannot be added here."), *paramName)
+            }
+        }
+    }
 }
 
 void UFMODAudioComponent::OnUnregister()
