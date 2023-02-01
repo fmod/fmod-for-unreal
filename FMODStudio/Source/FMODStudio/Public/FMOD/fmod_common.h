@@ -1,6 +1,6 @@
 /* ======================================================================================== */
 /* FMOD Core API - Common C/C++ header file.                                                */
-/* Copyright (c), Firelight Technologies Pty, Ltd. 2004-2022.                               */
+/* Copyright (c), Firelight Technologies Pty, Ltd. 2004-2023.                               */
 /*                                                                                          */
 /* This header is included by fmod.hpp (C++ interface) and fmod.h (C interface)             */
 /*                                                                                          */
@@ -58,7 +58,7 @@ typedef unsigned long long         FMOD_PORT_INDEX;
 /*
     FMOD constants
 */
-#define FMOD_VERSION    0x00020120                     /* 0xaaaabbcc -> aaaa = product version, bb = major version, cc = minor version.*/
+#define FMOD_VERSION    0x00020121                     /* 0xaaaabbcc -> aaaa = product version, bb = major version, cc = minor version.*/
 
 typedef unsigned int FMOD_DEBUG_FLAGS;
 #define FMOD_DEBUG_LEVEL_NONE                       0x00000000
