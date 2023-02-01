@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2022.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2023.
 
 #include "FMODStudioModule.h"
 #include "FMODSettings.h"
@@ -232,16 +232,6 @@ public:
 
     virtual TArray<FString> GetFailedBankLoads(EFMODSystemContext::Type Context) override { return FailedBankLoads[Context]; }
 
-    virtual TArray<FString> GetRequiredPlugins() override { return RequiredPlugins; }
-
-    virtual void AddRequiredPlugin(const FString &Plugin)
-    {
-        if (!RequiredPlugins.Contains(Plugin))
-        {
-            RequiredPlugins.Add(Plugin);
-        }
-    }
-
     virtual bool UseSound() override { return bUseSound; }
 
     virtual bool LoadPlugin(EFMODSystemContext::Type Context, const TCHAR *ShortName) override;
@@ -279,9 +269,6 @@ public:
 
     /** List of failed bank files */
     TArray<FString> FailedBankLoads[EFMODSystemContext::Max];
-
-    /** List of required plugins we found when loading banks. */
-    TArray<FString> RequiredPlugins;
 
 /** Listener information */
 #if FMOD_VERSION >= 0x00010600
@@ -1348,10 +1335,6 @@ void FFMODStudioModule::LoadBanks(EFMODSystemContext::Type Type)
     const UFMODSettings &Settings = *GetDefault<UFMODSettings>();
 
     FailedBankLoads[Type].Reset();
-    if (Type == EFMODSystemContext::Auditioning || Type == EFMODSystemContext::Editor)
-    {
-        RequiredPlugins.Reset();
-    }
 
     if (StudioSystem[Type] != nullptr && Settings.IsBankPathSet())
     {

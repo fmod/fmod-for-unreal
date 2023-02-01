@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2022.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2023.
 
 #include "FMODStudioEditorModule.h"
 #include "FMODStudioModule.h"
@@ -205,7 +205,6 @@ public:
 
     /** Add extensions to menu */
     void RegisterHelpMenuEntries();
-    void AddFileMenuExtension(FMenuBuilder &MenuBuilder);
 
     /** Show FMOD version */
     void ShowVersion();
@@ -332,10 +331,6 @@ void FFMODStudioEditorModule::OnPostEngineInit()
         if (LevelEditor)
         {
             RegisterHelpMenuEntries();
-            MainMenuExtender = MakeShareable(new FExtender);
-            MainMenuExtender->AddMenuExtension("FileLoadAndSave", EExtensionHook::After, NULL,
-                FMenuExtensionDelegate::CreateRaw(this, &FFMODStudioEditorModule::AddFileMenuExtension));
-            LevelEditor->GetMenuExtensibilityManager()->AddExtender(MainMenuExtender);
         }
     }
 
@@ -399,6 +394,26 @@ void FFMODStudioEditorModule::RegisterHelpMenuEntries()
     UToolMenu* HelpMenu = UToolMenus::Get()->ExtendMenu("LevelEditor.MainMenu.Help");
     FToolMenuSection& Section = HelpMenu->AddSection("FMODHelp", LOCTEXT("FMODHelpLabel", "FMOD Help"),
         FToolMenuInsert("HelpBrowse", EToolMenuInsertType::Default));
+
+    Section.AddEntry(FToolMenuEntry::InitMenuEntry(
+        NAME_None,
+        LOCTEXT("FMODHelpValidate", "Validate FMOD"),
+        LOCTEXT("FMODSetStudioBuildToolTip", "Verifies that FMOD and FMOD Studio are working as expected."),
+        FSlateIcon(),
+        FUIAction(FExecuteAction::CreateRaw(this, &FFMODStudioEditorModule::ValidateFMOD))
+    ));
+
+    Section.AddEntry(FToolMenuEntry::InitMenuEntry(
+        NAME_None,
+        LOCTEXT("FMODHelpReloadBanks", "Reload Banks"),
+        LOCTEXT("FMODSetStudioBuildToolTip", "Force a manual reload of all FMOD Studio banks."),
+        FSlateIcon(),
+        FUIAction(FExecuteAction::CreateRaw(this, &FFMODStudioEditorModule::ReloadBanks))
+    ));
+
+        Section.AddSeparator(FName(TEXT("")));
+
+
     Section.AddEntry(FToolMenuEntry::InitMenuEntry(
         NAME_None,
         LOCTEXT("FMODVersionMenuEntryTitle", "About FMOD Studio"),
@@ -432,23 +447,6 @@ void FFMODStudioEditorModule::RegisterHelpMenuEntries()
         FSlateIcon(FEditorStyle::GetStyleSetName(), "LevelEditor.Tutorials"),
         FUIAction(FExecuteAction::CreateRaw(this, &FFMODStudioEditorModule::OpenVideoTutorials))
     ));
-
-    Section.AddEntry(FToolMenuEntry::InitMenuEntry(
-        NAME_None,
-        LOCTEXT("FMODSetStudioBuildTitle", "Validate FMOD"),
-        LOCTEXT("FMODSetStudioBuildToolTip", "Verifies that FMOD and FMOD Studio are working as expected."),
-        FSlateIcon(),
-        FUIAction(FExecuteAction::CreateRaw(this, &FFMODStudioEditorModule::ValidateFMOD))
-    ));
-}
-
-void FFMODStudioEditorModule::AddFileMenuExtension(FMenuBuilder &MenuBuilder)
-{
-    MenuBuilder.BeginSection("FMODFile", LOCTEXT("FMODFileLabel", "FMOD"));
-    MenuBuilder.AddMenuEntry(LOCTEXT("FMODFileMenuEntryTitle", "Reload Banks"),
-        LOCTEXT("FMODFileMenuEntryToolTip", "Force a manual reload of all FMOD Studio banks."), FSlateIcon(),
-        FUIAction(FExecuteAction::CreateRaw(this, &FFMODStudioEditorModule::ReloadBanks)));
-    MenuBuilder.EndSection();
 }
 
 unsigned int GetDLLVersion()
@@ -573,23 +571,81 @@ void FFMODStudioEditorModule::ValidateFMOD()
 {
     int ProblemsFound = 0;
     FFMODStudioLink StudioLink;
-    bool Connected = StudioLink.Connect();
+    bool Connected = false;
+    FText OptTitle = FText::FromString("FMOD Setup");
 
-    if (!Connected)
+    UFMODSettings& Settings = *GetMutableDefault<UFMODSettings>();
+    FString FullBankPath = Settings.BankOutputDirectory.Path;
+
+    // Intro
+    FText setupMessage = FText(LOCTEXT("RunFMODSetup",
+        "VALIDATING FMOD SETTINGS\n"
+        "------------------------------\n\n"
+        "The FMOD Plugin requires some setting up before it can be used properly.\n"
+        "This Validate procedure will run through the minimum required settings to get FMOD working in Unreal and in your built game.\n\n"
+        "These include:\n"
+        "* Connecting to your FMODStudio project. (requires FMODStudio running)\n"
+        "* Linking to your FMODStudio banks.\n"
+        "* Checking that the versions of the code, the libs and FMODStudio all match. (requires connection to FMODStudio)\n"
+        "* Importing locale options from your Studio project. (requires connection to FMODStudio)\n"
+        "* Adding plugins to the FMOD settings.\n"
+        "* Adding FMOD files and uassets to the packaging settings.\n\n"
+        "You can exit at any time by selecting cancel.\n\n"
+        ));
+    if (FMessageDialog::Open(EAppMsgType::OkCancel, setupMessage, &OptTitle) == EAppReturnType::Cancel)
     {
-        if (EAppReturnType::No ==
-            FMessageDialog::Open(EAppMsgType::YesNo,
-                LOCTEXT("SetStudioBuildStudioNotRunning",
-                    "FMODStudio does not appear to be running.  Only some validation will occur.  Do you want to continue anyway?")))
+        return;
+    }
+
+    // Connect to Studio
+    FText connectMessage = FText::Format(LOCTEXT("SetStudioBuildStudioNotRunning",
+        "LINKING TO FMOD BANKS\n"
+        "------------------------------\n\n"
+        "The FMOD Plugin requires Banks from FMODStudio to generate uassets to use in Unreal.\n\n"
+        "You can manually add the FMOD Banks to the 'Assets/{0}' directory.\n\n"
+        "OR\n\n"
+        "You can connect to FMODStudio, this allows the plugin to check:\n"
+        "* You are running the right version of FMOD Studio.\n"
+        "* Your FMOD Studio bank export path is correct.\n"
+        "* Banks have been exported.\n"
+        "* Studio events have been added to the banks.\n"
+        "* Any locale options have been added to the locales list.\n\n"
+        "Would you like to connect to FMODStudio?\n"), FText::FromString(FullBankPath));
+    EAppReturnType::Type msgType = FMessageDialog::Open(EAppMsgType::YesNoCancel, connectMessage, &OptTitle);
+    if (msgType == EAppReturnType::Yes)
+    {
+        Connected = StudioLink.Connect();
+        if (!Connected)
         {
-            return;
+            if (EAppReturnType::Ok ==
+                FMessageDialog::Open(EAppMsgType::Ok,
+                    LOCTEXT("SetStudioBuildStudioNotRunning",
+                        "CONNECTING TO STUDIO\n"
+                        "------------------------------\n\n"
+                        "FMODStudio does not appear to be running.\nEnsure that your FMOD Studio project is open and try again")), &OptTitle)
+            {
+                Connected = StudioLink.Connect();
+                if (!Connected)
+                {
+                    FMessageDialog::Open(EAppMsgType::Ok,
+                        LOCTEXT("SetStudioBuildStudioNotRunning",
+                            "CONNECTING TO STUDIO\n"
+                            "------------------------------\n\n"
+                            "FMODStudio does not appear to be running.\nSome settings that require a connection to FMODStudio will be skipped."), &OptTitle);
+                }
+            }
         }
+    }
+    else if (msgType == EAppReturnType::Cancel)
+    {
+        return;
     }
 
     unsigned int HeaderVersion = FMOD_VERSION;
     unsigned int DLLVersion = GetDLLVersion();
     unsigned int StudioVersion = 0;
 
+    // Check Studio Version
     if (Connected)
     {
         FString StudioVersionString;
@@ -606,38 +662,37 @@ void FFMODStudioEditorModule::ValidateFMOD()
             }
         }
     }
-
+    // Check the API against DLL
     if (HeaderVersion != DLLVersion)
     {
         FText VersionMessage = FText::Format(LOCTEXT("SetStudioBuildStudio_Status",
-                                                 "The FMOD DLL version is different to the version the integration was built against.  This may "
-                                                 "cause problems running the game.\nBuilt Version: {0}\nDLL Version: {1}\n"),
+            "VERSION CHECKING\n"
+            "------------------------------\n\n"
+            "The FMOD DLL version is different to the version the integration was built against.  This may "
+            "cause problems running the game.\nBuilt Version: {0}\nDLL Version: {1}\n"),
             FText::FromString(VersionToString(HeaderVersion)), FText::FromString(VersionToString(DLLVersion)));
-        FMessageDialog::Open(EAppMsgType::Ok, VersionMessage);
+        FMessageDialog::Open(EAppMsgType::Ok, VersionMessage, &OptTitle);
         ProblemsFound++;
     }
-
+    // Check Studio Version against DLL
     if (Connected && StudioVersion != DLLVersion)
     {
-        FText VersionMessage =
-            FText::Format(LOCTEXT("SetStudioBuildStudio_Version",
-                              "The Studio tool is different to the version the integration was built against.  The integration may not be able to "
-                              "load the banks that the tool builds.\n\nBuilt Version: {0}\nDLL Version: {1}\nStudio Version: {2}\n\nWe recommend "
-                              "using the Studio tool that matches the integration.\n\nDo you want to continue with the validation?"),
-                FText::FromString(VersionToString(HeaderVersion)), FText::FromString(VersionToString(DLLVersion)),
-                FText::FromString(VersionToString(StudioVersion)));
+        FText VersionMessage = FText::Format(LOCTEXT("SetStudioBuildStudio_Version",
+            "VERSION CHECKING\n"
+            "------------------------------\n\n"
+            "The Studio tool is different to the version the integration was built against.  The integration may not be able to "
+            "load the banks that the tool builds.\n\nBuilt Version: {0}\nDLL Version: {1}\nStudio Version: {2}\n\nWe recommend "
+            "using the Studio tool that matches the integration.\n\nDo you want to continue with the validation?"),
+            FText::FromString(VersionToString(HeaderVersion)), FText::FromString(VersionToString(DLLVersion)),
+            FText::FromString(VersionToString(StudioVersion)));
 
-        if (EAppReturnType::No == FMessageDialog::Open(EAppMsgType::YesNo, VersionMessage))
+        if (EAppReturnType::No == FMessageDialog::Open(EAppMsgType::YesNo, VersionMessage, &OptTitle))
         {
             return;
         }
 
         ProblemsFound++;
     }
-
-    UFMODSettings& Settings = *GetMutableDefault<UFMODSettings>();
-
-    FString FullBankPath = Settings.BankOutputDirectory.Path;
 
     if (FPaths::IsRelative(FullBankPath))
     {
@@ -662,7 +717,9 @@ void FFMODStudioEditorModule::ValidateFMOD()
             {
                 FMessageDialog::Open(EAppMsgType::Ok,
                     LOCTEXT("SetStudioBuildStudio_NewProject",
-                        "FMOD Studio has an empty project.  Please go to FMOD Studio, and press Save to create your new project."));
+                        "CONNECTING TO FMODSTUDIO\n"
+                        "------------------------------\n\n"
+                        "FMOD Studio has an empty project.  Please go to FMOD Studio, and press Save to create your new project."), &OptTitle);
                 // Just try to save anyway
                 FString Result;
                 StudioLink.Execute(TEXT("studio.project.save()"), Result);
@@ -719,13 +776,16 @@ void FFMODStudioEditorModule::ValidateFMOD()
             }
 
             ProblemsFound++;
-
+            // FMOD Studio build path doesn't match Unreal project
             FText AskMessage = FText::Format(LOCTEXT("SetStudioBuildStudio_Ask",
-                                                 "FMOD Studio build path should be set up.\n\nCurrent Studio build path: {0}\nNew build path: "
-                                                 "{1}\n\nDo you want to fix up the project now?"),
+                "CONNECTING TO FMODSTUDIO\n"
+                "------------------------------\n\n"
+                "FMOD Studio build path does not match the Unreal project path.\n\nCurrent Studio build path: {0}\nNew build path: "
+                "{1}\n\nDo you want to fix up the project now?"),
                 FText::FromString(StudioPathString), FText::FromString(BankPathToSet));
+            msgType = FMessageDialog::Open(EAppMsgType::YesNoCancel, AskMessage, &OptTitle);
 
-            if (EAppReturnType::Yes == FMessageDialog::Open(EAppMsgType::YesNo, AskMessage))
+            if (msgType == EAppReturnType::Yes)
             {
                 FString Result;
                 StudioLink.Execute(*FString::Printf(TEXT("studio.project.workspace.builtBanksOutputDirectory = \"%s\";"), *BankPathToSet), Result);
@@ -735,20 +795,31 @@ void FFMODStudioEditorModule::ValidateFMOD()
                 {
                     FMessageDialog::Open(EAppMsgType::Ok,
                         LOCTEXT("SetStudioBuildStudio_Save",
-                            "Failed to set bank directory.  Please go to FMOD Studio, and set the bank path in FMOD Studio project settings."));
+                            "CONNECTING TO FMODSTUDIO\n"
+                            "------------------------------\n\n"
+                            "Failed to set bank directory.  Please go to FMOD Studio, and set the bank path in FMOD Studio project settings."), &OptTitle);
                 }
-
-                FMessageDialog::Open(
-                    EAppMsgType::Ok, LOCTEXT("SetStudioBuildStudio_Save", "Please go to FMOD Studio, save your project and build banks."));
-                // Just try to do it again anyway
-                StudioLink.Execute(TEXT("studio.project.save()"), Result);
-                StudioLink.Execute(TEXT("studio.project.build()"), Result);
+                else
+                {
+                    FMessageDialog::Open(
+                        EAppMsgType::Ok, LOCTEXT("SetStudioBuildStudio_Save", 
+                            "CONNECTING TO FMODSTUDIO\n"
+                            "------------------------------\n\n"
+                            "FMOD Studio will attempt to save and build new banks."), &OptTitle);
+                    // Just try to do it again anyway
+                    StudioLink.Execute(TEXT("studio.project.save()"), Result);
+                    StudioLink.Execute(TEXT("studio.project.build()"), Result);
+                }
+            }
+            else if (msgType == EAppReturnType::Cancel)
+            {
+                return;
             }
         }
 
         if (StudioVersion >= MakeVersion(2, 0, 0))
         {
-            // Check whether Studio project locales match those setup in UE4
+            // Check whether Studio project locales match those setup in Unreal
             TArray<FFMODProjectLocale> StudioLocales;
 
             if (GetStudioLocales(StudioLink, StudioLocales))
@@ -786,14 +857,21 @@ void FFMODStudioEditorModule::ValidateFMOD()
                 {
                     ProblemsFound++;
                     FText Message = LOCTEXT("LocalesMismatch",
+                        "IMPORTING LOCALE SETTINGS\n"
+                        "------------------------------\n\n"
                         "The project locales do not match those defined in the FMOD Studio Project.\n\n"
                         "Would you like to import the locales from Studio?\n");
-                    if (FMessageDialog::Open(EAppMsgType::YesNo, Message) == EAppReturnType::Yes)
+                    msgType = FMessageDialog::Open(EAppMsgType::YesNoCancel, Message, &OptTitle);
+                    if (msgType == EAppReturnType::Yes)
                     {
                         Settings.Locales = StudioLocales;
                         Settings.Locales[0].bDefault = true;
                         SettingsSection->Save();
                         IFMODStudioModule::Get().RefreshSettings();
+                    }
+                    else if (msgType == EAppReturnType::Cancel)
+                    {
+                        return;
                     }
                 }
             }
@@ -806,10 +884,12 @@ void FFMODStudioEditorModule::ValidateFMOD()
     if (!FPaths::DirectoryExists(FullBankPath) || !FPaths::DirectoryExists(PlatformBankPath))
     {
         FText DirMessage = FText::Format(LOCTEXT("SetStudioBuildStudio_Dir",
-                                             "The FMOD Content directory does not exist.  Please make sure FMOD Studio is exporting banks into the "
-                                             "correct location.\n\nBanks should be exported to: {0}\nBanks files should exist in: {1}\n"),
+            "CHECKING BANK PATH\n"
+            "------------------------------\n\n"
+            "The FMOD Content directory does not exist.  Please make sure FMOD Studio is exporting banks into the "
+            "correct location.\n\nBanks should be exported to: {0}\nBanks files should exist in: {1}\n"),
             FText::FromString(FullBankPath), FText::FromString(PlatformBankPath));
-        FMessageDialog::Open(EAppMsgType::Ok, DirMessage);
+        FMessageDialog::Open(EAppMsgType::Ok, DirMessage, &OptTitle);
         ProblemsFound++;
     }
     else
@@ -825,10 +905,12 @@ void FFMODStudioEditorModule::ValidateFMOD()
         {
             FText EmptyBankDirMessage =
                 FText::Format(LOCTEXT("SetStudioBuildStudio_EmptyBankDir",
-                                  "The FMOD Content directory does not have any bank files in them.  Please make sure FMOD Studio is exporting banks "
-                                  "into the correct location.\n\nBanks should be exported to: {0}\nBanks files should exist in: {1}\n"),
+                    "CHECKING BANK PATH\n"
+                    "------------------------------\n\n"
+                    "The FMOD Content directory does not have any bank files in them.  Please make sure FMOD Studio is exporting banks "
+                    "into the correct location.\n\nBanks should be exported to: {0}\nBanks files should exist in: {1}\n"),
                     FText::FromString(FullBankPath), FText::FromString(PlatformBankPath));
-            FMessageDialog::Open(EAppMsgType::Ok, EmptyBankDirMessage);
+            FMessageDialog::Open(EAppMsgType::Ok, EmptyBankDirMessage, &OptTitle);
             ProblemsFound++;
         }
     }
@@ -855,20 +937,29 @@ void FFMODStudioEditorModule::ValidateFMOD()
 
             if (BankCount == 0 && FailedBanks.Num() == 0)
             {
-                BankLoadMessage = LOCTEXT("SetStudioBuildStudio_BankLoad", "Failed to load banks\n");
+                BankLoadMessage = LOCTEXT("SetStudioBuildStudio_BankLoad", 
+                    "LOADING BANKS\n"
+                    "------------------------------\n\n"
+                    "Failed to load banks\n");
             }
             else if (BankCount == 0)
             {
                 BankLoadMessage =
-                    FText::Format(LOCTEXT("SetStudioBuildStudio_BankLoad", "Failed to load banks:\n{0}\n"), FText::FromString(CombinedBanks));
+                    FText::Format(LOCTEXT("SetStudioBuildStudio_BankLoad", 
+                        "LOADING BANKS\n"
+                        "------------------------------\n\n"
+                        "Failed to load banks:\n{0}\n"), FText::FromString(CombinedBanks));
             }
             else
             {
                 BankLoadMessage =
-                    FText::Format(LOCTEXT("SetStudioBuildStudio_BankLoad", "Some banks failed to load:\n{0}\n"), FText::FromString(CombinedBanks));
+                    FText::Format(LOCTEXT("SetStudioBuildStudio_BankLoad", 
+                        "LOADING BANKS\n"
+                        "------------------------------\n\n"
+                        "Some banks failed to load:\n{0}\n"), FText::FromString(CombinedBanks));
             }
 
-            FMessageDialog::Open(EAppMsgType::Ok, BankLoadMessage);
+            FMessageDialog::Open(EAppMsgType::Ok, BankLoadMessage, &OptTitle);
             ProblemsFound++;
         }
         else
@@ -889,32 +980,21 @@ void FFMODStudioEditorModule::ValidateFMOD()
             {
                 FMessageDialog::Open(EAppMsgType::Ok,
                     LOCTEXT("SetStudioBuildStudio_NoEvents",
-                        "Banks have been loaded but they didn't have any events in them.  Please make sure you have added some events to banks."));
+                        "LOADING BANKS\n"
+                        "------------------------------\n\n"
+                        "Banks have been loaded but they didn't have any events in them.  Please make sure you have assigned events to the banks."), &OptTitle);
                 ProblemsFound++;
             }
         }
     }
 
-    // Look for required plugins that have not been registered
-    TArray<FString> RequiredPlugins = IFMODStudioModule::Get().GetRequiredPlugins();
-
-    if (RequiredPlugins.Num() != 0 && Settings.PluginFiles.Num() == 0)
-    {
-        FString CombinedPlugins;
-
-        for (auto Name : RequiredPlugins)
-        {
-            CombinedPlugins += Name;
-            CombinedPlugins += TEXT("\n");
-        }
-
-        FText PluginMessage =
-            FText::Format(LOCTEXT("SetStudioBuildStudio_Plugins",
-                              "The banks require the following plugins, but no plugin filenames are listed in the settings:\n{0}\n"),
-                FText::FromString(CombinedPlugins));
-        FMessageDialog::Open(EAppMsgType::Ok, PluginMessage);
-        ProblemsFound++;
-    }
+    // Plugins
+    FText PluginMessage =
+        FText(LOCTEXT("SetStudioBuildStudio_Plugins",
+            "PLUGINS\n"
+            "------------------------------\n\n"
+            "If your FMOD Studio project is using any plugins (eg. Resonance, Steam, AudioMotors) make sure to add them to the plugins list in the FMOD Settings.\n"));
+    FMessageDialog::Open(EAppMsgType::Ok, PluginMessage, &OptTitle);
 
     // Look for FMOD in packaging settings
     UProjectPackagingSettings *PackagingSettings = Cast<UProjectPackagingSettings>(UProjectPackagingSettings::StaticClass()->GetDefaultObject());
@@ -947,16 +1027,21 @@ void FFMODStudioEditorModule::ValidateFMOD()
 
         FText message = bPackagingFound ?
             LOCTEXT("PackagingFMOD_Both",
+                "PACKAGING\n"
+                "------------------------------\n\n"
                 "FMOD has been added to both the \"Additional Non-Asset Directories to Copy\" and the \"Additional Non-Asset Directories to Package\" "
                 "lists. It is recommended to remove FMOD from the \"Additional Non-Asset Directories to Package\" list.\n\n"
                 "Do you want to remove it now?") :
             LOCTEXT("PackagingFMOD_AskMove",
+                "PACKAGING\n"
+                "------------------------------\n\n"
                 "FMOD has been added to the \"Additional Non-Asset Directories to Package\" list. "
                 "Packaging FMOD content may lead to deadlocks at runtime. "
                 "It is recommended to move FMOD to the \"Additional Non-Asset Directories to Copy\" list.\n\n"
                 "Do you want to move it now?");
 
-        if (EAppReturnType::Yes == FMessageDialog::Open(EAppMsgType::YesNo, message))
+        msgType = FMessageDialog::Open(EAppMsgType::YesNoCancel, message, &OptTitle);
+        if (msgType == EAppReturnType::Yes)
         {
             PackagingSettings->DirectoriesToAlwaysStageAsUFS.RemoveAt(OldPackagingIndex);
 
@@ -967,18 +1052,33 @@ void FFMODStudioEditorModule::ValidateFMOD()
 
             PackagingSettings->UpdateDefaultConfigFile();
         }
+        else if (msgType == EAppReturnType::Cancel)
+        {
+            return;
+        }
     }
     else if (!bPackagingFound)
     {
         ProblemsFound++;
 
         FText message = LOCTEXT("PackagingFMOD_Ask",
-            "FMOD has not been added to the \"Additional Non-Asset Directories to Copy\" list.\n\nDo you want add it now?");
+            "PACKAGING\n"
+            "------------------------------\n\n"
+            "FMOD has not been added to the \"Additional Non-Asset Directories to Copy\" list.\n"
+            "This is required for the FMOD Banks to be copied into your game at build time.\n\n"
+            "Do you want add it now?");
 
-        if (EAppReturnType::Yes == FMessageDialog::Open(EAppMsgType::YesNo, message))
+        msgType = FMessageDialog::Open(EAppMsgType::YesNoCancel, message, &OptTitle);
+        if (msgType == EAppReturnType::Yes)
         {
-            PackagingSettings->DirectoriesToAlwaysStageAsNonUFS.Add(Settings.BankOutputDirectory);
+            FDirectoryPath BankPath;
+            BankPath.Path = Settings.GetDesktopBankPath();
+            PackagingSettings->DirectoriesToAlwaysStageAsNonUFS.Add(BankPath);
             PackagingSettings->UpdateDefaultConfigFile();
+        }
+        else if (msgType == EAppReturnType::Cancel)
+        {
+            return;
         }
     }
 
@@ -996,9 +1096,14 @@ void FFMODStudioEditorModule::ValidateFMOD()
         ProblemsFound++;
 
         FText message = LOCTEXT("PackagingFMOD_Ask",
-            "FMOD has not been added to the \"Additional Asset Directories to Cook\" list.\n\nDo you want add it now?");
+            "PACKAGING\n"
+            "------------------------------\n\n"
+            "FMOD has not been added to the \"Additional Asset Directories to Cook\" list.\n"
+            "This is required for your built game to be able to interact with the FMOD uassets.\n\n"
+            "Do you want add it now?");
 
-        if (EAppReturnType::Yes == FMessageDialog::Open(EAppMsgType::YesNo, message))
+        msgType = FMessageDialog::Open(EAppMsgType::YesNoCancel, message, &OptTitle);
+        if (msgType == EAppReturnType::Yes)
         {
             FDirectoryPath GeneratedDir;
             for (FString folder : Settings.GeneratedFolders)
@@ -1008,16 +1113,20 @@ void FFMODStudioEditorModule::ValidateFMOD()
             }
             PackagingSettings->UpdateDefaultConfigFile();
         }
+        else if (msgType == EAppReturnType::Cancel)
+        {
+            return;
+        }
     }
 
     // Summary
     if (ProblemsFound)
     {
-        FMessageDialog::Open(EAppMsgType::Ok, LOCTEXT("SetStudioBuildStudio_FinishedBad", "Finished validation.\n"));
+        FMessageDialog::Open(EAppMsgType::Ok, LOCTEXT("SetStudioBuildStudio_FinishedBad", "Finished validation.\n"), &OptTitle);
     }
     else
     {
-        FMessageDialog::Open(EAppMsgType::Ok, LOCTEXT("SetStudioBuildStudio_FinishedGood", "Finished validation.  No problems detected.\n"));
+        FMessageDialog::Open(EAppMsgType::Ok, LOCTEXT("SetStudioBuildStudio_FinishedGood", "Finished validation.  No problems detected.\n"), &OptTitle);
     }
 }
 
@@ -1030,12 +1139,15 @@ void FFMODStudioEditorModule::OnMainFrameLoaded(TSharedPtr<SWindow> InRootWindow
 
         if (Settings.Check() != UFMODSettings::Okay)
         {
-            FNotificationInfo Info(LOCTEXT("BadSettingsPopupTitle", "FMOD Settings Problem Detected"));
+            FNotificationInfo Info(LOCTEXT("BadSettingsPopupTitle", "FMOD Settings Setup"));
             Info.bFireAndForget = false;
             Info.bUseLargeFont = true;
             Info.bUseThrobber = false;
             Info.FadeOutDuration = 0.5f;
-            Info.ButtonDetails.Add(FNotificationButtonInfo(LOCTEXT("BadSettingsPopupSettings", "Settings..."),
+            Info.ButtonDetails.Add(FNotificationButtonInfo(LOCTEXT("BadSettingsPopupValidate", "Validate"),
+                LOCTEXT("BadSettingsPopupValidateTT", "Open the settings editor"),
+                FSimpleDelegate::CreateRaw(this, &FFMODStudioEditorModule::ValidateFMOD)));
+            Info.ButtonDetails.Add(FNotificationButtonInfo(LOCTEXT("BadSettingsPopupSettings", "View Settings"),
                 LOCTEXT("BadSettingsPopupSettingsTT", "Open the settings editor"),
                 FSimpleDelegate::CreateRaw(this, &FFMODStudioEditorModule::OnBadSettingsPopupSettingsClicked)));
             Info.ButtonDetails.Add(FNotificationButtonInfo(LOCTEXT("BadSettingsPopupDismiss", "Dismiss"), 
@@ -1054,8 +1166,6 @@ void FFMODStudioEditorModule::OnBadSettingsPopupSettingsClicked()
     {
         SettingsModule->ShowViewer("Project", "Plugins", "FMODStudio");
     }
-
-    BadSettingsNotification.Pin()->ExpireAndFadeout();
 }
 
 void FFMODStudioEditorModule::OnBadSettingsPopupDismissClicked()
