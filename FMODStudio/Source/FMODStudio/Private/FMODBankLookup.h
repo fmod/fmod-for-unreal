@@ -25,7 +25,7 @@ struct FMODSTUDIO_API FFMODLocalizedBankTable : public FTableRowBase
 UCLASS()
 class FMODSTUDIO_API UFMODBankLookup : public UObject
 {
-    GENERATED_BODY()
+    GENERATED_UCLASS_BODY()
 
 public:
     UPROPERTY(VisibleAnywhere, Category="FMOD|Internal|BankLookup")
