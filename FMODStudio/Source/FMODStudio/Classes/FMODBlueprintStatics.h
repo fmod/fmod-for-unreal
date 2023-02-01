@@ -1,11 +1,10 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2022.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2023.
 
 #pragma once
 
 #include "FMODAudioComponent.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
 #include "Containers/UnrealString.h"
-#include "Kismet/BlueprintFunctionLibrary.h"
 #include "FMODBlueprintStatics.generated.h"
 
 class UFMODAudioComponent;

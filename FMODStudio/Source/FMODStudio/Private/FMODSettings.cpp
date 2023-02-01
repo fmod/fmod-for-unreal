@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2022.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2023.
 
 #include "FMODSettings.h"
 #include "Misc/Paths.h"
@@ -37,30 +37,33 @@ inline EFMODPlatforms::Type CurrentPlatform()
 
 UFMODSettings::UFMODSettings(const FObjectInitializer &ObjectInitializer)
     : Super(ObjectInitializer)
+    , bLoadAllBanks(true)
+    , bLoadAllSampleData(false)
+    , bEnableLiveUpdate(true)
+    , bEnableEditorLiveUpdate(false)
+    , OutputFormat(EFMODSpeakerMode::Surround_5_1)
+    , OutputType(EFMODOutput::TYPE_AUTODETECT)
+    , bVol0Virtual(true)
+    , Vol0VirtualLevel(0.001f)
+    , SampleRate(0)
+    , bMatchHardwareSampleRate(true)
+    , RealChannelCount(64)
+    , TotalChannelCount(512)
+    , DSPBufferLength(0)
+    , DSPBufferCount(0)
+    , FileBufferSize(2048)
+    , StudioUpdatePeriod(0)
+    , bLockAllBuses(false)
+    , LiveUpdatePort(9264)
+    , EditorLiveUpdatePort(9265)
+    , ReloadBanksDelay(5)
+    , bEnableAPIErrorLogging(false)
+    , bEnableMemoryTracking(false)
+    , ContentBrowserPrefix(TEXT("/Game/FMOD/"))
+    , MasterBankName(TEXT("Master"))
+    , LoggingLevel(LEVEL_WARNING)
 {
-    MasterBankName = TEXT("Master");
     BankOutputDirectory.Path = TEXT("FMOD");
-    OutputFormat = EFMODSpeakerMode::Surround_5_1;
-    OutputType = EFMODOutput::TYPE_AUTODETECT;
-    ContentBrowserPrefix = TEXT("/Game/FMOD/");
-    bLoadAllBanks = true;
-    bLoadAllSampleData = false;
-    bEnableLiveUpdate = true;
-    bVol0Virtual = true;
-    Vol0VirtualLevel = 0.0001f;
-    RealChannelCount = 64;
-    TotalChannelCount = 512;
-    DSPBufferLength = 0;
-    DSPBufferCount = 0;
-    FileBufferSize = 2048;
-    StudioUpdatePeriod = 0;
-    LiveUpdatePort = 9264;
-    EditorLiveUpdatePort = 9265;
-    ReloadBanksDelay = 5;
-    bMatchHardwareSampleRate = true;
-    bLockAllBuses = false;
-    bEnableAPIErrorLogging = false;
-    bEnableMemoryTracking = false;
 }
 
 FString UFMODSettings::GetFullBankPath() const
