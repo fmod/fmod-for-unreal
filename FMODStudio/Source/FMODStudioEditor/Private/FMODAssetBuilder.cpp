@@ -269,7 +269,7 @@ void FFMODAssetBuilder::BuildBankLookup(const FString &AssetName, const FString 
                 bool foundLocale = false;
                 for (const FFMODProjectLocale& Locale : InSettings.Locales)
                 {
-                    if (Locale.bDefault && BankPath.EndsWith(FString("_") + Locale.LocaleCode + FString(".bank")))
+                    if (BankPath.EndsWith(FString("_") + Locale.LocaleCode + FString(".bank")))
                     {
                         foundLocale = true;
                         break;
