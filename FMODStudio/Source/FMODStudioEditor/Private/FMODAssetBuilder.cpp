@@ -266,20 +266,23 @@ void FFMODAssetBuilder::BuildBankLookup(const FString &AssetName, const FString 
             FString* otherBankPath = BankGuids.Find(GUID);
             if (otherBankPath != nullptr)
             {
-                bool foundLocale = false;
+            	enum { LocaleNotFound, DefaultLocale, OtherLocale } locale = LocaleNotFound;
                 for (const FFMODProjectLocale& Locale : InSettings.Locales)
                 {
                     if (BankPath.EndsWith(FString("_") + Locale.LocaleCode + FString(".bank")))
                     {
-                        foundLocale = true;
+                    	locale = Locale.bDefault ? DefaultLocale : OtherLocale;
                         break;
                     }
                 }
-                if (!foundLocale)
+                if (locale == LocaleNotFound)
                 {
-                    UE_LOG(LogFMOD, Warning, TEXT("Ignoring bank %s as another bank with the same GUID is already being used.\n"
-                        "Bank %s does not match any locales in the FMOD Studio plugin settings."), *BankPath, *BankPath);
-                    continue;
+	                UE_LOG(LogFMOD, Warning, TEXT("Ignoring bank %s as another bank with the same GUID is already being used.\n"
+						"Bank %s does not match any locales in the FMOD Studio plugin settings."), *BankPath, *BankPath);
+                }
+                if (locale != DefaultLocale)
+                {
+	                continue;
                 }
             }
             BankGuids.Add(GUID, BankPath);
