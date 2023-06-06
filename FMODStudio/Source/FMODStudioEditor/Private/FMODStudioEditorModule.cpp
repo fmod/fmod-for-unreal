@@ -20,6 +20,7 @@
 #include "Sequencer/FMODEventParameterTrackEditor.h"
 #include "AssetTypeActions_FMODEvent.h"
 
+#include "Slate/Public/Framework/Application/SlateApplication.h"
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "UnrealEd/Public/AssetSelection.h"
 #include "Slate/Public/Framework/Notifications/NotificationManager.h"
