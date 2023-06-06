@@ -254,6 +254,8 @@ public:
 
     virtual FString GetLocale() override;
 
+    virtual FString GetDefaultLocale() override;
+
     void ResetInterpolation();
 
 #if PLATFORM_IOS || PLATFORM_TVOS
@@ -1048,19 +1050,19 @@ void FFMODStudioModule::FinishSetListenerPosition(int NumListeners)
     }
 
     // Apply a reverb snapshot from the listener position(s)
-    AAudioVolume *BestVolume = nullptr;
+    TWeakObjectPtr<AAudioVolume> BestVolume = nullptr;
     for (int i = 0; i < ListenerCount; ++i)
     {
         AAudioVolume *CandidateVolume = Listeners[i].Volume;
 
-        if (BestVolume == nullptr || (IsValid(CandidateVolume) && IsValid(BestVolume) && CandidateVolume->GetPriority() > BestVolume->GetPriority()))
+        if (BestVolume == nullptr || (IsValid(CandidateVolume) && BestVolume.IsValid() && CandidateVolume->GetPriority() > BestVolume->GetPriority()))
         {
             BestVolume = CandidateVolume;
         }
     }
     UFMODSnapshotReverb *NewSnapshot = nullptr;
 
-    if (IsValid(BestVolume) && BestVolume->GetReverbSettings().bApplyReverb)
+    if (BestVolume.IsValid() && BestVolume->GetReverbSettings().bApplyReverb)
     {
         NewSnapshot = Cast<UFMODSnapshotReverb>(BestVolume->GetReverbSettings().ReverbEffect);
     }
@@ -1141,7 +1143,10 @@ void FFMODStudioModule::FinishSetListenerPosition(int NumListeners)
 void FFMODStudioModule::RefreshSettings()
 {
     AssetTable.Load();
-    AssetTable.SetLocale(GetLocale());
+    if (AssetTable.GetLocale().IsEmpty())
+    {
+        AssetTable.SetLocale(GetDefaultLocale());
+    }
 }
 
 void FFMODStudioModule::SetInPIE(bool bInPIE, bool simulating)
@@ -1323,6 +1328,11 @@ bool FFMODStudioModule::SetLocale(const FString& LocaleName)
 }
 
 FString FFMODStudioModule::GetLocale()
+{
+    return AssetTable.GetLocale();
+}
+
+FString FFMODStudioModule::GetDefaultLocale()
 {
     FString LocaleCode = "";
     const UFMODSettings& Settings = *GetDefault<UFMODSettings>();
