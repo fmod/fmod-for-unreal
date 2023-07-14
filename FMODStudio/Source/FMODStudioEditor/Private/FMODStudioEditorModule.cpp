@@ -791,7 +791,10 @@ void FFMODStudioEditorModule::ValidateFMOD()
                     if (FMessageDialog::Open(EAppMsgType::YesNo, Message) == EAppReturnType::Yes)
                     {
                         Settings.Locales = StudioLocales;
-                        Settings.Locales[0].bDefault = true;
+                        if (Settings.Locales.Num() > 0)
+                        {
+                            Settings.Locales[0].bDefault = true;
+                        }
                         SettingsSection->Save();
                         IFMODStudioModule::Get().RefreshSettings();
                     }
