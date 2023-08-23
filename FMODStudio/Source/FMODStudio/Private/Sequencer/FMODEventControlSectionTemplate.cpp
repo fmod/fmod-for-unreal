@@ -50,12 +50,6 @@ private:
     virtual IMovieScenePreAnimatedTokenPtr CacheExistingState(UObject &Object) const override { return FPlayingToken(Object); }
 };
 
-struct FFMODEventKeyState : IPersistentEvaluationData
-{
-    FKeyHandle LastKeyHandle;
-    FKeyHandle InvalidKeyHandle;
-};
-
 struct FFMODEventControlExecutionToken : IMovieSceneExecutionToken
 {
     FFMODEventControlExecutionToken(EFMODEventControlKey InEventControlKey, FFrameTime InKeyTime)
@@ -80,7 +74,17 @@ struct FFMODEventControlExecutionToken : IMovieSceneExecutionToken
 
             if (IsValid(AudioComponent))
             {
-                Player.SavePreAnimatedState(*AudioComponent, FPlayingTokenProducer::GetAnimTypeID(), FPlayingTokenProducer());
+                EFMODSystemContext::Type SystemContext =
+                    (GWorld && GWorld->WorldType == EWorldType::Editor) ? EFMODSystemContext::Auditioning : EFMODSystemContext::Runtime;
+
+                if (EventControlKey == EFMODEventControlKey::Stop && KeyTime == 0 && SystemContext == EFMODSystemContext::Auditioning)
+                {
+                    // Skip state saving when auditioning sequencer
+                }
+                else
+                {
+                    Player.SavePreAnimatedState(*AudioComponent, FPlayingTokenProducer::GetAnimTypeID(), FPlayingTokenProducer());
+                }
 
                 if (EventControlKey == EFMODEventControlKey::Play)
                 {
@@ -89,8 +93,6 @@ struct FFMODEventControlExecutionToken : IMovieSceneExecutionToken
                         AudioComponent->Stop();
                     }
 
-                    EFMODSystemContext::Type SystemContext =
-                        (GWorld && GWorld->WorldType == EWorldType::Editor) ? EFMODSystemContext::Editor : EFMODSystemContext::Runtime;
                     AudioComponent->PlayInternal(SystemContext);
                 }
                 else if (EventControlKey == EFMODEventControlKey::Stop)
