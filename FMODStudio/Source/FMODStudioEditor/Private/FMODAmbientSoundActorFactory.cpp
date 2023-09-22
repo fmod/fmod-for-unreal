@@ -4,7 +4,7 @@
 #include "FMODStudioEditorPrivatePCH.h"
 #include "FMODAmbientSound.h"
 #include "FMODEvent.h"
-#include "AssetRegistry/Public/AssetData.h"
+#include "AssetRegistry/AssetData.h"
 #include "Editor/EditorEngine.h"
 
 UFMODAmbientSoundActorFactory::UFMODAmbientSoundActorFactory(const FObjectInitializer &ObjectInitializer)

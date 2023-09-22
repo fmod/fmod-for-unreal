@@ -1,8 +1,8 @@
 // Copyright (c), Firelight Technologies Pty, Ltd. 2012-2023.
 
 #pragma once
-#include "SlateCore/Public/Styling/SlateStyle.h"
-#include "EditorStyle/Public/EditorStyleSet.h"
+#include "Styling/SlateStyle.h"
+#include "EditorStyleSet.h"
 
 class FFMODStudioStyle
 {

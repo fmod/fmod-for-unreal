@@ -11,12 +11,15 @@ struct FPlayingToken : IMovieScenePreAnimatedToken
     FPlayingToken(UObject &InObject)
     {
         bPlaying = false;
+        Position = 0;
 
         if (UFMODAudioComponent *AudioComponent = Cast<UFMODAudioComponent>(&InObject))
         {
             if (IsValid(AudioComponent))
             {
                 bPlaying = AudioComponent->IsPlaying();
+                Position = AudioComponent->GetTimelinePosition();
+                Transform = AudioComponent->GetComponentTransform();
             }
         }
     }
@@ -30,16 +33,20 @@ struct FPlayingToken : IMovieScenePreAnimatedToken
             if (bPlaying)
             {
                 AudioComponent->Play();
+                AudioComponent->SetTimelinePosition(Position);
             }
             else
             {
                 AudioComponent->Stop();
+                AudioComponent->SetWorldTransform(Transform);
             }
         }
     }
 
 private:
     bool bPlaying;
+    int32 Position;
+    FTransform Transform;
 };
 
 struct FPlayingTokenProducer : IMovieScenePreAnimatedTokenProducer

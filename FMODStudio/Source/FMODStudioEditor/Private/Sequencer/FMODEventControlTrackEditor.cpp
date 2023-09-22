@@ -1,16 +1,17 @@
 // Copyright (c), Firelight Technologies Pty, Ltd. 2012-2023.
 
 #include "FMODEventControlTrackEditor.h"
+#include "FMODAmbientSound.h"
+#include "Sequencer/FMODEventControlSection.h"
+#include "Sequencer/FMODEventControlTrack.h"
+#include "AnimatedRange.h"
 #include "Rendering/DrawElements.h"
 #include "Framework/MultiBox/MultiBoxBuilder.h"
 #include "Curves/IntegralCurve.h"
 #include "SequencerSectionPainter.h"
 #include "EditorStyleSet.h"
 #include "Editor/UnrealEdEngine.h"
-#include "Sequencer/FMODEventControlSection.h"
-#include "Sequencer/FMODEventControlTrack.h"
 #include "ISectionLayoutBuilder.h"
-#include "FMODAmbientSound.h"
 #include "CommonMovieSceneTools.h"
 #include "Channels/MovieSceneChannelProxy.h"
 #include "Channels/MovieSceneChannelEditorData.h"
@@ -103,13 +104,13 @@ int32 FFMODEventControlSection::OnPaintSection(FSequencerSectionPainter &InPaint
         float XSize = TimeToPixelConverter.SecondsToPixel(DrawRange.GetUpperBoundValue()) - XOffset;
         FSlateDrawElement::MakeBox(InPainter.DrawElements, InPainter.LayerId,
             InPainter.SectionGeometry.ToPaintGeometry(
-                FVector2D(XOffset, (InPainter.SectionGeometry.GetLocalSize().Y - SequencerSectionConstants::KeySize.Y) / 2),
-                FVector2D(XSize, SequencerSectionConstants::KeySize.Y)),
+                FVector2D(XSize, SequencerSectionConstants::KeySize.Y),
+                FSlateLayoutTransform(1.0f, FVector2D(XOffset, (InPainter.SectionGeometry.GetLocalSize().Y - SequencerSectionConstants::KeySize.Y) / 2))),
             FAppStyle::GetBrush("Sequencer.Section.Background"), DrawEffects);
         FSlateDrawElement::MakeBox(InPainter.DrawElements, InPainter.LayerId,
             InPainter.SectionGeometry.ToPaintGeometry(
-                FVector2D(XOffset, (InPainter.SectionGeometry.GetLocalSize().Y - SequencerSectionConstants::KeySize.Y) / 2),
-                FVector2D(XSize, SequencerSectionConstants::KeySize.Y)),
+                FVector2D(XSize, SequencerSectionConstants::KeySize.Y),
+                FSlateLayoutTransform(1.0f, FVector2D(XOffset, (InPainter.SectionGeometry.GetLocalSize().Y - SequencerSectionConstants::KeySize.Y) / 2))),
             FAppStyle::GetBrush("Sequencer.Section.BackgroundTint"), DrawEffects, TrackColor);
     }
 

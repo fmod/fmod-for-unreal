@@ -7,7 +7,7 @@
 #include "MovieSceneTimeHelpers.h"
 #include "MovieSceneToolHelpers.h"
 #include "ScopedTransaction.h"
-#include "EditorWidgets/Public/SEnumCombo.h"
+#include "Editor/EditorWidgets/Public/SEnumCombo.h"
 #include "EditorStyleSet.h"
 #include "Channels/MovieSceneChannelTraits.h"
 

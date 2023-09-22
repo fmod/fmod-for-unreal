@@ -122,12 +122,13 @@ public:
     FFMODStudioSystemClockSink(FMOD::Studio::System *SystemIn)
         : System(SystemIn)
         , LastResult(FMOD_OK)
+        , Paused(false)
     {
     }
 
     virtual void TickRender(FTimespan DeltaTime, FTimespan Timecode) override
     {
-        if (System)
+        if (System && !Paused)
         {
             if (UpdateListenerPosition.IsBound())
             {
@@ -142,9 +143,14 @@ public:
 
     void OnDestroyStudioSystem() { System = nullptr; }
 
+    void SetPaused(bool PausedIn) { Paused = PausedIn; }
+
     FMOD::Studio::System *System;
     FMOD_RESULT LastResult;
     FUpdateListenerPosition UpdateListenerPosition;
+
+private:
+    bool Paused;
 };
 
 class FFMODStudioModule : public IFMODStudioModule
@@ -1201,6 +1207,8 @@ void FFMODStudioModule::SetSystemPaused(bool paused)
             FMOD::ChannelGroup *MasterChannelGroup = nullptr;
             verifyfmod(LowLevelSystem->getMasterChannelGroup(&MasterChannelGroup));
             verifyfmod(MasterChannelGroup->setPaused(paused));
+
+            ClockSinks[EFMODSystemContext::Runtime]->SetPaused(paused);
 
             if (paused)
             {
