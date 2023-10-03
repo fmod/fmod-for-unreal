@@ -209,8 +209,6 @@ void FFMODAssetBuilder::BuildAssets(const UFMODSettings& InSettings, const FStri
     }
 }
 
-const FString BankExtensions[] = { TEXT(".assets"), TEXT(".streams"), TEXT(".bank")};
-
 void FFMODAssetBuilder::BuildBankLookup(const FString &AssetName, const FString &PackagePath, const UFMODSettings &InSettings,
     TArray<UObject*>& AssetsToSave)
 {
@@ -245,56 +243,29 @@ void FFMODAssetBuilder::BuildBankLookup(const FString &AssetName, const FString 
         return;
     }
 
-    TMap<FString, FString> BankGuids;
+    TArray<FString> LocalizedEntriesVisited;
 
     for (FString BankPath : BankPaths)
     {
         FMOD::Studio::Bank* Bank;
-        FMOD_RESULT result = StudioSystem->loadBankFile(TCHAR_TO_UTF8(*BankPath), FMOD_STUDIO_LOAD_BANK_NORMAL, &Bank);
         FMOD_GUID BankID;
 
+        FMOD_RESULT result = StudioSystem->loadBankFile(TCHAR_TO_UTF8(*BankPath), FMOD_STUDIO_LOAD_BANK_NORMAL, &Bank);
         if (result == FMOD_OK)
         {
             result = Bank->getID(&BankID);
             Bank->unload();
         }
-
-        if (result == FMOD_OK)
-        {
-            FString GUID = FMODUtils::ConvertGuid(BankID).ToString(EGuidFormats::DigitsWithHyphensInBraces);
-
-            FString* otherBankPath = BankGuids.Find(GUID);
-            if (otherBankPath != nullptr)
-            {
-                bool foundLocale = false;
-                for (const FFMODProjectLocale& Locale : InSettings.Locales)
-                {
-                    if (Locale.bDefault && BankPath.EndsWith(FString("_") + Locale.LocaleCode + FString(".bank")))
-                    {
-                        foundLocale = true;
-                        break;
-                    }
-                }
-                if (!foundLocale)
-                {
-                    UE_LOG(LogFMOD, Warning, TEXT("Ignoring bank %s as another bank with the same GUID is already being used.\n"
-                        "Bank %s does not match any locales in the FMOD Studio plugin settings."), *BankPath, *BankPath);
-                    continue;
-                }
-            }
-            BankGuids.Add(GUID, BankPath);
-        }
-        else
+        if (result != FMOD_OK)
         {
             UE_LOG(LogFMOD, Error, TEXT("Failed to add bank %s to lookup."), *BankPath);
+            continue;
         }
-    }
+        
+        FString GUID = FMODUtils::ConvertGuid(BankID).ToString(EGuidFormats::DigitsWithHyphensInBraces);
+        FName OuterRowName(*GUID);
 
-    for (TPair<FString,FString> GUIDPath : BankGuids)
-    {
-        FName OuterRowName(*GUIDPath.Key);
         FFMODLocalizedBankTable* Row = BankLookup->DataTable->FindRow<FFMODLocalizedBankTable>(OuterRowName, nullptr, false);
-
         if (Row)
         {
             StaleBanks.RemoveSingle(OuterRowName);
@@ -302,33 +273,48 @@ void FFMODAssetBuilder::BuildBankLookup(const FString &AssetName, const FString 
         else
         {
             FFMODLocalizedBankTable NewRow{};
-            NewRow.Banks = NewObject<UDataTable>(BankLookup->DataTable, *GUIDPath.Key, RF_NoFlags);
+            NewRow.Banks = NewObject<UDataTable>(BankLookup->DataTable, *BankPath, RF_NoFlags);
             NewRow.Banks->RowStruct = FFMODLocalizedBankRow::StaticStruct();
             BankLookup->DataTable->AddRow(OuterRowName, NewRow);
             Row = BankLookup->DataTable->FindRow<FFMODLocalizedBankTable>(OuterRowName, nullptr, false);
             bModified = true;
         }
 
-        FString CurFilename = FPaths::GetCleanFilename(GUIDPath.Value);
-        FString FilenamePart = CurFilename;
-
-        for (const FString& extension : BankExtensions)
-        {
-            FilenamePart.ReplaceInline(*extension, TEXT(""));
-        }
-
-        FString InnerRowName("<NON-LOCALIZED>");
+        // Set InnerRowName to either "<NON-LOCALIZED>" or a locale code based on the BankPath e.g. "JP"
+        FName InnerRowName("<NON-LOCALIZED>");
         for (const FFMODProjectLocale& Locale : InSettings.Locales)
         {
-            if (FilenamePart.EndsWith(FString("_") + Locale.LocaleCode))
+            // Remove all expected extensions from end of filename before checking for locale code.
+            // Note, we may encounter multiple extensions e.g. "Dialogue.assets.bank"
+            const FString BankExtensions[] = { TEXT(".assets"), TEXT(".streams"), TEXT(".strings") };
+            FString Filename = FPaths::GetCleanFilename(BankPath);
+            Filename.RemoveFromEnd(TEXT(".bank"));
+            for (const FString& extension : BankExtensions)
             {
-                InnerRowName = Locale.LocaleCode;
+                Filename.RemoveFromEnd(extension);
+            }
+
+            if (Filename.EndsWith(FString("_") + Locale.LocaleCode))
+            {
+                InnerRowName = FName(*Locale.LocaleCode);
                 break;
             }
         }
 
-        FFMODLocalizedBankRow* InnerRow = Row->Banks->FindRow<FFMODLocalizedBankRow>(FName(*InnerRowName), nullptr, false);
-        FString RelativeBankPath = GUIDPath.Value.RightChop(InSettings.GetFullBankPath().Len() + 1);
+        // See if we've visited this OuterRowName + InnerRowName already and skip it if so. This is mainly to 
+        // avoid setting "<NON-LOCALIZED>" multiple times (and causing BankLookup to be modified) when no 
+        // locales are set up in Unreal.
+        FString LocalizedEntryKey = OuterRowName.ToString() + InnerRowName.ToString();
+        if (LocalizedEntriesVisited.Find(LocalizedEntryKey) != INDEX_NONE)
+        {
+            UE_LOG(LogFMOD, Warning, TEXT("Ignoring bank %s as another bank with the same GUID is already being used.\n"
+                "Bank %s does not match any locales in the FMOD Studio plugin settings."), *BankPath, *BankPath);
+            continue;
+        }
+        LocalizedEntriesVisited.Add(LocalizedEntryKey);
+
+        FFMODLocalizedBankRow* InnerRow = Row->Banks->FindRow<FFMODLocalizedBankRow>(InnerRowName, nullptr, false);
+        FString RelativeBankPath = BankPath.RightChop(InSettings.GetFullBankPath().Len() + 1);
 
         if (InnerRow)
         {
@@ -342,9 +328,11 @@ void FFMODAssetBuilder::BuildBankLookup(const FString &AssetName, const FString 
         {
             FFMODLocalizedBankRow NewRow{};
             NewRow.Path = RelativeBankPath;
-            Row->Banks->AddRow(FName(*InnerRowName), NewRow);
+            Row->Banks->AddRow(InnerRowName, NewRow);
             bModified = true;
         }
+
+        FString CurFilename = FPaths::GetCleanFilename(BankPath);
 
         if (CurFilename == InSettings.GetMasterBankFilename() && BankLookup->MasterBankPath != RelativeBankPath)
         {
@@ -376,14 +364,53 @@ void FFMODAssetBuilder::BuildBankLookup(const FString &AssetName, const FString 
         bModified = true;
     }
 
+    // Remove stale localized bank entries from lookup
+    for (auto& outer : BankLookup->DataTable->GetRowMap())
+    {
+        FName outerrowname = outer.Key;
+        FFMODLocalizedBankTable* outerrow = reinterpret_cast<FFMODLocalizedBankTable*>(outer.Value);
+        TArray<FName> RowsToRemove;
+        for (auto& inner : outerrow->Banks->GetRowMap())
+        {
+            FName innerrowname = inner.Key;
+            FFMODLocalizedBankRow* innerrow = reinterpret_cast<FFMODLocalizedBankRow*>(inner.Value);
+            FString LocalizedEntryKey = outerrowname.ToString() + innerrowname.ToString();
+            if (LocalizedEntriesVisited.Find(LocalizedEntryKey) == INDEX_NONE)
+            {
+                RowsToRemove.Add(innerrowname);
+            }
+        }
+        for (auto& rowname : RowsToRemove)
+        {
+            outerrow->Banks->RemoveRow(rowname);
+            bModified = true;
+        }
+    }
+
     if (bCreated)
     {
+        UE_LOG(LogFMOD, Log, TEXT("BankLookup created.\n"));
         FAssetRegistryModule::AssetCreated(BankLookup);
     }
     
     if (bCreated || bModified)
     {
+        UE_LOG(LogFMOD, Log, TEXT("BankLookup modified.\n"));
         AssetsToSave.Add(BankLookup);
+    }
+
+    UE_LOG(LogFMOD, Log, TEXT("===== BankLookup =====\n"));
+    for (auto& outer : BankLookup->DataTable->GetRowMap())
+    {
+        FName outerrowname = outer.Key;
+        FFMODLocalizedBankTable* outerrow = reinterpret_cast<FFMODLocalizedBankTable*>(outer.Value);
+        UE_LOG(LogFMOD, Log, TEXT("GUID: %s\n"), *(outerrowname.ToString()));
+        for (auto& inner : outerrow->Banks->GetRowMap())
+        {
+            FName innerrowname = inner.Key;
+            FFMODLocalizedBankRow* innerrow = reinterpret_cast<FFMODLocalizedBankRow*>(inner.Value);
+            UE_LOG(LogFMOD, Log, TEXT("  Locale: %s   Path: %s\n"), *(innerrowname.ToString()), *innerrow->Path);
+        }
     }
 }
 

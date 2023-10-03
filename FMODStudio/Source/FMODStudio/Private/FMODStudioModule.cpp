@@ -694,11 +694,7 @@ void FFMODStudioModule::CreateStudioSystem(EFMODSystemContext::Type Type)
 
     FMOD_ADVANCEDSETTINGS advSettings = { 0 };
     advSettings.cbSize = sizeof(FMOD_ADVANCEDSETTINGS);
-    if (Settings.bVol0Virtual)
-    {
-        advSettings.vol0virtualvol = Settings.Vol0VirtualLevel;
-        InitFlags |= FMOD_INIT_VOL0_BECOMES_VIRTUAL;
-    }
+    advSettings.vol0virtualvol = Settings.Vol0VirtualLevel;
 
     if (!Settings.SetCodecs(advSettings))
     {
