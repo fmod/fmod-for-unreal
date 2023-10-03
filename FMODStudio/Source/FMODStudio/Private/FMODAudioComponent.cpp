@@ -43,6 +43,7 @@ UFMODAudioComponent::UFMODAudioComponent(const FObjectInitializer &ObjectInitial
     , ProgrammerSound(nullptr)
     , NeedDestroyProgrammerSoundCallback(false)
     , EventLength(0)
+    , bPlayEnded(false)
 {
     bAutoActivate = true;
     bNeverNeedsRenderUpdate = true;
@@ -407,6 +408,8 @@ void UFMODAudioComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
         OnEventStopped.Broadcast();
     }
     Release();
+
+    bPlayEnded = true;
 }
 
 void UFMODAudioComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
@@ -805,7 +808,7 @@ void UFMODAudioComponent::PlayInternal(EFMODSystemContext::Type Context, bool bR
 void UFMODAudioComponent::Stop()
 {
     UE_LOG(LogFMOD, Verbose, TEXT("UFMODAudioComponent %p Stop"), this);
-    if (StudioInstance->isValid())
+    if (StudioInstance && StudioInstance->isValid())
     {
         StudioInstance->stop(FMOD_STUDIO_STOP_ALLOWFADEOUT);
     }
