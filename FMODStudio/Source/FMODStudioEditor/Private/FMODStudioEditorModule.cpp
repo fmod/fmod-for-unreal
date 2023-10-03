@@ -334,7 +334,7 @@ void FFMODStudioEditorModule::OnPostEngineInit()
         {
             RegisterHelpMenuEntries();
             MainMenuExtender = MakeShareable(new FExtender);
-            MainMenuExtender->AddMenuExtension("FileLoadAndSave", EExtensionHook::After, NULL,
+            MainMenuExtender->AddMenuExtension("FileOpen", EExtensionHook::After, NULL,
                 FMenuExtensionDelegate::CreateRaw(this, &FFMODStudioEditorModule::AddFileMenuExtension));
             LevelEditor->GetMenuExtensibilityManager()->AddExtender(MainMenuExtender);
         }

@@ -139,6 +139,7 @@ class FMODSTUDIO_API UFMODAudioComponent : public USceneComponent
     GENERATED_UCLASS_BODY()
 
     friend struct FFMODEventControlExecutionToken;
+    friend struct FPlayingToken;
     friend FMOD_RESULT F_CALLBACK UFMODAudioComponent_EventCallback(FMOD_STUDIO_EVENT_CALLBACK_TYPE type, FMOD_STUDIO_EVENTINSTANCE *event, void *parameters);
 
 public:
@@ -422,4 +423,7 @@ private:
     bool NeedDestroyProgrammerSoundCallback;
     /** The length of the current Event in milliseconds. */
     int32 EventLength;
+
+    /** To prevent restarting by delayed state restore from sequencer. */
+    bool bPlayEnded;
 };

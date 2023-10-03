@@ -11,25 +11,28 @@ struct FPlayingToken : IMovieScenePreAnimatedToken
     FPlayingToken(UObject &InObject)
     {
         bPlaying = false;
+        TimelinePosition = 0;
 
         if (UFMODAudioComponent *AudioComponent = Cast<UFMODAudioComponent>(&InObject))
         {
             if (IsValid(AudioComponent))
             {
                 bPlaying = AudioComponent->IsPlaying();
+                TimelinePosition = AudioComponent->GetTimelinePosition();
             }
         }
     }
 
-    virtual void RestoreState(UObject &Object, const UE::MovieScene::FRestoreStateParams& Params) override
+    virtual void RestoreState(UObject &Object, const UE::MovieScene::FRestoreStateParams &Params) override
     {
         UFMODAudioComponent *AudioComponent = CastChecked<UFMODAudioComponent>(&Object);
 
         if (AudioComponent)
         {
-            if (bPlaying)
+            if (bPlaying && !AudioComponent->bPlayEnded)
             {
                 AudioComponent->Play();
+                AudioComponent->SetTimelinePosition(TimelinePosition);
             }
             else
             {
@@ -40,6 +43,7 @@ struct FPlayingToken : IMovieScenePreAnimatedToken
 
 private:
     bool bPlaying;
+    int32 TimelinePosition;
 };
 
 struct FPlayingTokenProducer : IMovieScenePreAnimatedTokenProducer
@@ -75,9 +79,9 @@ struct FFMODEventControlExecutionToken : IMovieSceneExecutionToken
             if (IsValid(AudioComponent))
             {
                 EFMODSystemContext::Type SystemContext =
-                    (GWorld && GWorld->WorldType == EWorldType::Editor) ? EFMODSystemContext::Auditioning : EFMODSystemContext::Runtime;
+                    (GWorld && GWorld->WorldType == EWorldType::Editor) ? EFMODSystemContext::Editor : EFMODSystemContext::Runtime;
 
-                if (EventControlKey == EFMODEventControlKey::Stop && KeyTime == 0 && SystemContext == EFMODSystemContext::Auditioning)
+                if (EventControlKey == EFMODEventControlKey::Stop && KeyTime == 0 && SystemContext == EFMODSystemContext::Editor)
                 {
                     // Skip state saving when auditioning sequencer
                 }
@@ -107,18 +111,58 @@ struct FFMODEventControlExecutionToken : IMovieSceneExecutionToken
     FFrameTime KeyTime;
 };
 
+static bool RuntimeSequenceSetup = false;
+
 FFMODEventControlSectionTemplate::FFMODEventControlSectionTemplate(const UFMODEventControlSection &Section)
     : ControlKeys(Section.ControlKeys)
 {
+    EnableOverrides(FMovieSceneEvalTemplateBase::EOverrideMask::RequiresSetupFlag);
+    EnableOverrides(FMovieSceneEvalTemplateBase::EOverrideMask::RequiresTearDownFlag);
+}
+
+void FFMODEventControlSectionTemplate::Setup(FPersistentEvaluationData &PersistentData, IMovieScenePlayer &Player) const
+{
+    IsEditorSequence = GWorld && GWorld->WorldType == EWorldType::Editor;
+    if (!IsEditorSequence)
+    {
+        RuntimeSequenceSetup = true;
+    }
+#if WITH_EDITOR
+    if (!RuntimeSequenceSetup)
+    {
+        IFMODStudioModule::Get().LoadEditorBanks();
+    }
+#endif
+}
+
+void FFMODEventControlSectionTemplate::TearDown(FPersistentEvaluationData &PersistentData, IMovieScenePlayer &Player) const
+{
+    if (!IsEditorSequence)
+    {
+        RuntimeSequenceSetup = false;
+    }
+#if WITH_EDITOR
+    if (!RuntimeSequenceSetup)
+    {
+        IFMODStudioModule::Get().UnloadEditorBanks();
+    }
+#endif
 }
 
 void FFMODEventControlSectionTemplate::Evaluate(const FMovieSceneEvaluationOperand &Operand, const FMovieSceneContext &Context,
     const FPersistentEvaluationData &PersistentData, FMovieSceneExecutionTokens &ExecutionTokens) const
 {
+    if (IsEditorSequence && RuntimeSequenceSetup)
+    {
+        // If the Sequence Editor is open during PIE, it will also try to play its Sequence.
+        // Don't let it, otherwise Execution Tokens will be double-issued.
+        return;
+    }
+
     const bool bPlaying = Context.IsSilent() == false && Context.GetDirection() == EPlayDirection::Forwards &&
                           Context.GetRange().Size<FFrameTime>() >= FFrameTime(0) && Context.GetStatus() == EMovieScenePlayerStatus::Playing;
 
-    if (!bPlaying)
+    if (!bPlaying && IsEditorSequence && !RuntimeSequenceSetup)
     {
         ExecutionTokens.Add(FFMODEventControlExecutionToken(EFMODEventControlKey::Stop, FFrameTime(0)));
     }
