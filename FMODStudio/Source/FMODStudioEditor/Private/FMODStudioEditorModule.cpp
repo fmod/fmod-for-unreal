@@ -389,8 +389,6 @@ void FFMODStudioEditorModule::ProcessBanks()
         BankUpdateNotifier.SetFilePath(Settings.GetFullBankPath());
 
         BankUpdateNotifier.EnableUpdate(true);
-
-        IFMODStudioModule::Get().RefreshSettings();
     }
 }
 
@@ -797,7 +795,7 @@ void FFMODStudioEditorModule::ValidateFMOD()
                             Settings.Locales[0].bDefault = true;
                         }
                         SettingsSection->Save();
-                        IFMODStudioModule::Get().RefreshSettings();
+                        IFMODStudioModule::Get().ReloadBanks();
                     }
                 }
             }

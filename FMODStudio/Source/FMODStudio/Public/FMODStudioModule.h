@@ -73,11 +73,6 @@ public:
     virtual void SetSystemPaused(bool paused) = 0;
 
     /**
-	 * Called when user changes any studio settings
-	 */
-    virtual void RefreshSettings() = 0;
-
-    /**
 	 * Called when we enter of leave PIE mode
 	 */
     virtual void SetInPIE(bool bInPIE, bool bSimulating) = 0;
