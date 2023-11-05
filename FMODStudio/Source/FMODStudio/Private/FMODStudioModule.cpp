@@ -222,8 +222,6 @@ public:
 
     virtual bool HasListenerMoved() override;
 
-    virtual void RefreshSettings();
-
     virtual void SetSystemPaused(bool paused) override;
 
     virtual void SetInPIE(bool bInPIE, bool simulating) override;
@@ -501,10 +499,10 @@ void FFMODStudioModule::StartupModule()
 
         AcquireFMODFileSystem();
 
-        RefreshSettings();
-
         if (GIsEditor)
         {
+            AssetTable.Load();
+            AssetTable.SetLocale(GetDefaultLocale());
             CreateStudioSystem(EFMODSystemContext::Auditioning);
             CreateStudioSystem(EFMODSystemContext::Editor);
         }
@@ -1097,15 +1095,6 @@ void FFMODStudioModule::FinishSetListenerPosition(int NumListeners)
     }
 }
 
-void FFMODStudioModule::RefreshSettings()
-{
-    AssetTable.Load();
-    if (AssetTable.GetLocale().IsEmpty())
-    {
-        AssetTable.SetLocale(GetDefaultLocale());
-    }
-}
-
 void FFMODStudioModule::SetInPIE(bool bInPIE, bool simulating)
 {
     bIsInPIE = bInPIE;
@@ -1131,6 +1120,9 @@ void FFMODStudioModule::SetInPIE(bool bInPIE, bool simulating)
 
         // TODO: Stop sounds for the Editor system? What should happen if the user previews a sequence with transport
         // controls then starts a PIE session? What does happen?
+
+        AssetTable.Load();
+        AssetTable.SetLocale(GetDefaultLocale());
 
         ListenerCount = 1;
         CreateStudioSystem(EFMODSystemContext::Runtime);
@@ -1464,7 +1456,7 @@ void FFMODStudioModule::ReloadBanks()
     UnloadBanks(EFMODSystemContext::Auditioning);
     DestroyStudioSystem(EFMODSystemContext::Editor);
 
-    RefreshSettings();
+    AssetTable.Load();
 
     LoadBanks(EFMODSystemContext::Auditioning);
     CreateStudioSystem(EFMODSystemContext::Editor);
