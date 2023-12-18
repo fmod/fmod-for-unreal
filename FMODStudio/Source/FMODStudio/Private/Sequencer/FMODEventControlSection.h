@@ -15,7 +15,8 @@ UENUM()
 enum class EFMODEventControlKey : uint8
 {
     Stop = 0,
-    Play = 1
+    Play = 1,
+    Pause = 2
 };
 
 USTRUCT()
