@@ -61,6 +61,7 @@ UFMODSettings::UFMODSettings(const FObjectInitializer &ObjectInitializer)
     , ContentBrowserPrefix(TEXT("/Game/FMOD/"))
     , MasterBankName(TEXT("Master"))
     , LoggingLevel(LEVEL_WARNING)
+    , bFMODAudioLinkEnabled(false)
 {
     BankOutputDirectory.Path = TEXT("FMOD");
 }
