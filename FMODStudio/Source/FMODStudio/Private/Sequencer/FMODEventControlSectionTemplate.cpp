@@ -6,6 +6,35 @@
 #include "Evaluation/MovieSceneEvaluation.h"
 #include "IMovieScenePlayer.h"
 
+enum EventControlKeyInternal
+{
+    Stop,
+    Play,
+    Pause,
+    SequencePause,
+    SequenceResume,
+    MAX
+};
+
+EventControlKeyInternal MapControlKey(EFMODEventControlKey key)
+{
+    switch (key)
+    {
+    case EFMODEventControlKey::Stop:
+        return EventControlKeyInternal::Stop;
+        break;
+    case EFMODEventControlKey::Play:
+        return EventControlKeyInternal::Play;
+        break;
+    case EFMODEventControlKey::Pause:
+        return EventControlKeyInternal::Pause;
+        break;
+    default:
+        return EventControlKeyInternal::MAX;
+        break;
+    }
+}
+
 struct FPlayingToken : IMovieScenePreAnimatedToken
 {
     FPlayingToken(UObject &InObject)
@@ -56,7 +85,7 @@ private:
 
 struct FFMODEventControlExecutionToken : IMovieSceneExecutionToken
 {
-    FFMODEventControlExecutionToken(EFMODEventControlKey InEventControlKey, FFrameTime InKeyTime)
+    FFMODEventControlExecutionToken(EventControlKeyInternal InEventControlKey, FFrameTime InKeyTime)
         : EventControlKey(InEventControlKey)
         , KeyTime(InKeyTime)
     {
@@ -81,7 +110,7 @@ struct FFMODEventControlExecutionToken : IMovieSceneExecutionToken
                 EFMODSystemContext::Type SystemContext =
                     (GWorld && GWorld->WorldType == EWorldType::Editor) ? EFMODSystemContext::Editor : EFMODSystemContext::Runtime;
 
-                if (EventControlKey == EFMODEventControlKey::Stop && KeyTime == 0 && SystemContext == EFMODSystemContext::Editor)
+                if (EventControlKey == EventControlKeyInternal::Stop && KeyTime == 0 && SystemContext == EFMODSystemContext::Editor)
                 {
                     // Skip state saving when auditioning sequencer
                 }
@@ -90,24 +119,43 @@ struct FFMODEventControlExecutionToken : IMovieSceneExecutionToken
                     Player.SavePreAnimatedState(*AudioComponent, FPlayingTokenProducer::GetAnimTypeID(), FPlayingTokenProducer());
                 }
 
-                if (EventControlKey == EFMODEventControlKey::Play)
+                if (EventControlKey == EventControlKeyInternal::Play)
                 {
-                    if (AudioComponent->IsPlaying())
+                    if (AudioComponent->GetPaused())
                     {
-                        AudioComponent->Stop();
+                        AudioComponent->ResumeInternal(UFMODAudioComponent::PauseContext::Explicit);
                     }
-
-                    AudioComponent->PlayInternal(SystemContext);
+                    else
+                    {
+                        if (AudioComponent->IsPlaying())
+                        {
+                            AudioComponent->Stop();
+                        }
+                        AudioComponent->PlayInternal(SystemContext);
+                    }
                 }
-                else if (EventControlKey == EFMODEventControlKey::Stop)
+                else if (EventControlKey == EventControlKeyInternal::Stop)
                 {
                     AudioComponent->Stop();
                 }
+                else if (EventControlKey == EventControlKeyInternal::Pause)
+                {
+                    AudioComponent->PauseInternal(UFMODAudioComponent::PauseContext::Explicit);
+                }
+                else if (EventControlKey == EventControlKeyInternal::SequencePause)
+                {
+                    AudioComponent->PauseInternal(UFMODAudioComponent::PauseContext::Implicit);
+                }
+                else if (EventControlKey == EventControlKeyInternal::SequenceResume)
+                {
+                    AudioComponent->ResumeInternal(UFMODAudioComponent::PauseContext::Implicit);
+                }
+
             }
         }
     }
 
-    EFMODEventControlKey EventControlKey;
+    EventControlKeyInternal EventControlKey;
     FFrameTime KeyTime;
 };
 
@@ -164,7 +212,14 @@ void FFMODEventControlSectionTemplate::Evaluate(const FMovieSceneEvaluationOpera
 
     if (!bPlaying && IsEditorSequence && !RuntimeSequenceSetup)
     {
-        ExecutionTokens.Add(FFMODEventControlExecutionToken(EFMODEventControlKey::Stop, FFrameTime(0)));
+        if (Context.GetStatus() == EMovieScenePlayerStatus::Paused)
+        {
+            ExecutionTokens.Add(FFMODEventControlExecutionToken(EventControlKeyInternal::Pause, FFrameTime(0)));
+        }
+        else
+        {
+            ExecutionTokens.Add(FFMODEventControlExecutionToken(EventControlKeyInternal::Stop, FFrameTime(0)));
+        }
     }
     else
     {
@@ -178,8 +233,18 @@ void FFMODEventControlSectionTemplate::Evaluate(const FMovieSceneEvaluationOpera
         const int32 LastKeyIndex = Algo::UpperBound(Times, PlaybackRange.GetUpperBoundValue()) - 1;
         if (LastKeyIndex >= 0 && PlaybackRange.Contains(Times[LastKeyIndex]))
         {
-            FFMODEventControlExecutionToken NewToken((EFMODEventControlKey)Values[LastKeyIndex], Times[LastKeyIndex]);
+            FFMODEventControlExecutionToken NewToken(MapControlKey((EFMODEventControlKey)Values[LastKeyIndex]), Times[LastKeyIndex]);
             ExecutionTokens.Add(MoveTemp(NewToken));
         }
+    }
+
+    // Handle direct pause/unpause calls on sequence
+    if (Context.GetStatus() == EMovieScenePlayerStatus::Stopped)
+    {
+        ExecutionTokens.Add(FFMODEventControlExecutionToken(EventControlKeyInternal::SequencePause, FFrameTime(0)));
+    }
+    else
+    {
+        ExecutionTokens.Add(FFMODEventControlExecutionToken(EventControlKeyInternal::SequenceResume, FFrameTime(0)));
     }
 }

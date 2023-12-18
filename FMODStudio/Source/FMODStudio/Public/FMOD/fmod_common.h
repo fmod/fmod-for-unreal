@@ -56,7 +56,7 @@ typedef struct FMOD_ASYNCREADINFO  FMOD_ASYNCREADINFO;
 /*
     FMOD constants
 */
-#define FMOD_VERSION    0x00020219                     /* 0xaaaabbcc -> aaaa = product version, bb = major version, cc = minor version.*/
+#define FMOD_VERSION    0x00020220                     /* 0xaaaabbcc -> aaaa = product version, bb = major version, cc = minor version.*/
 
 typedef unsigned int FMOD_DEBUG_FLAGS;
 #define FMOD_DEBUG_LEVEL_NONE                       0x00000000
@@ -796,6 +796,7 @@ typedef struct FMOD_ADVANCEDSETTINGS
     unsigned int        randomSeed;
     int                 maxConvolutionThreads;
     int                 maxOpusCodecs;
+    int                 maxSpatialObjects;
 } FMOD_ADVANCEDSETTINGS;
 
 typedef struct FMOD_TAG

@@ -11,6 +11,11 @@
 #include "FMODListener.h"
 #include "FMODSnapshotReverb.h"
 
+#include "FMODAudioLinkModule.h"
+#if WITH_EDITOR
+#include "FMODAudioLinkEditorModule.h"
+#endif
+
 #include "Async/Async.h"
 #include "Interfaces/IPluginManager.h"
 #include "Misc/App.h"
@@ -149,6 +154,10 @@ public:
 
 class FFMODStudioModule : public IFMODStudioModule
 {
+    TUniquePtr<FFMODAudioLinkModule> FMODAudioLinkModule;
+#if WITH_EDITOR
+    TUniquePtr<FFMODAudioLinkEditorModule> FMODAudioLinkEditorModule;
+#endif
 public:
     /** IModuleInterface implementation */
     FFMODStudioModule()
@@ -509,6 +518,18 @@ void FFMODStudioModule::StartupModule()
         else
         {
             SetInPIE(true, false);
+        }
+
+        // Load AudioLink module
+        bool bFMODAudioLinkEnabled = Settings.bFMODAudioLinkEnabled;
+        if (bFMODAudioLinkEnabled)
+        {
+            UE_LOG(LogFMOD, Log, TEXT("FFMODAudioLinkModule startup"));
+            FMODAudioLinkModule = MakeUnique<FFMODAudioLinkModule>();
+#if WITH_EDITOR
+            UE_LOG(LogFMOD, Log, TEXT("FFMODAudioLinkEditorModule startup"));
+            FMODAudioLinkEditorModule = MakeUnique<FFMODAudioLinkEditorModule>();
+#endif
         }
     }
 
@@ -1207,6 +1228,17 @@ void FFMODStudioModule::ShutdownModule()
     DestroyStudioSystem(EFMODSystemContext::Auditioning);
     DestroyStudioSystem(EFMODSystemContext::Runtime);
     DestroyStudioSystem(EFMODSystemContext::Editor);
+
+    if (FMODAudioLinkModule)
+    {
+        FMODAudioLinkModule.Reset();
+    }
+#if WITH_EDITOR
+    if (FMODAudioLinkEditorModule)
+    {
+        FMODAudioLinkEditorModule.Reset();
+    }
+#endif
 
     if (StudioLibHandle && LowLevelLibHandle)
     {
