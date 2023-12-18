@@ -43,7 +43,6 @@ UFMODSettings::UFMODSettings(const FObjectInitializer &ObjectInitializer)
     , bEnableEditorLiveUpdate(false)
     , OutputFormat(EFMODSpeakerMode::Surround_5_1)
     , OutputType(EFMODOutput::TYPE_AUTODETECT)
-    , bVol0Virtual(true)
     , Vol0VirtualLevel(0.001f)
     , SampleRate(0)
     , bMatchHardwareSampleRate(true)
@@ -62,6 +61,7 @@ UFMODSettings::UFMODSettings(const FObjectInitializer &ObjectInitializer)
     , ContentBrowserPrefix(TEXT("/Game/FMOD/"))
     , MasterBankName(TEXT("Master"))
     , LoggingLevel(LEVEL_WARNING)
+    , bFMODAudioLinkEnabled(false)
 {
     BankOutputDirectory.Path = TEXT("FMOD");
 }
@@ -186,6 +186,40 @@ UFMODSettings::EProblem UFMODSettings::Check() const
     }
 
     return Okay;
+}
+
+void UFMODSettings::PostEditChangeProperty(FPropertyChangedEvent& e)
+{
+    FName PropertyName = (e.Property != NULL) ? e.Property->GetFName() : NAME_None;
+    if (PropertyName == GET_MEMBER_NAME_CHECKED(UFMODSettings, ContentBrowserPrefix))
+    {
+        FStrProperty* prop = CastField<FStrProperty>(e.Property);
+        void* propertyAddress = e.Property->ContainerPtrToValuePtr<void>(this);
+        FString contentBrowserPrefix = prop->GetPropertyValue(propertyAddress);
+
+        bool isEmpty = contentBrowserPrefix.IsEmpty();
+        bool startsWithSlash = contentBrowserPrefix.StartsWith("/");
+        bool endsWithSlash = contentBrowserPrefix.EndsWith("/");
+
+        if (isEmpty) {
+            contentBrowserPrefix = "/";
+        }
+        else {
+            if (!startsWithSlash) {
+                contentBrowserPrefix = "/" + contentBrowserPrefix;
+            }
+
+            if (!endsWithSlash) {
+                contentBrowserPrefix += "/";
+            }
+        }
+
+        if (isEmpty || !endsWithSlash || !startsWithSlash) {
+            prop->SetPropertyValue(propertyAddress, contentBrowserPrefix);
+        }
+
+    }
+    Super::PostEditChangeProperty(e);
 }
 #endif // WITH_EDITOR
 

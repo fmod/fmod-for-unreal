@@ -43,6 +43,7 @@ UFMODAudioComponent::UFMODAudioComponent(const FObjectInitializer &ObjectInitial
     , ProgrammerSound(nullptr)
     , NeedDestroyProgrammerSoundCallback(false)
     , EventLength(0)
+    , bPlayEnded(false)
 {
     bAutoActivate = true;
     bNeverNeedsRenderUpdate = true;
@@ -407,6 +408,8 @@ void UFMODAudioComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
         OnEventStopped.Broadcast();
     }
     Release();
+
+    bPlayEnded = true;
 }
 
 void UFMODAudioComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
@@ -709,7 +712,8 @@ void UFMODAudioComponent::PlayInternal(EFMODSystemContext::Type Context, bool bR
 {
     Stop();
 
-    if (!FMODUtils::IsWorldAudible(GetWorld(), Context == EFMODSystemContext::Editor))
+    if (!FMODUtils::IsWorldAudible(GetWorld(), Context == EFMODSystemContext::Editor
+        || Context == EFMODSystemContext::Auditioning))
     {
         return;
     }
@@ -799,6 +803,37 @@ void UFMODAudioComponent::PlayInternal(EFMODSystemContext::Type Context, bool bR
         {
             Super::Activate(bReset);
         }
+    }
+}
+
+void UFMODAudioComponent::PauseInternal(PauseContext Pauser)
+{
+    if (Pauser == Implicit)
+    {
+        bImplicitlyPaused = true;
+    }
+    if (Pauser == Explicit)
+    {
+        bExplicitlyPaused = true;
+    }
+
+    SetPaused(true);
+}
+
+void UFMODAudioComponent::ResumeInternal(PauseContext Pauser)
+{
+    if (GetPaused())
+    {
+        if (Pauser == Implicit)
+        {
+            bImplicitlyPaused = false;
+        }
+        if (Pauser == Explicit)
+        {
+            bExplicitlyPaused = false;
+        }
+
+        SetPaused(bImplicitlyPaused || bExplicitlyPaused);
     }
 }
 
@@ -915,6 +950,20 @@ void UFMODAudioComponent::SetPaused(bool Paused)
             UE_LOG(LogFMOD, Warning, TEXT("Failed to pause"));
         }
     }
+}
+
+bool UFMODAudioComponent::GetPaused()
+{
+    bool Paused = false;
+    if (StudioInstance)
+    {
+        FMOD_RESULT Result = StudioInstance->getPaused(&Paused);
+        if (Result != FMOD_OK)
+        {
+            UE_LOG(LogFMOD, Warning, TEXT("Failed to get paused state"));
+        }
+    }
+    return Paused;
 }
 
 void UFMODAudioComponent::SetParameter(FName Name, float Value)

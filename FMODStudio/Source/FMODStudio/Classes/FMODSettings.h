@@ -232,7 +232,7 @@ public:
     /**
     * Enable live update in Editor for Auditioning. *Requires Restart*
     */
-    UPROPERTY(Config, EditAnywhere, Category = Basic)
+    UPROPERTY(Config, EditAnywhere, Category = Basic, meta = (ConfigRestartRequired = true))
     bool bEnableEditorLiveUpdate;
 
     /**
@@ -258,13 +258,7 @@ public:
     TArray<FFMODProjectLocale> Locales;
 
     /**
-     * Whether to enable vol0virtual, which means voices with low volume will automatically go virtual to save CPU.
-     */
-    UPROPERTY(config, EditAnywhere, Category = InitSettings)
-    bool bVol0Virtual;
-
-    /**
-     * If vol0virtual is enabled, the signal level at which to make channels virtual.
+     * The signal level at which channels are virtualized. Virtual channels are processed, but do not produce any output.
      */
     UPROPERTY(config, EditAnywhere, Category = InitSettings)
     float Vol0VirtualLevel;
@@ -348,7 +342,7 @@ public:
     /**
     * Live update port to use while in editor for auditioning. *Requires Restart*
     */
-    UPROPERTY(config, EditAnywhere, Category = Advanced, meta = (EditCondition = "bEnableEditorLiveUpdate"))
+    UPROPERTY(config, EditAnywhere, Category = Advanced, meta = (EditCondition = "bEnableEditorLiveUpdate", ConfigRestartRequired = true))
     int32 EditorLiveUpdatePort;
 
     /**
@@ -439,6 +433,12 @@ public:
     UPROPERTY(config, EditAnywhere, Category = Advanced)
     FString AmbientLPFParameter;
 
+    /**
+    * Enables/Disables the FMODAudioLink modules.
+    */
+    UPROPERTY(config, EditAnywhere, Category = Advanced, meta = (ConfigRestartRequired=true))
+    bool bFMODAudioLinkEnabled;
+
     /*
     * Used to specify platform specific settings.
     */
@@ -505,5 +505,7 @@ private:
     };
 
     EProblem Check() const;
+
+    virtual void PostEditChangeProperty(FPropertyChangedEvent& e) override;
 #endif // WITH_EDITOR
 };

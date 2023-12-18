@@ -11,6 +11,11 @@
 #include "FMODListener.h"
 #include "FMODSnapshotReverb.h"
 
+#include "FMODAudioLinkModule.h"
+#if WITH_EDITOR
+#include "FMODAudioLinkEditorModule.h"
+#endif
+
 #include "Async/Async.h"
 #include "Interfaces/IPluginManager.h"
 #include "Misc/App.h"
@@ -122,13 +127,12 @@ public:
     FFMODStudioSystemClockSink(FMOD::Studio::System *SystemIn)
         : System(SystemIn)
         , LastResult(FMOD_OK)
-        , Paused(false)
     {
     }
 
     virtual void TickRender(FTimespan DeltaTime, FTimespan Timecode) override
     {
-        if (System && !Paused)
+        if (System)
         {
             if (UpdateListenerPosition.IsBound())
             {
@@ -143,18 +147,17 @@ public:
 
     void OnDestroyStudioSystem() { System = nullptr; }
 
-    void SetPaused(bool PausedIn) { Paused = PausedIn; }
-
     FMOD::Studio::System *System;
     FMOD_RESULT LastResult;
     FUpdateListenerPosition UpdateListenerPosition;
-
-private:
-    bool Paused;
 };
 
 class FFMODStudioModule : public IFMODStudioModule
 {
+    TUniquePtr<FFMODAudioLinkModule> FMODAudioLinkModule;
+#if WITH_EDITOR
+    TUniquePtr<FFMODAudioLinkEditorModule> FMODAudioLinkEditorModule;
+#endif
 public:
     /** IModuleInterface implementation */
     FFMODStudioModule()
@@ -204,6 +207,8 @@ public:
 
 #if WITH_EDITOR
     void ReloadBanks();
+    void LoadEditorBanks();
+    void UnloadEditorBanks();
 #endif
 
     void CreateStudioSystem(EFMODSystemContext::Type Type);
@@ -514,6 +519,18 @@ void FFMODStudioModule::StartupModule()
         {
             SetInPIE(true, false);
         }
+
+        // Load AudioLink module
+        bool bFMODAudioLinkEnabled = Settings.bFMODAudioLinkEnabled;
+        if (bFMODAudioLinkEnabled)
+        {
+            UE_LOG(LogFMOD, Log, TEXT("FFMODAudioLinkModule startup"));
+            FMODAudioLinkModule = MakeUnique<FFMODAudioLinkModule>();
+#if WITH_EDITOR
+            UE_LOG(LogFMOD, Log, TEXT("FFMODAudioLinkEditorModule startup"));
+            FMODAudioLinkEditorModule = MakeUnique<FFMODAudioLinkEditorModule>();
+#endif
+        }
     }
 
     OnTick = FTickerDelegate::CreateRaw(this, &FFMODStudioModule::Tick);
@@ -685,11 +702,7 @@ void FFMODStudioModule::CreateStudioSystem(EFMODSystemContext::Type Type)
 
     FMOD_ADVANCEDSETTINGS advSettings = { 0 };
     advSettings.cbSize = sizeof(FMOD_ADVANCEDSETTINGS);
-    if (Settings.bVol0Virtual)
-    {
-        advSettings.vol0virtualvol = Settings.Vol0VirtualLevel;
-        InitFlags |= FMOD_INIT_VOL0_BECOMES_VIRTUAL;
-    }
+    advSettings.vol0virtualvol = Settings.Vol0VirtualLevel;
 
     if (!Settings.SetCodecs(advSettings))
     {
@@ -1200,8 +1213,6 @@ void FFMODStudioModule::SetSystemPaused(bool paused)
             verifyfmod(LowLevelSystem->getMasterChannelGroup(&MasterChannelGroup));
             verifyfmod(MasterChannelGroup->setPaused(paused));
 
-            ClockSinks[EFMODSystemContext::Runtime]->SetPaused(paused);
-
             if (paused)
             {
                 LowLevelSystem->mixerSuspend();
@@ -1217,6 +1228,17 @@ void FFMODStudioModule::ShutdownModule()
     DestroyStudioSystem(EFMODSystemContext::Auditioning);
     DestroyStudioSystem(EFMODSystemContext::Runtime);
     DestroyStudioSystem(EFMODSystemContext::Editor);
+
+    if (FMODAudioLinkModule)
+    {
+        FMODAudioLinkModule.Reset();
+    }
+#if WITH_EDITOR
+    if (FMODAudioLinkEditorModule)
+    {
+        FMODAudioLinkEditorModule.Reset();
+    }
+#endif
 
     if (StudioLibHandle && LowLevelLibHandle)
     {
@@ -1470,6 +1492,16 @@ void FFMODStudioModule::ReloadBanks()
 
     LoadBanks(EFMODSystemContext::Auditioning);
     CreateStudioSystem(EFMODSystemContext::Editor);
+}
+
+void FFMODStudioModule::LoadEditorBanks()
+{
+    LoadBanks(EFMODSystemContext::Editor);
+}
+
+void FFMODStudioModule::UnloadEditorBanks()
+{
+    UnloadBanks(EFMODSystemContext::Editor);
 }
 #endif
 
