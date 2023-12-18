@@ -224,6 +224,10 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Audio|FMOD|Components")
     void SetPaused(bool paused);
 
+    /** Get the paused state of the audio component. Returns false if internal getPaused query fails. */
+    UFUNCTION(BlueprintCallable, Category = "Audio|FMOD|Components")
+    bool GetPaused();
+
     /** Set a parameter of the Event. */
     UFUNCTION(BlueprintCallable, Category = "Audio|FMOD|Components")
     void SetParameter(FName Name, float Value);
@@ -304,11 +308,29 @@ protected:
 private:
     bool bDefaultParameterValuesCached;
 
+    enum PauseContext
+    {
+        Explicit,
+        Implicit
+    };
+
+    /** Used for pausing from sequencer. */
+    bool bImplicitlyPaused = false;
+
+    /** Used for pausing from a direct call to pause. */
+    bool bExplicitlyPaused = false;
+
     /** Stored properties to apply next time we create an instance. */
     float StoredProperties[EFMODEventProperty::Count];
 
     /** Internal play function which can play events in the editor. */
     void PlayInternal(EFMODSystemContext::Type Context, bool bReset = false);
+
+    /** Pause the audio component from a sequencer call. */
+    void PauseInternal(PauseContext Pauser);
+
+    /** Resume the audio component from a sequencer call. */
+    void ResumeInternal(PauseContext Pauser);
 
     /** Cache default event parameter values. */
     void CacheDefaultParameterValues();
