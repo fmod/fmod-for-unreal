@@ -33,50 +33,6 @@ struct FNiagaraAudioPlayerDIFunctionVersion
     };
 };
 
-/**
-Async task to play the audio on the game thread and isolate from the niagara tick
-*/
-class FNiagaraAudioPlayerAsyncTask
-{
-    TWeakObjectPtr<UFMODEvent> WeakSound;
-    TArray<FEventParticleData> Data;
-    TWeakObjectPtr<UWorld> WeakWorld;
-
-public:
-    FNiagaraAudioPlayerAsyncTask(TWeakObjectPtr<UFMODEvent> InSound, TArray<FEventParticleData>& Data, TWeakObjectPtr<UWorld> InWorld)
-        : WeakSound(InSound)
-        , Data(Data)
-        , WeakWorld(InWorld)
-    {
-    }
-
-    FORCEINLINE TStatId GetStatId() const { RETURN_QUICK_DECLARE_CYCLE_STAT(FNiagaraAudioPlayerAsyncTask, STATGROUP_TaskGraphTasks); }
-    static FORCEINLINE ENamedThreads::Type GetDesiredThread() { return ENamedThreads::GameThread; }
-    static FORCEINLINE ESubsequentsMode::Type GetSubsequentsMode() { return ESubsequentsMode::FireAndForget; }
-
-    void DoTask(ENamedThreads::Type CurrentThread, const FGraphEventRef& MyCompletionGraphEvent)
-    {
-        UWorld* World = WeakWorld.Get();
-        if (World == nullptr)
-        {
-            UE_LOG(LogFMODNiagara, Warning, TEXT("Invalid world reference in event player, skipping play"));
-            return;
-        }
-
-        UFMODEvent* Sound = WeakSound.Get();
-        if (Sound == nullptr)
-        {
-            UE_LOG(LogFMODNiagara, Warning, TEXT("Invalid sound reference in event player, skipping play"));
-            return;
-        }
-
-        for (const FEventParticleData& ParticleData : Data)
-        {
-            UFMODBlueprintStatics::PlayEventAtLocation(World, Sound, FTransform(ParticleData.Rotation, ParticleData.Position), true);
-        }
-    }
-};
-
 UFMODNiagaraEventPlayer::UFMODNiagaraEventPlayer(FObjectInitializer const& ObjectInitializer)
     : Super(ObjectInitializer)
 {
@@ -190,7 +146,7 @@ void UFMODNiagaraEventPlayer::DestroyPerInstanceData(void* PerInstanceData, FNia
     {
         if (Entry.Value.IsValid())
         {
-            Entry.Value->Stop();
+            Entry.Value->StudioInstance->stop(FMOD_STUDIO_STOP_IMMEDIATE);
         }
     }
     InstData->~FEventPlayerInterface_InstanceData();
@@ -225,7 +181,6 @@ bool UFMODNiagaraEventPlayer::PerInstanceTickPostSimulate(void* PerInstanceData,
     UWorld* World = SystemInstance->GetWorld();
 
 #if WITH_EDITORONLY_DATA
-    // Currently FMOD will not play in Editor even if bOnlyActiveDuringGameplay is false.
     if (World->HasBegunPlay() == false && PIData->bOnlyActiveDuringGameplay)
     {
         PIData->PlayAudioQueue.Empty();
@@ -249,7 +204,14 @@ bool UFMODNiagaraEventPlayer::PerInstanceTickPostSimulate(void* PerInstanceData,
                 break;
             }
         }
-        TGraphTask<FNiagaraAudioPlayerAsyncTask>::CreateTask().ConstructAndDispatchWhenReady(PIData->EventToPlay, Data, SystemInstance->GetWorld());
+
+        if (World && PIData->EventToPlay.IsValid())
+        {
+            for (const FEventParticleData& ParticleData : Data)
+            {
+                UFMODBlueprintStatics::PlayEventAtLocation(World, EventToPlay, FTransform(ParticleData.Rotation, ParticleData.Position), true);
+            }
+        }
     }
 
     // process the persistent audio updates

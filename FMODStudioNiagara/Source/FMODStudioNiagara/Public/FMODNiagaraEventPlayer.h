@@ -77,7 +77,7 @@ public:
         bool bStopWhenComponentIsDestroyed = true;
 
 #if WITH_EDITORONLY_DATA
-    /** If true then this data interface only processes sounds during active gameplay. This is useful when you are working in the preview window and the sounds annoy you. 
+    /** If true then this data interface only processes sounds during active gameplay. This is useful when you are working in the preview window and the sounds annoy you.
      *  Currently the FMOD Niagara integration will not play in Editor.
      */
     UPROPERTY(VisibleAnywhere, AdvancedDisplay, Category = "Audio")
