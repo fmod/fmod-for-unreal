@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2021.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2024.
 using UnrealBuildTool;
 using System;
 using System.IO;
@@ -51,10 +51,9 @@ namespace UnrealBuildTool.Rules
 
             if (Target.bBuildEditor == true)
             {
-                PublicDependencyModuleNames.Add("DeveloperToolSettings");
                 PrivateDependencyModuleNames.Add("AssetRegistry");
-                PrivateDependencyModuleNames.Add("Settings");
                 PrivateDependencyModuleNames.Add("UnrealEd");
+                PrivateDependencyModuleNames.Add("Settings");
             }
 
             DynamicallyLoadedModuleNames.AddRange(
@@ -91,7 +90,13 @@ namespace UnrealBuildTool.Rules
 
                 libPath = System.IO.Path.Combine(LibRootDirectory, platformName);
 
-                if (Target.IsInPlatformGroup(UnrealPlatformGroup.Windows))
+                if (Target.Platform.ToString() == "UWP64")
+                {
+                    linkExtension = ".lib";
+                    dllExtension = ".dll";
+                    bAddDelayLoad = true;
+                }
+                else if (Target.IsInPlatformGroup(UnrealPlatformGroup.Windows))
                 {
                     linkExtension = "_vc.lib";
                     dllExtension = ".dll";
@@ -160,7 +165,7 @@ namespace UnrealBuildTool.Rules
 
             if (Target.IsInPlatformGroup(UnrealPlatformGroup.Android))
             {
-                string[] archs = new string[] { "arm64-v8a", "x86_64" };
+                string[] archs = new string[] { "armeabi-v7a", "arm64-v8a", "x86_64" };
                 foreach (string arch in archs)
                 {
                     string LibPath = System.IO.Path.Combine(libPath, arch);

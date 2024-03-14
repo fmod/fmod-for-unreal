@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2021.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2024.
 #pragma once
 
 #include "Runtime/Engine/Classes/Components/SceneComponent.h"

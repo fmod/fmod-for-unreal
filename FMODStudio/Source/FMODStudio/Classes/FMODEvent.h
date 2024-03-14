@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2021.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2024.
 
 #pragma once
 
@@ -15,12 +15,14 @@ class FMODSTUDIO_API UFMODEvent : public UFMODAsset
 {
     GENERATED_UCLASS_BODY()
 
+public:
+    /** Get parameter descriptions for this event */
+    void GetParameterDescriptions(TArray<FMOD_STUDIO_PARAMETER_DESCRIPTION> &Parameters) const;
+
+private:
     /** Get tags to show in content view */
     virtual void GetAssetRegistryTags(TArray<FAssetRegistryTag> &OutTags) const override;
 
     /** Descriptive name */
     virtual FString GetDesc() override;
-
-    /** Get parameter descriptions for this event */
-    void GetParameterDescriptions(TArray<FMOD_STUDIO_PARAMETER_DESCRIPTION> &Parameters) const;
 };

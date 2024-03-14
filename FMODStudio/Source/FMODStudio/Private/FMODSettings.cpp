@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2021.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2024.
 
 #include "FMODSettings.h"
 #include "Misc/Paths.h"
@@ -14,30 +14,55 @@
 //////////////////////////////////////////////////////////////////////////
 // UPaperRuntimeSettings
 
+inline EFMODPlatforms::Type CurrentPlatform()
+{
+    EFMODPlatforms::Type platform;
+#if defined(FMOD_PLATFORM_HEADER)
+    platform = FMODPlatform_CurrentPlatform();
+#elif WITH_EDITOR
+    platform = EFMODPlatforms::Editor;
+#elif PLATFORM_WINDOWS
+    platform = EFMODPlatforms::Windows;
+#elif PLATFORM_LINUX
+    platform = EFMODPlatforms::Linux;
+#elif PLATFORM_MAC
+    platform = EFMODPlatforms::Mac;
+#elif PLATFORM_ANDROID
+    platform = EFMODPlatforms::Android;
+#elif PLATFORM_IOS || PLATFORM_TVOS
+    platform = EFMODPlatforms::IOS;
+#endif
+    return platform;
+}
+
 UFMODSettings::UFMODSettings(const FObjectInitializer &ObjectInitializer)
     : Super(ObjectInitializer)
+    , bLoadAllBanks(true)
+    , bLoadAllSampleData(false)
+    , bEnableLiveUpdate(true)
+    , bEnableEditorLiveUpdate(false)
+    , OutputFormat(EFMODSpeakerMode::Surround_5_1)
+    , OutputType(EFMODOutput::TYPE_AUTODETECT)
+    , Vol0VirtualLevel(0.001f)
+    , SampleRate(0)
+    , bMatchHardwareSampleRate(true)
+    , RealChannelCount(64)
+    , TotalChannelCount(512)
+    , DSPBufferLength(0)
+    , DSPBufferCount(0)
+    , FileBufferSize(2048)
+    , StudioUpdatePeriod(0)
+    , bLockAllBuses(false)
+    , LiveUpdatePort(9264)
+    , EditorLiveUpdatePort(9265)
+    , ReloadBanksDelay(5)
+    , bEnableAPIErrorLogging(false)
+    , bEnableMemoryTracking(false)
+    , ContentBrowserPrefix(TEXT("/Game/FMOD/"))
+    , MasterBankName(TEXT("Master"))
+    , LoggingLevel(LEVEL_WARNING)
 {
-    MasterBankName = TEXT("Master");
     BankOutputDirectory.Path = TEXT("FMOD");
-    OutputFormat = EFMODSpeakerMode::Surround_5_1;
-    ContentBrowserPrefix = TEXT("/Game/FMOD/");
-    bLoadAllBanks = true;
-    bLoadAllSampleData = false;
-    bEnableLiveUpdate = true;
-    bVol0Virtual = true;
-    Vol0VirtualLevel = 0.0001f;
-    RealChannelCount = 64;
-    TotalChannelCount = 512;
-    DSPBufferLength = 0;
-    DSPBufferCount = 0;
-    FileBufferSize = 2048;
-    StudioUpdatePeriod = 0;
-    LiveUpdatePort = 9264;
-    EditorLiveUpdatePort = 9265;
-    ReloadBanksDelay = 5;
-    bMatchHardwareSampleRate = true;
-    bLockAllBuses = false;
-    bEnableMemoryTracking = false;
 }
 
 FString UFMODSettings::GetFullBankPath() const
@@ -167,4 +192,68 @@ UFMODSettings::EProblem UFMODSettings::Check() const
 
     return Okay;
 }
+
+void UFMODSettings::PostEditChangeProperty(FPropertyChangedEvent& e)
+{
+    FName PropertyName = (e.Property != NULL) ? e.Property->GetFName() : NAME_None;
+    if (PropertyName == GET_MEMBER_NAME_CHECKED(UFMODSettings, ContentBrowserPrefix))
+    {
+        FStrProperty* prop = CastField<FStrProperty>(e.Property);
+        void* propertyAddress = e.Property->ContainerPtrToValuePtr<void>(this);
+        FString contentBrowserPrefix = prop->GetPropertyValue(propertyAddress);
+
+        bool isEmpty = contentBrowserPrefix.IsEmpty();
+        bool startsWithSlash = contentBrowserPrefix.StartsWith("/");
+        bool endsWithSlash = contentBrowserPrefix.EndsWith("/");
+
+        if (isEmpty) {
+            contentBrowserPrefix = "/";
+        }
+        else {
+            if (!startsWithSlash) {
+                contentBrowserPrefix = "/" + contentBrowserPrefix;
+            }
+
+            if (!endsWithSlash) {
+                contentBrowserPrefix += "/";
+            }
+        }
+
+        if (isEmpty || !endsWithSlash || !startsWithSlash) {
+            prop->SetPropertyValue(propertyAddress, contentBrowserPrefix);
+        }
+
+    }
+    Super::PostEditChangeProperty(e);
+}
 #endif // WITH_EDITOR
+
+EFMODSpeakerMode::Type UFMODSettings::GetSpeakerMode() const
+{
+    return Platforms.Contains(CurrentPlatform()) ? Platforms.Find(CurrentPlatform())->SpeakerMode : OutputFormat;
+}
+
+EFMODOutput::Type UFMODSettings::GetOutputType() const
+{
+    return Platforms.Contains(CurrentPlatform()) ? Platforms.Find(CurrentPlatform())->OutputType : OutputType;
+}
+
+int32 UFMODSettings::GetSampleRate() const
+{
+    return Platforms.Contains(CurrentPlatform()) ? Platforms.Find(CurrentPlatform())->SampleRate : SampleRate;
+}
+
+int32 UFMODSettings::GetMemoryPoolSize() const
+{
+    return (Platforms.Contains(CurrentPlatform()) ? Platforms.Find(CurrentPlatform())->CustomPoolSize : MemoryPoolSize);
+}
+
+int32 UFMODSettings::GetRealChannelCount() const
+{
+    return Platforms.Contains(CurrentPlatform()) ? Platforms.Find(CurrentPlatform())->RealChannelCount : RealChannelCount;
+}
+
+TMap<TEnumAsByte<EFMODCodec::Type>, int32> UFMODSettings::GetCodecs() const
+{
+    return Platforms.Contains(CurrentPlatform()) ? Platforms.Find(CurrentPlatform())->Codecs : Codecs;
+}

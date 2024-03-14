@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2021.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2024.
 
 #pragma once
 
@@ -14,13 +14,16 @@ class FMODSTUDIO_API UFMODAsset : public UObject
 {
     GENERATED_UCLASS_BODY()
 
+public:
     /** The unique Guid, which matches the one exported from FMOD Studio */
     UPROPERTY()
     FGuid AssetGuid;
 
-    /** Non default instances of UFMODAsset are assets */
-    virtual bool IsAsset() const override;
-
+protected:
     /** Get tags to show in content view */
     virtual void GetAssetRegistryTags(TArray<FAssetRegistryTag> &OutTags) const override;
+
+private:
+    /** Non default instances of UFMODAsset are assets */
+    virtual bool IsAsset() const override;
 };

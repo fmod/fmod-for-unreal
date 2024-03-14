@@ -19,13 +19,13 @@ struct FMODSTUDIO_API FFMODLocalizedBankTable : public FTableRowBase
 {
     GENERATED_BODY()
     UPROPERTY(VisibleAnywhere, Category="FMOD|Internal|BankLookup")
-    UDataTable *Banks;
+    UDataTable *Banks = nullptr;
 };
 
 UCLASS()
 class FMODSTUDIO_API UFMODBankLookup : public UObject
 {
-    GENERATED_BODY()
+    GENERATED_UCLASS_BODY()
 
 public:
     UPROPERTY(VisibleAnywhere, Category="FMOD|Internal|BankLookup")

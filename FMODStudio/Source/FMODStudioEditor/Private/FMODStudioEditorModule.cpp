@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2021.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2024.
 
 #include "FMODStudioEditorModule.h"
 #include "FMODStudioModule.h"
@@ -379,7 +379,7 @@ void FFMODStudioEditorModule::OnPostEngineInit()
 
 void FFMODStudioEditorModule::ProcessBanks()
 {
-    if (!IsRunningCommandlet())
+    if (!IsRunningCommandlet() && FApp::HasProjectName())
     {
         BankUpdateNotifier.EnableUpdate(false);
         ReloadBanks();
@@ -388,8 +388,6 @@ void FFMODStudioEditorModule::ProcessBanks()
         BankUpdateNotifier.SetFilePath(Settings.GetFullBankPath());
 
         BankUpdateNotifier.EnableUpdate(true);
-
-        IFMODStudioModule::Get().RefreshSettings();
     }
 }
 
@@ -521,12 +519,12 @@ void FFMODStudioEditorModule::ShowVersion()
 
 void FFMODStudioEditorModule::OpenIntegrationDocs()
 {
-    FPlatformProcess::LaunchFileInDefaultExternalApplication(TEXT("https://fmod.com/resources/documentation-ue4"));
+    FPlatformProcess::LaunchFileInDefaultExternalApplication(TEXT("https://fmod.com/docs/2.03/unreal"));
 }
 
 void FFMODStudioEditorModule::OpenAPIDocs()
 {
-    FPlatformProcess::LaunchFileInDefaultExternalApplication(TEXT("https://fmod.com/resources/documentation-api"));
+    FPlatformProcess::LaunchFileInDefaultExternalApplication(TEXT("https://fmod.com/docs/2.03/api"));
 }
 
 void FFMODStudioEditorModule::OpenVideoTutorials()
@@ -791,9 +789,12 @@ void FFMODStudioEditorModule::ValidateFMOD()
                     if (FMessageDialog::Open(EAppMsgType::YesNo, Message) == EAppReturnType::Yes)
                     {
                         Settings.Locales = StudioLocales;
-                        Settings.Locales[0].bDefault = true;
+                        if (Settings.Locales.Num() > 0)
+                        {
+                            Settings.Locales[0].bDefault = true;
+                        }
                         SettingsSection->Save();
-                        IFMODStudioModule::Get().RefreshSettings();
+                        IFMODStudioModule::Get().ReloadBanks();
                     }
                 }
             }
@@ -1023,25 +1024,28 @@ void FFMODStudioEditorModule::ValidateFMOD()
 
 void FFMODStudioEditorModule::OnMainFrameLoaded(TSharedPtr<SWindow> InRootWindow, bool bIsNewProjectWindow)
 {
-    // Show a popup notification that allows the user to fix bad settings
-    const UFMODSettings& Settings = *GetDefault<UFMODSettings>();
-
-    if (Settings.Check() != UFMODSettings::Okay)
+    if (!bIsNewProjectWindow)
     {
-        FNotificationInfo Info(LOCTEXT("BadSettingsPopupTitle", "FMOD Settings Problem Detected"));
-        Info.bFireAndForget = false;
-        Info.bUseLargeFont = true;
-        Info.bUseThrobber = false;
-        Info.FadeOutDuration = 0.5f;
-        Info.ButtonDetails.Add(FNotificationButtonInfo(LOCTEXT("BadSettingsPopupSettings", "Settings..."),
-            LOCTEXT("BadSettingsPopupSettingsTT", "Open the settings editor"),
-            FSimpleDelegate::CreateRaw(this, &FFMODStudioEditorModule::OnBadSettingsPopupSettingsClicked)));
-        Info.ButtonDetails.Add(FNotificationButtonInfo(LOCTEXT("BadSettingsPopupDismiss", "Dismiss"), 
-            LOCTEXT("BadSettingsPopupDismissTT", "Dismiss this notification"),
-            FSimpleDelegate::CreateRaw(this, &FFMODStudioEditorModule::OnBadSettingsPopupDismissClicked)));
+        // Show a popup notification that allows the user to fix bad settings
+        const UFMODSettings& Settings = *GetDefault<UFMODSettings>();
 
-        BadSettingsNotification = FSlateNotificationManager::Get().AddNotification(Info);
-        BadSettingsNotification.Pin()->SetCompletionState(SNotificationItem::CS_Pending);
+        if (Settings.Check() != UFMODSettings::Okay)
+        {
+            FNotificationInfo Info(LOCTEXT("BadSettingsPopupTitle", "FMOD Settings Problem Detected"));
+            Info.bFireAndForget = false;
+            Info.bUseLargeFont = true;
+            Info.bUseThrobber = false;
+            Info.FadeOutDuration = 0.5f;
+            Info.ButtonDetails.Add(FNotificationButtonInfo(LOCTEXT("BadSettingsPopupSettings", "Settings..."),
+                LOCTEXT("BadSettingsPopupSettingsTT", "Open the settings editor"),
+                FSimpleDelegate::CreateRaw(this, &FFMODStudioEditorModule::OnBadSettingsPopupSettingsClicked)));
+            Info.ButtonDetails.Add(FNotificationButtonInfo(LOCTEXT("BadSettingsPopupDismiss", "Dismiss"), 
+                LOCTEXT("BadSettingsPopupDismissTT", "Dismiss this notification"),
+                FSimpleDelegate::CreateRaw(this, &FFMODStudioEditorModule::OnBadSettingsPopupDismissClicked)));
+
+            BadSettingsNotification = FSlateNotificationManager::Get().AddNotification(Info);
+            BadSettingsNotification.Pin()->SetCompletionState(SNotificationItem::CS_Pending);
+        }
     }
 }
 
@@ -1106,6 +1110,7 @@ void FFMODStudioEditorModule::BeginPIE(bool simulating)
 
 void FFMODStudioEditorModule::EndPIE(bool simulating)
 {
+    IFMODStudioModule::Get().PreEndPIE();
     UE_LOG(LogFMOD, Verbose, TEXT("FFMODStudioEditorModule EndPIE: %d"), simulating);
     bSimulating = false;
     bIsInPIE = false;

@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2021.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2024.
 
 #pragma once
 
@@ -14,10 +14,12 @@ class FMODSTUDIO_API UFMODSnapshotReverb : public UReverbEffect
 {
     GENERATED_UCLASS_BODY()
 
+public:
     /** The unique Guid, which matches the one exported from FMOD Studio */
     UPROPERTY()
     FGuid AssetGuid;
 
+private:
     /** Non default instances of UFMODAsset are assets */
     virtual bool IsAsset() const override;
 

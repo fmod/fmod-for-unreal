@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2021.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2024.
 
 #include "Sequencer/FMODChannelEditors.h"
 #include "ISequencerChannelInterface.h"
@@ -7,7 +7,7 @@
 #include "MovieSceneTimeHelpers.h"
 #include "MovieSceneToolHelpers.h"
 #include "ScopedTransaction.h"
-#include "EditorWidgets/Public/SEnumCombo.h"
+#include "EditorWidgets/Public/SEnumCombobox.h"
 #include "EditorStyleSet.h"
 #include "Channels/MovieSceneChannelTraits.h"
 

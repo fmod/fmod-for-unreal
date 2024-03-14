@@ -1,11 +1,10 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2021.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2024.
 
 #pragma once
 
 #include "FMODAudioComponent.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
 #include "Containers/UnrealString.h"
-#include "Kismet/BlueprintFunctionLibrary.h"
 #include "FMODBlueprintStatics.generated.h"
 
 class UFMODAudioComponent;
@@ -94,7 +93,7 @@ class FMODSTUDIO_API UFMODBlueprintStatics : public UBlueprintFunctionLibrary
 	 * @param bBlocking - determines whether the bank will load synchronously
 	 * @param bLoadSampleData - determines whether sample data will be preloaded immediately
 	 */
-    UFUNCTION(BlueprintCallable, Category = "Audio|FMOD", meta = (UnsafeDuringActorConstruction = "true"))
+    UFUNCTION(BlueprintCallable, Category = "Audio|FMOD", meta = (UnsafeDuringActorConstruction = "true", bBlocking = "true"))
     static void LoadBank(class UFMODBank *Bank, bool bBlocking, bool bLoadSampleData);
 
     /** Unloads a bank.

@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2021.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2024.
 
 #include "FMODAudioComponent.h"
 #include "FMODStudioModule.h"
@@ -18,30 +18,44 @@
 
 UFMODAudioComponent::UFMODAudioComponent(const FObjectInitializer &ObjectInitializer)
     : Super(ObjectInitializer)
+    , Event(nullptr)
+    , bEnableTimelineCallbacks(false) // Default OFF for efficiency
+    , bAutoDestroy(false)
+    , bStopWhenOwnerDestroyed(true)
+    , bApplyAmbientVolumes(false)
+    , bApplyOcclusionParameter(false)
+    , StudioInstance(nullptr)
+    , bDefaultParameterValuesCached(false)
+    , Module(nullptr)
+    , InteriorLastUpdateTime(0.0f)
+    , SourceInteriorVolume(0.0f)
+    , SourceInteriorLPF(0.0f)
+    , CurrentInteriorVolume(0.0f)
+    , CurrentInteriorLPF(0.0f)
+    , AmbientVolume(0.0f)
+    , AmbientLPF(0.0f)
+    , LastVolume(1.0f)
+    , LastLPF(MAX_FILTER_FREQUENCY)
+    , wasOccluded(false)
+    , OcclusionID()
+    , AmbientVolumeID()
+    , AmbientLPFID()
+    , ProgrammerSound(nullptr)
+    , NeedDestroyProgrammerSoundCallback(false)
+    , EventLength(0)
+    , bPlayEnded(false)
 {
-    bAutoDestroy = false;
     bAutoActivate = true;
-    bEnableTimelineCallbacks = false; // Default OFF for efficiency
-    bStopWhenOwnerDestroyed = true;
     bNeverNeedsRenderUpdate = true;
     bWantsOnUpdateTransform = true;
+
 #if WITH_EDITORONLY_DATA
     bVisualizeComponent = true;
 #endif
-    bApplyOcclusionParameter = false;
-    bDefaultParameterValuesCached = false;
 
     PrimaryComponentTick.bCanEverTick = true;
     PrimaryComponentTick.TickGroup = TG_PrePhysics;
     PrimaryComponentTick.bStartWithTickEnabled = false;
-
-    StudioInstance = nullptr;
-    ProgrammerSound = nullptr;
-
-    LastLPF = MAX_FILTER_FREQUENCY;
-    LastVolume = 1.0f;
-    Module = nullptr;
-    wasOccluded = false;
 
     for (int i = 0; i < EFMODEventProperty::Count; ++i)
     {
@@ -83,7 +97,10 @@ void UFMODAudioComponent::OnRegister()
     if (IsActive() && bAutoActivate)
     {
         FMOD_STUDIO_PLAYBACK_STATE state = FMOD_STUDIO_PLAYBACK_STOPPED;
-        StudioInstance->getPlaybackState(&state);
+        if (StudioInstance->isValid())
+        {
+            StudioInstance->getPlaybackState(&state);
+        }
         if (state == FMOD_STUDIO_PLAYBACK_STOPPED)
         {
             Play();
@@ -125,6 +142,7 @@ void UFMODAudioComponent::PostEditChangeProperty(FPropertyChangedEvent &e)
         ParameterCache.Empty();
         bDefaultParameterValuesCached = false;
     }
+    UpdateCachedParameterValues();
 
 #if WITH_EDITORONLY_DATA
     UpdateSpriteTexture();
@@ -300,26 +318,54 @@ void UFMODAudioComponent::ApplyVolumeLPF()
     }
 }
 
+bool UFMODAudioComponent::ShouldCacheParameter(const FMOD_STUDIO_PARAMETER_DESCRIPTION& ParameterDescription)
+{
+    const UFMODSettings& Settings = *GetDefault<UFMODSettings>();
+
+    if (((ParameterDescription.flags & FMOD_STUDIO_PARAMETER_GLOBAL) == 0) &&
+        (ParameterDescription.type == FMOD_STUDIO_PARAMETER_GAME_CONTROLLED) &&
+        ParameterDescription.name != Settings.OcclusionParameter &&
+        ParameterDescription.name != Settings.AmbientVolumeParameter &&
+        ParameterDescription.name != Settings.AmbientLPFParameter)
+    {
+        return true;
+    }
+    return false;
+}
+
 void UFMODAudioComponent::CacheDefaultParameterValues()
 {
     if (Event)
     {
-        const UFMODSettings &Settings = *GetDefault<UFMODSettings>();
         TArray<FMOD_STUDIO_PARAMETER_DESCRIPTION> ParameterDescriptions;
         Event->GetParameterDescriptions(ParameterDescriptions);
         for (const FMOD_STUDIO_PARAMETER_DESCRIPTION &ParameterDescription : ParameterDescriptions)
         {
-            if (!ParameterCache.Find(ParameterDescription.name) && 
-                (ParameterDescription.type == FMOD_STUDIO_PARAMETER_GAME_CONTROLLED) &&
-                ParameterDescription.name != Settings.OcclusionParameter && 
-                ParameterDescription.name != Settings.AmbientVolumeParameter && 
-                ParameterDescription.name != Settings.AmbientLPFParameter)
+            if (!ParameterCache.Find(ParameterDescription.name) && ShouldCacheParameter(ParameterDescription))
             {
                 ParameterCache.Add(ParameterDescription.name, ParameterDescription.defaultvalue);
             }
         }
+        bDefaultParameterValuesCached = true;
     }
-    bDefaultParameterValuesCached = true;
+}
+
+void UFMODAudioComponent::UpdateCachedParameterValues()
+{
+    if (bDefaultParameterValuesCached)
+    {
+        TArray<FMOD_STUDIO_PARAMETER_DESCRIPTION> ParameterDescriptions;
+        Event->GetParameterDescriptions(ParameterDescriptions);
+        for (const FMOD_STUDIO_PARAMETER_DESCRIPTION& ParameterDescription : ParameterDescriptions)
+        {
+            if (ParameterCache.Find(ParameterDescription.name) && !ShouldCacheParameter(ParameterDescription))
+            {
+                ParameterCache.Remove(ParameterDescription.name);
+                FString paramName(ParameterDescription.name);
+                UE_LOG(LogFMOD, Warning, TEXT("Parameter '%s' is driven elsewhere and cannot be added here."), *paramName)
+            }
+        }
+    }
 }
 
 void UFMODAudioComponent::OnUnregister()
@@ -332,8 +378,20 @@ void UFMODAudioComponent::OnUnregister()
     Super::OnUnregister();
 }
 
+void UFMODAudioComponent::BeginPlay()
+{
+#if WITH_EDITOR
+    IFMODStudioModule::Get().PreEndPIEEvent().AddUObject(this, &UFMODAudioComponent::Shutdown);
+#endif
+    Super::BeginPlay();
+}
+
 void UFMODAudioComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
+#if WITH_EDITOR
+    IFMODStudioModule::Get().PreEndPIEEvent().RemoveAll(this);
+#endif
+    Super::EndPlay(EndPlayReason);
     bool shouldStop = false;
 
     switch (EndPlayReason)
@@ -361,6 +419,8 @@ void UFMODAudioComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
         OnEventStopped.Broadcast();
     }
     Release();
+
+    bPlayEnded = true;
 }
 
 void UFMODAudioComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
@@ -399,6 +459,14 @@ void UFMODAudioComponent::TickComponent(float DeltaTime, enum ELevelTick TickTyp
                     OnTimelineBeat.Broadcast(
                         EachProps.Bar, EachProps.Beat, EachProps.Position, EachProps.Tempo, EachProps.TimeSignatureUpper, EachProps.TimeSignatureLower);
                 }
+            }
+
+            if (TriggerSoundStoppedDelegate)
+            {
+                FScopeLock Lock(&CallbackLock);
+                TriggerSoundStoppedDelegate = false;
+
+                OnSoundStopped.Broadcast();
             }
 
             StudioInstance->getPlaybackState(&state);
@@ -452,7 +520,7 @@ void UFMODAudioComponent::Deactivate()
     Super::Deactivate();
 }
 
-FMOD_RESULT F_CALLBACK UFMODAudioComponent_EventCallback(FMOD_STUDIO_EVENT_CALLBACK_TYPE type, FMOD_STUDIO_EVENTINSTANCE *event, void *parameters)
+FMOD_RESULT F_CALL UFMODAudioComponent_EventCallback(FMOD_STUDIO_EVENT_CALLBACK_TYPE type, FMOD_STUDIO_EVENTINSTANCE *event, void *parameters)
 {
     UFMODAudioComponent *Component = nullptr;
     FMOD::Studio::EventInstance *Instance = (FMOD::Studio::EventInstance *)event;
@@ -474,6 +542,10 @@ FMOD_RESULT F_CALLBACK UFMODAudioComponent_EventCallback(FMOD_STUDIO_EVENT_CALLB
         {
             Component->EventCallbackDestroyProgrammerSound((FMOD_STUDIO_PROGRAMMER_SOUND_PROPERTIES *)parameters);
         }
+        else if (type == FMOD_STUDIO_EVENT_CALLBACK_SOUND_STOPPED)
+        {
+            Component->EventCallbackSoundStopped();
+        }
     }
     return FMOD_OK;
 }
@@ -488,7 +560,7 @@ void UFMODAudioComponent_ReleaseProgrammerSound(FMOD_STUDIO_PROGRAMMER_SOUND_PRO
     }
 }
 
-FMOD_RESULT F_CALLBACK UFMODAudioComponent_EventCallbackDestroyProgrammerSound(FMOD_STUDIO_EVENT_CALLBACK_TYPE type, FMOD_STUDIO_EVENTINSTANCE *event, void *parameters)
+FMOD_RESULT F_CALL UFMODAudioComponent_EventCallbackDestroyProgrammerSound(FMOD_STUDIO_EVENT_CALLBACK_TYPE type, FMOD_STUDIO_EVENTINSTANCE *event, void *parameters)
 {
     UFMODAudioComponent_ReleaseProgrammerSound((FMOD_STUDIO_PROGRAMMER_SOUND_PROPERTIES *)parameters);
     return FMOD_OK;
@@ -538,7 +610,32 @@ void UFMODAudioComponent::EventCallbackCreateProgrammerSound(FMOD_STUDIO_PROGRAM
         FString SoundName = ProgrammerSoundNameCopy.Len() ? ProgrammerSoundNameCopy : UTF8_TO_TCHAR(props->name);
         FMOD_MODE SoundMode = FMOD_LOOP_NORMAL | FMOD_CREATECOMPRESSEDSAMPLE | FMOD_NONBLOCKING;
 
-        if (SoundName.Contains(TEXT(".")))
+        if (SoundName.StartsWith(TEXT("http://")) || 
+            SoundName.StartsWith(TEXT("http:\\\\")) || 
+            SoundName.StartsWith(TEXT("https://")) || 
+            SoundName.StartsWith(TEXT("https:\\\\")))
+        {
+            // Load via url
+            FMOD::Sound* Sound = nullptr;
+            FMOD_CREATESOUNDEXINFO exinfo;
+            memset(&exinfo, 0, sizeof(FMOD_CREATESOUNDEXINFO));
+            exinfo.cbsize = sizeof(FMOD_CREATESOUNDEXINFO);
+            exinfo.filebuffersize = 1024 * 16;
+            exinfo.ignoresetfilesystem = true;
+
+            if (LowLevelSystem->createSound(TCHAR_TO_UTF8(*SoundName), FMOD_CREATESTREAM | FMOD_NONBLOCKING, &exinfo, &Sound) == FMOD_OK)
+            {
+                UE_LOG(LogFMOD, Verbose, TEXT("Creating programmer sound from url '%s'"), *SoundName);
+                props->sound = (FMOD_SOUND*)Sound;
+                props->subsoundIndex = -1;
+                NeedDestroyProgrammerSoundCallback = true;
+            }
+            else
+            {
+                UE_LOG(LogFMOD, Warning, TEXT("Failed to load programmer sound url '%s'"), *SoundName);
+            }
+        }
+        else if (SoundName.Contains(TEXT(".")))
         {
             // Load via file
             FString SoundPath = SoundName;
@@ -588,6 +685,12 @@ void UFMODAudioComponent::EventCallbackCreateProgrammerSound(FMOD_STUDIO_PROGRAM
             }
         }
     }
+}
+
+void UFMODAudioComponent::EventCallbackSoundStopped()
+{
+    FScopeLock Lock(&CallbackLock);
+    TriggerSoundStoppedDelegate = true;
 }
 
 void UFMODAudioComponent::EventCallbackDestroyProgrammerSound(FMOD_STUDIO_PROGRAMMER_SOUND_PROPERTIES *props)
@@ -658,6 +761,7 @@ void UFMODAudioComponent::PlayInternal(EFMODSystemContext::Type Context, bool bR
             if (EventDesc->getParameterDescriptionByName(TCHAR_TO_UTF8(*param), &paramDesc) == FMOD_OK)
             {
                 AmbientVolumeID = paramDesc.id;
+                LastVolume = -1.0f;     // Invalidate LastVolume so the AmbientVolumeParameter of the Event will be set later on
                 bApplyAmbientVolumes = true;
             }
         }
@@ -669,6 +773,7 @@ void UFMODAudioComponent::PlayInternal(EFMODSystemContext::Type Context, bool bR
             if (EventDesc->getParameterDescriptionByName(TCHAR_TO_UTF8(*Settings.AmbientLPFParameter), &paramDesc) == FMOD_OK)
             {
                 AmbientLPFID = paramDesc.id;
+                LastLPF = -1.0f;     // Invalidate LastLPF so the AmbientLPFParameter of the Event will be set later on
                 bApplyAmbientVolumes = true;
             }
         }
@@ -711,13 +816,43 @@ void UFMODAudioComponent::PlayInternal(EFMODSystemContext::Type Context, bool bR
     }
 }
 
+void UFMODAudioComponent::PauseInternal(PauseContext Pauser)
+{
+    if (Pauser == Implicit)
+    {
+        bImplicitlyPaused = true;
+    }
+    if (Pauser == Explicit)
+    {
+        bExplicitlyPaused = true;
+    }
+
+    SetPaused(true);
+}
+
+void UFMODAudioComponent::ResumeInternal(PauseContext Pauser)
+{
+    if (GetPaused())
+    {
+        if (Pauser == Implicit)
+        {
+            bImplicitlyPaused = false;
+        }
+        if (Pauser == Explicit)
+        {
+            bExplicitlyPaused = false;
+        }
+
+        SetPaused(bImplicitlyPaused || bExplicitlyPaused);
+    }
+}
+
 void UFMODAudioComponent::Stop()
 {
     UE_LOG(LogFMOD, Verbose, TEXT("UFMODAudioComponent %p Stop"), this);
-    if (StudioInstance)
+    if (StudioInstance->isValid())
     {
         StudioInstance->stop(FMOD_STUDIO_STOP_ALLOWFADEOUT);
-        OnEventStopped.Broadcast();
     }
 
     wasOccluded = false;
@@ -728,6 +863,14 @@ void UFMODAudioComponent::Release()
     ReleaseEventInstance();
 }
 
+#if WITH_EDITOR
+void UFMODAudioComponent::Shutdown()
+{
+    Stop();
+    Release();
+}
+#endif
+
 void UFMODAudioComponent::ReleaseEventCache()
 {
     ParameterCache.Empty();
@@ -737,7 +880,7 @@ void UFMODAudioComponent::ReleaseEventCache()
 
 void UFMODAudioComponent::ReleaseEventInstance()
 {
-    if (StudioInstance)
+    if (StudioInstance->isValid())
     {
         if (NeedDestroyProgrammerSoundCallback)
         {
@@ -825,6 +968,20 @@ void UFMODAudioComponent::SetPaused(bool Paused)
             UE_LOG(LogFMOD, Warning, TEXT("Failed to pause"));
         }
     }
+}
+
+bool UFMODAudioComponent::GetPaused()
+{
+    bool Paused = false;
+    if (StudioInstance)
+    {
+        FMOD_RESULT Result = StudioInstance->getPaused(&Paused);
+        if (Result != FMOD_OK)
+        {
+            UE_LOG(LogFMOD, Warning, TEXT("Failed to get paused state"));
+        }
+    }
+    return Paused;
 }
 
 void UFMODAudioComponent::SetParameter(FName Name, float Value)

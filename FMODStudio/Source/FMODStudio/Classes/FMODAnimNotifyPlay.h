@@ -12,10 +12,10 @@ class FMODSTUDIO_API UFMODAnimNotifyPlay : public UAnimNotify
 public:
     UFMODAnimNotifyPlay();
 
-    // Being UAnimNotify interface
+// Begin UAnimNotify interface
     virtual void Notify(USkeletalMeshComponent *MeshComp, UAnimSequenceBase *AnimSeq) override;
     virtual FString GetNotifyName_Implementation() const override;
-    // End UAnimNotify interface
+// End UAnimNotify interface
 
     // If this sound should follow its owner
     UPROPERTY(EditAnywhere, Category = "FMOD Anim Notify")

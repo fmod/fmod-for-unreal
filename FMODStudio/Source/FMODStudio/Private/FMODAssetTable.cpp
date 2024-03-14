@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2021.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2024.
 
 #include "FMODAssetTable.h"
 
@@ -20,7 +20,8 @@
 #include "UObject/Package.h"
 
 FFMODAssetTable::FFMODAssetTable()
-    : BankLookup(nullptr),
+    : ActiveLocale(FString()),
+      BankLookup(nullptr),
       AssetLookup(nullptr)
 {
 }

@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2021.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2024.
 
 #include "FMODEventEditor.h"
 #include "FMODEvent.h"
@@ -38,6 +38,7 @@ void FFMODEventEditor::UnregisterTabSpawners(const TSharedRef<class FTabManager>
 
 FFMODEventEditor::FFMODEventEditor()
     : CurrentPreviewEventInstance(nullptr)
+    , EditedEvent(nullptr)
 {
     IFMODStudioEditorModule::Get().BanksReloadedEvent().AddRaw(this, &FFMODEventEditor::HandleBanksReloaded);
     BeginPIEDelegateHandle = FEditorDelegates::BeginPIE.AddRaw(this, &FFMODEventEditor::HandleBeginPIE);

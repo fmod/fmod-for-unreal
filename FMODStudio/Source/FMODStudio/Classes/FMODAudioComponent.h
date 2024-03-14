@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2021.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2024.
 
 #pragma once
 
@@ -37,6 +37,9 @@ struct FTimelineMarkerProperties
 {
     FString Name;
     int32 Position;
+    FTimelineMarkerProperties()
+        : Position(0)
+    {}
 };
 
 /** Used to store callback info from FMOD thread to our event */
@@ -48,22 +51,27 @@ struct FTimelineBeatProperties
     float Tempo;
     int32 TimeSignatureUpper;
     int32 TimeSignatureLower;
+    FTimelineBeatProperties()
+        : Bar(0)
+        , Beat(0)
+        , Position(0)
+        , Tempo(0.0f)
+        , TimeSignatureUpper(0)
+        , TimeSignatureLower(0)
+    {}
 };
 
 USTRUCT(BlueprintType)
 struct FFMODAttenuationDetails
 {
     GENERATED_USTRUCT_BODY()
-
     /** Should we use Attenuation set in Studio or be able to modify in Editor. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FMOD|Attenuation")
     uint32 bOverrideAttenuation : 1;
-
     /** Override the event's 3D minimum distance. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FMOD|Attenuation",
         meta = (ClampMin = "0.0", UIMin = "0.0", EditCondition = "bOverrideAttenuation"))
     float MinimumDistance;
-
     /** Override the event's 3D maximum distance. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FMOD|Attenuation",
         meta = (ClampMin = "0.0", UIMin = "0.0", EditCondition = "bOverrideAttenuation"))
@@ -80,15 +88,12 @@ USTRUCT(BlueprintType)
 struct FFMODOcclusionDetails
 {
     GENERATED_USTRUCT_BODY()
-
     /** Enable Occlusion Settings. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FMOD|Occlusion")
     bool bEnableOcclusion;
-
     /* Which trace channel to use for audio occlusion checks. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FMOD|Occlusion", meta = (EditCondition = "bEnableOcclusion"))
     TEnumAsByte<enum ECollisionChannel> OcclusionTraceChannel;
-
     /** Whether or not to enable complex geometry occlusion checks. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="FMOD|Occlusion", meta=(EditCondition = "bEnableOcclusion"))
     bool bUseComplexCollisionForOcclusion;
@@ -102,6 +107,8 @@ struct FFMODOcclusionDetails
 
 /** called when an event stops, either because it played to completion or because a Stop() call turned it off early */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnEventStopped);
+/** called when a sound stops */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnSoundStopped);
 /** called when we reach a named marker on the timeline */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnTimelineMarker, FString, Name, int32, Position);
 /** called when we reach a beat on the timeline */
@@ -112,7 +119,6 @@ namespace FMOD
 {
 class DSP;
 class Sound;
-
 namespace Studio
 {
 class EventDescription;
@@ -131,8 +137,12 @@ UCLASS(Blueprintable, ClassGroup = (Audio, Common), hidecategories = (Object, Ac
 class FMODSTUDIO_API UFMODAudioComponent : public USceneComponent
 {
     GENERATED_UCLASS_BODY()
-public:
 
+    friend struct FFMODEventControlExecutionToken;
+    friend struct FPlayingToken;
+    friend FMOD_RESULT F_CALL UFMODAudioComponent_EventCallback(FMOD_STUDIO_EVENT_CALLBACK_TYPE type, FMOD_STUDIO_EVENTINSTANCE *event, void *parameters);
+
+public:
     /** The event asset to use for this sound. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = FMODAudio)
     UFMODEvent* Event;
@@ -140,7 +150,6 @@ public:
     /** Event parameter cache. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, SimpleDisplay, Category = FMODAudio)
     TMap<FName, float> ParameterCache;
-    bool bDefaultParameterValuesCached;
 
     /** Sound name used for programmer sound.  Will look up the name in any loaded audio table. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = FMODAudio)
@@ -149,9 +158,6 @@ public:
     /** Enable timeline callbacks for this sound, so that OnTimelineMarker and OnTimelineBeat can be used. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = FMODAudio)
     uint32 bEnableTimelineCallbacks : 1;
-
-    /** Stored properties to apply next time we create an instance. */
-    float StoredProperties[EFMODEventProperty::Count];
 
     /** Auto destroy this component on completion. */
     UPROPERTY()
@@ -170,6 +176,10 @@ public:
     /** Called when an event stops, either because it played to completion or because a Stop() call turned it off early. */
     UPROPERTY(BlueprintAssignable)
     FOnEventStopped OnEventStopped;
+
+    /** Called when a sound stops. */
+    UPROPERTY(BlueprintAssignable)
+    FOnSoundStopped OnSoundStopped;
 
     /** Called when we reach a named marker (if bEnableTimelineCallbacks is true). */
     UPROPERTY(BlueprintAssignable)
@@ -214,6 +224,10 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Audio|FMOD|Components")
     void SetPaused(bool paused);
 
+    /** Get the paused state of the audio component. Returns false if internal getPaused query fails. */
+    UFUNCTION(BlueprintCallable, Category = "Audio|FMOD|Components")
+    bool GetPaused();
+
     /** Set a parameter of the Event. */
     UFUNCTION(BlueprintCallable, Category = "Audio|FMOD|Components")
     void SetParameter(FName Name, float Value);
@@ -252,12 +266,6 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Audio|FMOD|Components")
     int32 GetTimelinePosition();
 
-    /** Called when the event has finished stopping. */
-    void OnPlaybackCompleted();
-
-    /** Update gain and low-pass based on interior volumes. */
-    void UpdateInteriorVolumes();
-
     /** Set the sound name to use for programmer sound.  Will look up the name in any loaded audio table. */
     UFUNCTION(BlueprintCallable, Category = "Audio|FMOD|Components")
     void SetProgrammerSoundName(FString Value);
@@ -273,21 +281,71 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = FMODAudio)
     struct FFMODOcclusionDetails OcclusionDetails;
 
+    /** Actual Studio instance handle. */
+    FMOD::Studio::EventInstance *StudioInstance;
+
+// Begin UObject interface.
+#if WITH_EDITOR
+    virtual void PostEditChangeProperty(FPropertyChangedEvent &e) override;
+#endif // WITH_EDITOR
+    virtual void PostLoad() override;
+// End UObject interface.
+
+// Begin USceneComponent Interface
+    virtual void Activate(bool bReset = false) override;
+    virtual void Deactivate() override;
+// End USceneComponent Interface
+
+protected:
+// Begin UObject interface.
+    virtual void OnUpdateTransform(EUpdateTransformFlags UpdateTransformFlags, ETeleportType Teleport = ETeleportType::None) override;
+// End UObject interface.
+
+// Begin USceneComponent Interface
+    virtual FString GetDetailedInfoInternal() const override;
+// End USceneComponent Interface
+
+private:
+    bool bDefaultParameterValuesCached;
+
+    enum PauseContext
+    {
+        Explicit,
+        Implicit
+    };
+
+    /** Used for pausing from sequencer. */
+    bool bImplicitlyPaused = false;
+
+    /** Used for pausing from a direct call to pause. */
+    bool bExplicitlyPaused = false;
+
+    /** Stored properties to apply next time we create an instance. */
+    float StoredProperties[EFMODEventProperty::Count];
+
+    /** Internal play function which can play events in the editor. */
+    void PlayInternal(EFMODSystemContext::Type Context, bool bReset = false);
+
+    /** Pause the audio component from a sequencer call. */
+    void PauseInternal(PauseContext Pauser);
+
+    /** Resume the audio component from a sequencer call. */
+    void ResumeInternal(PauseContext Pauser);
+
+    /** Cache default event parameter values. */
+    void CacheDefaultParameterValues();
+
+    /** Check that only player driven parameters are added to the cache. */
+    void UpdateCachedParameterValues();
+
+    /** Update gain and low-pass based on interior volumes. */
+    void UpdateInteriorVolumes();
+
     /** Update attenuation if we have it set. */
     void UpdateAttenuation();
 
     /** Apply Volume and LPF into event. */
     void ApplyVolumeLPF();
-
-    /** Cache default event parameter values. */
-    void CacheDefaultParameterValues();
-
-public:
-    /** Internal play function which can play events in the editor. */
-    void PlayInternal(EFMODSystemContext::Type Context, bool bReset = false);
-
-    /** Actual Studio instance handle. */
-    FMOD::Studio::EventInstance *StudioInstance;
 
     /** Timeline Marker callback. */
     void EventCallbackAddMarker(struct FMOD_STUDIO_TIMELINE_MARKER_PROPERTIES *props);
@@ -301,24 +359,26 @@ public:
     /** Programmer Sound Destroy callback. */
     void EventCallbackDestroyProgrammerSound(struct FMOD_STUDIO_PROGRAMMER_SOUND_PROPERTIES *props);
 
-// Begin UObject interface.
-#if WITH_EDITOR
-    virtual void PostEditChangeProperty(FPropertyChangedEvent &e) override;
-#endif // WITH_EDITOR
-    virtual void PostLoad() override;
-    virtual FString GetDetailedInfoInternal() const override;
-    // End UObject interface.
-    // Begin USceneComponent Interface
-    virtual void Activate(bool bReset = false) override;
-    virtual void Deactivate() override;
-    virtual void OnUpdateTransform(EUpdateTransformFlags UpdateTransformFlags, ETeleportType Teleport = ETeleportType::None) override;
-    // End USceneComponent Interface
+    /** Called when the event has finished stopping. */
+    void OnPlaybackCompleted();
 
-private:
+    void EventCallbackSoundStopped();
+    bool TriggerSoundStoppedDelegate;
+
 // Begin ActorComponent interface.
+    /** Called when a component is registered, after Scene is set, but before CreateRenderState_Concurrent or OnCreatePhysicsState are called. */
     virtual void OnRegister() override;
+
+    /** Called when a component is unregistered. Called after DestroyRenderState_Concurrent and OnDestroyPhysicsState are called. */
     virtual void OnUnregister() override;
+
+    /** Overridable native event for when play begins for this actor. */
+    virtual void BeginPlay() override;
+
+    /** Overridable function called whenever this actor is being removed from a level. */
     virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+
+    /** Function called every frame on this ActorComponent. Only executes if the component is registered, and also PrimaryComponentTick.bCanEverTick must be set to true. */
     virtual void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
 // End ActorComponent interface.
 
@@ -326,11 +386,19 @@ private:
     void UpdateSpriteTexture();
 #endif
 
+#if WITH_EDITOR
+    /** Function assigned to the FMODStudioModule PreShutdown delegate to clean up before the Studio System is released. */
+    void Shutdown();
+#endif
+
     /** Release any cached parameters then the Studio Instance. */
     void ReleaseEventCache();
 
     /** Release the Studio Instance. */
     void ReleaseEventInstance();
+
+    /** Check if a parameter is game controlled or automated to determine if it should be cached. */
+    bool ShouldCacheParameter(const FMOD_STUDIO_PARAMETER_DESCRIPTION& ParameterDescription);
 
     /** Return a cached reference to the current IFMODStudioModule.*/
     IFMODStudioModule& GetStudioModule()
@@ -341,30 +409,51 @@ private:
         }
         return *Module;
     }
+    /** Stored reference to the current IFMODStudioModule. */
     IFMODStudioModule* Module;
 
     // Settings for ambient volume effects.
+    /** Timer used for volumes fading in and out. Used for automating volume and/or LPF with Ambient Zones. */
     double InteriorLastUpdateTime;
+    /** Previous interior volume value. Used for automating volume and/or LPF with Ambient Zones. */
     float SourceInteriorVolume;
+    /** Previous interior LPF value. Used for automating volume and/or LPF with Ambient Zones. */
     float SourceInteriorLPF;
+    /** Current interior volume value. Used for automating volume and/or LPF with Ambient Zones. */
     float CurrentInteriorVolume;
+    /** Current interior LPF value. Used for automating volume and/or LPF with Ambient Zones. */
     float CurrentInteriorLPF;
+    /** Calculated Ambient volume level for that frame. Used for automating volume and/or LPF with Ambient Zones. */
     float AmbientVolume;
+    /** Calculated Ambient LPF level for that frame. Used for automating volume and/or LPF with Ambient Zones. */
     float AmbientLPF;
+    /** Previously set Volume value. Used for automating volume and/or LPF with Ambient Zones. */
     float LastVolume;
+    /** Previously set LPF value. Used for automating volume and/or LPF with Ambient Zones. */
     float LastLPF;
+    /** Was the object occluded in the previous frame. */
     bool wasOccluded;
+    /** Stored ID of the Occlusion parameter of the Event (if applicable). */
     FMOD_STUDIO_PARAMETER_ID OcclusionID;
+    /** Stored ID of the Volume parameter of the Event (if applicable). */
     FMOD_STUDIO_PARAMETER_ID AmbientVolumeID;
+    /** Stored ID of the LPF parameter of the Event (if applicable). */
     FMOD_STUDIO_PARAMETER_ID AmbientLPFID;
 
     // Tempo and marker callbacks.
+    /** A scope lock used specifically for callbacks. */
     FCriticalSection CallbackLock;
+    /** Stores the Timeline Markers as they are triggered. */
     TArray<FTimelineMarkerProperties> CallbackMarkerQueue;
+    /** Stores the Timeline Beats as they are triggered. */
     TArray<FTimelineBeatProperties> CallbackBeatQueue;
 
-    // Direct assignment of programmer sound from other C++ code.
+    /** Direct assignment of programmer sound from other C++ code. */
     FMOD::Sound *ProgrammerSound;
     bool NeedDestroyProgrammerSoundCallback;
+    /** The length of the current Event in milliseconds. */
     int32 EventLength;
+
+    /** Used by FPlayingToken to prevent restarting from delayed sequencer state restore. */
+    bool bPlayEnded;
 };

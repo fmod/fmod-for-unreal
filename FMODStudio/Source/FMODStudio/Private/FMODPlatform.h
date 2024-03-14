@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2021.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2024.
 #pragma once
 
 #include "Containers/UnrealString.h"
@@ -7,11 +7,9 @@
 
 FString FMODPlatform_GetDllPath(const TCHAR *ShortName, bool bExplicitPath, bool bUseLibPrefix);
 
+EFMODPlatforms::Type FMODPlatform_CurrentPlatform();
+
 FString FMODPlatform_PlatformName();
-
-void FMODPlatform_SetRealChannelCount(FMOD_ADVANCEDSETTINGS* advSettings);
-
-int FMODPlatform_MemoryPoolSize();
 
 #ifdef FMOD_PLATFORM_LOAD_DLL
 void* FMODPlatformLoadDll(const TCHAR* LibToLoad);

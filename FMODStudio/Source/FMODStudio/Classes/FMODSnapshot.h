@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2021.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2024.
 
 #pragma once
 
@@ -13,6 +13,7 @@ class FMODSTUDIO_API UFMODSnapshot : public UFMODEvent
 {
     GENERATED_UCLASS_BODY()
 
+private:
     /** Descriptive name */
     virtual FString GetDesc() override;
 };
