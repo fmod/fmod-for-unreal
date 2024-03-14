@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2023.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2024.
 
 #include "AssetTypeActions_FMODEvent.h"
 #include "AssetTypeActions_Base.h"

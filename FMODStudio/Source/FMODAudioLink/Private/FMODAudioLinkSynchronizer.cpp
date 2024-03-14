@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2023-2023.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2024-2024.
 
 #include "FMODAudioLinkSynchronizer.h"
 #include "fmod_studio.hpp"
