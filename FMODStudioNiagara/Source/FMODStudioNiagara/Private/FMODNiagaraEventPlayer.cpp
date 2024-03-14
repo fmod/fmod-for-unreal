@@ -225,6 +225,7 @@ bool UFMODNiagaraEventPlayer::PerInstanceTickPostSimulate(void* PerInstanceData,
     UWorld* World = SystemInstance->GetWorld();
 
 #if WITH_EDITORONLY_DATA
+    // Currently FMOD will not play in Editor even if bOnlyActiveDuringGameplay is false.
     if (World->HasBegunPlay() == false && PIData->bOnlyActiveDuringGameplay)
     {
         PIData->PlayAudioQueue.Empty();

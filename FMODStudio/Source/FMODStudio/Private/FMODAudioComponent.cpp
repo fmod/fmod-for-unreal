@@ -850,7 +850,7 @@ void UFMODAudioComponent::ResumeInternal(PauseContext Pauser)
 void UFMODAudioComponent::Stop()
 {
     UE_LOG(LogFMOD, Verbose, TEXT("UFMODAudioComponent %p Stop"), this);
-    if (StudioInstance->isValid())
+    if (StudioInstance && StudioInstance->isValid())
     {
         StudioInstance->stop(FMOD_STUDIO_STOP_ALLOWFADEOUT);
     }
