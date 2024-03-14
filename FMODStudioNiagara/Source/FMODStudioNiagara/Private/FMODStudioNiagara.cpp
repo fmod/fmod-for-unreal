@@ -17,4 +17,4 @@ void FFMODStudioNiagaraModule::ShutdownModule()
 
 #undef LOCTEXT_NAMESPACE
 	
-IMPLEMENT_MODULE(FDefaultModuleImpl, FMODStudioNiagara)
+IMPLEMENT_MODULE(FFMODStudioNiagaraModule, FMODStudioNiagara)

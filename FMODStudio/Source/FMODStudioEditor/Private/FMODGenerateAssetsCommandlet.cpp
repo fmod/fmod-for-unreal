@@ -6,7 +6,7 @@
 #include "AssetRegistryModule.h"
 #include "Editor.h"
 #include "Editor/UnrealEd/Public/FileHelpers.h"
-#include "HAL/PlatformFilemanager.h"
+#include "HAL/PlatformFileManager.h"
 #include "../Classes/FMODAssetBuilder.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogFMODCommandlet, Log, All);

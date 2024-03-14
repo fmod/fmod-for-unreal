@@ -16,6 +16,10 @@ public:
 
     //~ FGCObject
     void AddReferencedObjects(FReferenceCollector& Collector) override;
+    virtual FString GetReferencerName() const override
+    {
+        return TEXT("FFMODAssetTable");
+    }
 
     void Load();
 

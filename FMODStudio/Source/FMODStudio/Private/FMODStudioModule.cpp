@@ -194,12 +194,15 @@ public:
     bool LoadLibraries();
 
     void LoadBanks(EFMODSystemContext::Type Type);
+    void UnloadBanks(EFMODSystemContext::Type Type);
 
 #if WITH_EDITOR
     FSimpleMulticastDelegate PreEndPIEDelegate;
     FSimpleMulticastDelegate &PreEndPIEEvent() override { return PreEndPIEDelegate; };
     virtual void PreEndPIE() override;
     void ReloadBanks();
+    void LoadEditorBanks();
+    void UnloadEditorBanks();
 #endif
 
     void CreateStudioSystem(EFMODSystemContext::Type Type);
@@ -275,7 +278,7 @@ public:
     TSharedPtr<FFMODStudioSystemClockSink, ESPMode::ThreadSafe> ClockSinks[EFMODSystemContext::Max];
 
     /** Handle for registered TickDelegate. */
-    FDelegateHandle TickDelegateHandle;
+    FTSTicker::FDelegateHandle TickDelegateHandle;
 
     /** Table of assets with name and guid */
     FFMODAssetTable AssetTable;
@@ -345,11 +348,7 @@ bool FFMODStudioModule::LoadPlugin(EFMODSystemContext::Type Context, const TCHAR
     static const int ATTEMPT_COUNT = 2;
     static const TCHAR *AttemptPrefixes[ATTEMPT_COUNT] = {
         TEXT(""),
-#if PLATFORM_64BITS
         TEXT("64")
-#else
-        TEXT("32")
-#endif
     };
 
     FMOD::System *LowLevelSystem = nullptr;
@@ -361,15 +360,11 @@ bool FFMODStudioModule::LoadPlugin(EFMODSystemContext::Type Context, const TCHAR
     {
         for (int attempt = 0; attempt < 2; ++attempt)
         {
-            // Try to load combinations of 64/32 suffix and lib prefix for relevant platforms
+            // Try to load combinations of suffix and lib prefix for relevant platforms
             FString AttemptName = FString(ShortName) + AttemptPrefixes[attempt];
             FString PluginPath = GetDllPath(*AttemptName, true, useLib != 0);
 
             UE_LOG(LogFMOD, Log, TEXT("Trying to load plugin file at location: %s"), *PluginPath);
-
-#if defined(PLATFORM_UWP) && PLATFORM_UWP
-            FPaths::MakePathRelativeTo(PluginPath, *(FPaths::RootDir() + TEXT("/")));
-#endif
 
             unsigned int Handle = 0;
             PluginLoadResult = LowLevelSystem->loadPlugin(TCHAR_TO_UTF8(*PluginPath), &Handle, 0);
@@ -423,13 +418,7 @@ FString FFMODStudioModule::GetDllPath(const TCHAR *ShortName, bool bExplicitPath
 #elif PLATFORM_LINUX
     return FString::Printf(TEXT("%s%s.so"), LibPrefixName, ShortName);
 #elif PLATFORM_WINDOWS
-#if PLATFORM_64BITS
     return FString::Printf(TEXT("%s/Win64/%s.dll"), *BaseLibPath, ShortName);
-#else
-    return FString::Printf(TEXT("%s/Win32/%s.dll"), *BaseLibPath, ShortName);
-#endif
-#elif defined(PLATFORM_UWP) && PLATFORM_UWP
-    return FString::Printf(TEXT("%s/UWP64/%s.dll"), *BaseLibPath, ShortName);
 #else
     UE_LOG(LogFMOD, Error, TEXT("Unsupported platform for dynamic libs"));
     return "";
@@ -515,7 +504,7 @@ void FFMODStudioModule::StartupModule()
     }
 
     OnTick = FTickerDelegate::CreateRaw(this, &FFMODStudioModule::Tick);
-    TickDelegateHandle = FTicker::GetCoreTicker().AddTicker(OnTick);
+    TickDelegateHandle = FTSTicker::GetCoreTicker().AddTicker(OnTick);
 }
 
 inline FMOD_SPEAKERMODE ConvertSpeakerMode(EFMODSpeakerMode::Type Mode)
@@ -772,61 +761,33 @@ void FFMODStudioModule::DestroyStudioSystem(EFMODSystemContext::Type Type)
         ClockSinks[Type].Reset();
     }
 
-    // Unload all events and banks to remove warning spam when using split banks
-    if (StudioSystem[Type] && bLoadAllSampleData)
-    {
-        int bankCount;
-        verifyfmod(StudioSystem[Type]->getBankCount(&bankCount));
-        if (bankCount > 0)
-        {
-            TArray<FMOD::Studio::Bank *> bankArray;
-            TArray<FMOD::Studio::EventDescription *> eventArray;
-            TArray<FMOD::Studio::EventInstance *> instanceArray;
-
-            bankArray.SetNumUninitialized(bankCount, false);
-            verifyfmod(StudioSystem[Type]->getBankList(bankArray.GetData(), bankCount, &bankCount));
-            for (int i = 0; i < bankCount; i++)
-            {
-                int eventCount;
-                verifyfmod(bankArray[i]->getEventCount(&eventCount));
-                if (eventCount > 0)
-                {
-                    eventArray.SetNumUninitialized(eventCount, false);
-                    verifyfmod(bankArray[i]->getEventList(eventArray.GetData(), eventCount, &eventCount));
-                    for (int j = 0; j < eventCount; j++)
-                    {
-                        int instanceCount;
-                        verifyfmod(eventArray[j]->getInstanceCount(&instanceCount));
-                        if (instanceCount > 0)
-                        {
-                            instanceArray.SetNumUninitialized(instanceCount, false);
-                            verifyfmod(eventArray[j]->getInstanceList(instanceArray.GetData(), instanceCount, &instanceCount));
-                            for (int k = 0; k < instanceCount; k++)
-                            {
-                                verifyfmod(instanceArray[k]->stop(FMOD_STUDIO_STOP_IMMEDIATE));
-                                verifyfmod(instanceArray[k]->release());
-                            }
-                        }
-                    }
-                }
-            }
-
-            for (int i = 0; i < bankCount; i++)
-            {
-                FMOD_STUDIO_LOADING_STATE state;
-                bankArray[i]->getSampleLoadingState(&state);
-                if (state == FMOD_STUDIO_LOADING_STATE_LOADED)
-                {
-                    verifyfmod(bankArray[i]->unloadSampleData());
-                }
-            }
-        }
-    }
+    UnloadBanks(Type);
 
     if (StudioSystem[Type])
     {
         verifyfmod(StudioSystem[Type]->release());
         StudioSystem[Type] = nullptr;
+    }
+}
+
+void FFMODStudioModule::UnloadBanks(EFMODSystemContext::Type Type)
+{
+    if (StudioSystem[Type])
+    {
+        int bankCount;
+        verifyfmod(StudioSystem[Type]->getBankCount(&bankCount));
+        if (bankCount > 0)
+        {
+            TArray<FMOD::Studio::Bank*> bankArray;
+
+            bankArray.SetNumUninitialized(bankCount, false);
+            verifyfmod(StudioSystem[Type]->getBankList(bankArray.GetData(), bankCount, &bankCount));
+
+            for (int i = 0; i < bankCount; i++)
+            {
+                verifyfmod(bankArray[i]->unload());
+            }
+        }
     }
 }
 
@@ -1256,7 +1217,7 @@ void FFMODStudioModule::ShutdownModule()
     if (UObjectInitialized())
     {
         // Unregister tick function.
-        FTicker::GetCoreTicker().RemoveTicker(TickDelegateHandle);
+        FTSTicker::GetCoreTicker().RemoveTicker(TickDelegateHandle);
     }
 
     UE_LOG(LogFMOD, Verbose, TEXT("FFMODStudioModule unloading dynamic libraries"));
@@ -1489,15 +1450,24 @@ void FFMODStudioModule::ReloadBanks()
 {
     UE_LOG(LogFMOD, Verbose, TEXT("Refreshing auditioning system"));
 
+    StopAuditioningInstance();
+    UnloadBanks(EFMODSystemContext::Auditioning);
+    DestroyStudioSystem(EFMODSystemContext::Editor);
+
     AssetTable.Load();
 
-    DestroyStudioSystem(EFMODSystemContext::Auditioning);
-    CreateStudioSystem(EFMODSystemContext::Auditioning);
     LoadBanks(EFMODSystemContext::Auditioning);
-
-    DestroyStudioSystem(EFMODSystemContext::Editor);
     CreateStudioSystem(EFMODSystemContext::Editor);
+}
+
+void FFMODStudioModule::LoadEditorBanks()
+{
     LoadBanks(EFMODSystemContext::Editor);
+}
+
+void FFMODStudioModule::UnloadEditorBanks()
+{
+    UnloadBanks(EFMODSystemContext::Editor);
 }
 #endif
 

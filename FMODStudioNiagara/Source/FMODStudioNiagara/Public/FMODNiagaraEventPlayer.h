@@ -39,6 +39,7 @@ struct FEventPlayerInterface_InstanceData
     TWeakObjectPtr<UFMODEvent> EventToPlay;
     TArray<FName> ParameterNames;
 
+    FNiagaraLWCConverter LWCConverter;
     int32 MaxPlaysPerTick = 0;
     bool bStopWhenComponentIsDestroyed = true;
 
@@ -81,10 +82,15 @@ public:
      */
     UPROPERTY(VisibleAnywhere, AdvancedDisplay, Category = "Audio")
         bool bOnlyActiveDuringGameplay = true;
+
+    virtual bool UpgradeFunctionCall(FNiagaraFunctionSignature& FunctionSignature) override;
 #endif
 
     //UObject Interface
     virtual void PostInitProperties() override;
+#if WITH_EDITOR
+    virtual void PostEditChangeProperty(FPropertyChangedEvent& e);
+#endif
     //UObject Interface End
 
     //UNiagaraDataInterface Interface
@@ -100,17 +106,17 @@ public:
 
     virtual bool HasPreSimulateTick() const override { return true; }
     virtual bool HasPostSimulateTick() const override { return true; }
+    virtual bool PostSimulateCanOverlapFrames() const { return false; }
     //UNiagaraDataInterface Interface
 
-    virtual void PlayOneShotAudio(FVectorVMContext& Context);
-    virtual void PlayPersistentAudio(FVectorVMContext& Context);
-    virtual void SetParameterFloat(FVectorVMContext& Context);
-    virtual void UpdateLocation(FVectorVMContext& Context);
-    virtual void UpdateRotation(FVectorVMContext& Context);
-    virtual void SetPausedState(FVectorVMContext& Context);
+    virtual void PlayOneShotAudio(FVectorVMExternalFunctionContext& Context);
+    virtual void PlayPersistentAudio(FVectorVMExternalFunctionContext& Context);
+    virtual void SetParameterFloat(FVectorVMExternalFunctionContext& Context);
+    virtual void UpdateLocation(FVectorVMExternalFunctionContext& Context);
+    virtual void UpdateRotation(FVectorVMExternalFunctionContext& Context);
+    virtual void SetPausedState(FVectorVMExternalFunctionContext& Context);
 
 #if WITH_EDITOR
-    void PostEditChangeProperty(FPropertyChangedEvent& e);
     void CacheDefaultParameterValues();
     bool ShouldCacheParameter(const FMOD_STUDIO_PARAMETER_DESCRIPTION& ParameterDescription);
     bool bDefaultParameterValuesCached;
