@@ -6,10 +6,10 @@
 #include "FMODStudioModule.h"
 #include "FMODEvent.h"
 #include "fmod_studio.hpp"
-#include "UnrealEd/Public/Editor.h"
+#include "Editor.h"
 #include "Widgets/Input/SButton.h"
-#include "PropertyEditor/Public/DetailLayoutBuilder.h"
-#include "PropertyEditor/Public/DetailCategoryBuilder.h"
+#include "Editor/PropertyEditor/Public/DetailLayoutBuilder.h"
+#include "Editor/PropertyEditor/Public/DetailCategoryBuilder.h"
 
 #define LOCTEXT_NAMESPACE "FMODStudio"
 

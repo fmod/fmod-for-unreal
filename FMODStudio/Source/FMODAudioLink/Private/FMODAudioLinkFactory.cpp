@@ -10,6 +10,7 @@
 
 #include "Async/Async.h"
 #include "Components/AudioComponent.h"
+#include "Engine/World.h"
 #include "Sound/SoundSubmix.h"
 #include "Templates/SharedPointer.h"
 #include "AudioDevice.h"
