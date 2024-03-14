@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2023.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2024.
 
 #include "FMODStudioModule.h"
 #include "FMODSettings.h"
@@ -206,6 +206,9 @@ public:
     void UnloadBanks(EFMODSystemContext::Type Type);
 
 #if WITH_EDITOR
+    FSimpleMulticastDelegate PreEndPIEDelegate;
+    FSimpleMulticastDelegate &PreEndPIEEvent() override { return PreEndPIEDelegate; };
+    virtual void PreEndPIE() override;
     void ReloadBanks();
     void LoadEditorBanks();
     void UnloadEditorBanks();
@@ -1221,6 +1224,17 @@ void FFMODStudioModule::SetSystemPaused(bool paused)
     }
 }
 
+#if WITH_EDITOR
+void FFMODStudioModule::PreEndPIE()
+{
+    UE_LOG(LogFMOD, Verbose, TEXT("PreEndPIE"));
+    if (PreEndPIEDelegate.IsBound())
+    {
+        PreEndPIEDelegate.Broadcast();
+    }
+}
+#endif
+
 void FFMODStudioModule::ShutdownModule()
 {
     UE_LOG(LogFMOD, Verbose, TEXT("FFMODStudioModule shutdown"));
@@ -1568,15 +1582,26 @@ void FFMODStudioModule::InitializeAudioSession()
         {
             case AVAudioSessionInterruptionTypeBegan:
             {
-                if (@available(iOS 10.3, *))
+                // Starting in iOS 10, if the system suspended the app process and deactivated the audio session
+                // then we get a delayed interruption notification when the app is re-activated. Just ignore that here.
+                if (@available(iOS 14.5, *))
                 {
-                    if ([[notification.userInfo valueForKey:AVAudioSessionInterruptionWasSuspendedKey] boolValue])
+                    if ([[notification.userInfo valueForKey:AVAudioSessionInterruptionReasonKey] intValue] == AVAudioSessionInterruptionReasonAppWasSuspended)
                     {
-                        // If the system suspended the app process and deactivated the audio session then we get a delayed
-                        // interruption notification when the app is re-activated. Just ignore that here.
                         return;
                     }
                 }
+                else if (@available(iOS 10.3, *))
+                {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+                    if ([[notification.userInfo valueForKey:AVAudioSessionInterruptionWasSuspendedKey] boolValue])
+                    {
+                        return;
+                    }
+#pragma clang diagnostic pop
+                }
+
                 SetSystemPaused(true);
                 break;
             }
