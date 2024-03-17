@@ -25,8 +25,6 @@ namespace UnrealBuildTool.Rules
             PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
             PrivatePCHHeaderFile = "Private/FMODStudioPrivatePCH.h";
 
-            bUseUnity = false;
-
             PublicIncludePaths.Add(Path.Combine(ModuleDirectory, "Public/FMOD"));
             PrivateIncludePaths.Add(Path.Combine(ModuleDirectory, "Classes"));
 
