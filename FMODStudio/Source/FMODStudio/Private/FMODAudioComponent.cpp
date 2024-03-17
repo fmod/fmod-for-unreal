@@ -343,7 +343,7 @@ void UFMODAudioComponent::CacheDefaultParameterValues()
         {
             if (!ParameterCache.Find(ParameterDescription.name) && ShouldCacheParameter(ParameterDescription))
             {
-                ParameterCache.Add(ParameterDescription.name, ParameterDescription.defaultvalue);
+                ParameterCache.FindOrAdd(ParameterDescription.name, ParameterDescription.defaultvalue);
             }
         }
         bDefaultParameterValuesCached = true;
