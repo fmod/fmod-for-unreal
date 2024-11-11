@@ -777,10 +777,13 @@ void FFMODStudioModule::DestroyStudioSystem(EFMODSystemContext::Type Type)
         ClockSinks[Type].Reset();
     }
 
-    UnloadBanks(Type);
-
     if (StudioSystem[Type])
     {
+        FMOD::Studio::Bus* mBus;
+        StudioSystem[Type]->getBus("bus:/", &mBus);
+        mBus->setMute(true);
+        StudioSystem[Type]->flushCommands();
+
         verifyfmod(StudioSystem[Type]->release());
         StudioSystem[Type] = nullptr;
     }
