@@ -815,7 +815,7 @@ void FFMODStudioModule::UnloadBanks(EFMODSystemContext::Type Type)
         {
             TArray<FMOD::Studio::Bank*> bankArray;
 
-            bankArray.SetNumUninitialized(bankCount, false);
+            bankArray.SetNumUninitialized(bankCount, EAllowShrinking::No);
             verifyfmod(StudioSystem[Type]->getBankList(bankArray.GetData(), bankCount, &bankCount));
 
             for (int i = 0; i < bankCount; i++)
