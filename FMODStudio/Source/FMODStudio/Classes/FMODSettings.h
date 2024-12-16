@@ -105,6 +105,34 @@ namespace EFMODCodec
 }
 
 USTRUCT()
+struct FCustomPoolSizes
+{
+    GENERATED_USTRUCT_BODY()
+    /** Default = 0 (Disabled) units in bytes*/
+    UPROPERTY(config, EditAnywhere, Category = InitSettings, meta = (ClampMin = "0"))
+    int32 Desktop;
+    /** Default = 0 (Disabled) units in bytes*/
+    UPROPERTY(config, EditAnywhere, Category = InitSettings, meta = (ClampMin = "0"))
+    int32 Mobile;
+    /** Default = 0 (Disabled) units in bytes*/
+    UPROPERTY(config, EditAnywhere, Category = InitSettings, meta = (ClampMin = "0"))
+    int32 PS4;
+    /** Default = 0 (Disabled) units in bytes*/
+    UPROPERTY(config, EditAnywhere, Category = InitSettings, meta = (ClampMin = "0"))
+    int32 Switch;
+    /** Default = 0 (Disabled) units in bytes*/
+    UPROPERTY(config, EditAnywhere, Category = InitSettings, meta = (ClampMin = "0"))
+    int32 XboxOne;
+    FCustomPoolSizes()
+        : Desktop(0)
+        , Mobile(0)
+        , PS4(0)
+        , Switch(0)
+        , XboxOne(0)
+    {}
+};
+
+USTRUCT()
 struct FFMODPlatformSettings
 {
     GENERATED_USTRUCT_BODY()
@@ -131,13 +159,12 @@ struct FFMODPlatformSettings
      * Use specified memory pool size, units in bytes. Disabled by default.
      * FMOD may become unstable if the limit is exceeded!
      */
-    UPROPERTY(config, EditAnywhere, Category = PlatformSettings, meta = (ClampMin = "0", DisplayName = "Memory Pool Size"))
+    UPROPERTY(config, EditAnywhere, Category = PlatformSettings, meta = (ClampMin = "0"))
     int32 CustomPoolSize;
     /* Codecs
     */
     UPROPERTY(config, EditAnywhere, Category = PlatformSettings, meta = (ClampMin = "0"))
     TMap<TEnumAsByte<EFMODCodec::Type>, int32> Codecs;
-
     FFMODPlatformSettings()
         : RealChannelCount(64)
         , SampleRate(0)
@@ -166,7 +193,6 @@ struct FFMODProjectLocale
     */
     UPROPERTY(config, EditAnywhere, Category = Localization)
     bool bDefault;
-
     FFMODProjectLocale()
         : bDefault(false)
     {}
@@ -304,14 +330,8 @@ public:
      * Use specified memory pool size for platform, units in bytes. Disabled by default.
      * FMOD may become unstable if the limit is exceeded!
      */
-    UPROPERTY(config, EditAnywhere, Category = InitSettings, meta = (ClampMin = "0"))
-    int32 MemoryPoolSize;
-
-    /**
-     * Codecs
-    */
-    UPROPERTY(config, EditAnywhere, Category = InitSettings, meta = (ClampMin = "0"))
-    TMap<TEnumAsByte<EFMODCodec::Type>, int32> Codecs;
+    UPROPERTY(config, EditAnywhere, Category = InitSettings)
+    FCustomPoolSizes MemoryPoolSizes;
 
     /**
      * Live update port to use, or 0 for default.
@@ -460,7 +480,7 @@ private:
     int32 GetRealChannelCount() const;
 
     /** Set the maximum codecs for the current platform. */
-    TMap<TEnumAsByte<EFMODCodec::Type>, int32> GetCodecs() const;
+    bool SetCodecs(FMOD_ADVANCEDSETTINGS& advSettings) const;
 
     /** List of generated folder names that contain FMOD uassets. */
     TArray<FString> GeneratedFolders = {

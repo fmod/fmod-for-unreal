@@ -257,7 +257,7 @@ int32 UFMODSettings::GetSampleRate() const
 
 int32 UFMODSettings::GetMemoryPoolSize() const
 {
-    return (Platforms.Contains(CurrentPlatform()) ? Platforms.Find(CurrentPlatform())->CustomPoolSize : MemoryPoolSize);
+    return (Platforms.Contains(CurrentPlatform()) ? Platforms.Find(CurrentPlatform())->CustomPoolSize : 0);
 }
 
 int32 UFMODSettings::GetRealChannelCount() const
@@ -265,7 +265,36 @@ int32 UFMODSettings::GetRealChannelCount() const
     return Platforms.Contains(CurrentPlatform()) ? Platforms.Find(CurrentPlatform())->RealChannelCount : RealChannelCount;
 }
 
-TMap<TEnumAsByte<EFMODCodec::Type>, int32> UFMODSettings::GetCodecs() const
+bool UFMODSettings::SetCodecs(FMOD_ADVANCEDSETTINGS& advSettings) const
 {
-    return Platforms.Contains(CurrentPlatform()) ? Platforms.Find(CurrentPlatform())->Codecs : Codecs;
+    const FFMODPlatformSettings* platform = Platforms.Find(CurrentPlatform());
+    if (platform == nullptr)
+    {
+        return false;
+    }
+    TMap<TEnumAsByte<EFMODCodec::Type>, int32> codecList = platform->Codecs;
+
+    for (const TPair<TEnumAsByte<EFMODCodec::Type>, int32>& pair : codecList)
+    {
+        switch (pair.Key)
+        {
+        case EFMODCodec::XMA:
+            advSettings.maxXMACodecs = pair.Value;
+            break;
+        case EFMODCodec::AT9:
+            advSettings.maxAT9Codecs = pair.Value;
+            break;
+        case EFMODCodec::FADPCM:
+            advSettings.maxFADPCMCodecs = pair.Value;
+            break;
+        case EFMODCodec::OPUS:
+            advSettings.maxOpusCodecs = pair.Value;
+            break;
+        case EFMODCodec::VORBIS:
+        default:
+            advSettings.maxVorbisCodecs = pair.Value;
+            break;
+        }
+    }
+    return true;
 }
