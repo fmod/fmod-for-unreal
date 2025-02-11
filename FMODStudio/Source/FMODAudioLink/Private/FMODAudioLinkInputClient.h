@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2024-2024.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2025-2025.
 
 #pragma once
 
@@ -40,6 +40,7 @@ public:
 
     FName GetProducerName() const { return ProducerName; }
     FMOD::Studio::EventInstance* EventInstance;
+    bool bShouldDelayStart = 0;
 
 private:
     void Register(const FName& NameOfProducingSource);
