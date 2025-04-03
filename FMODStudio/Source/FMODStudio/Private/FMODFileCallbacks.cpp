@@ -48,7 +48,7 @@ FMOD_RESULT F_CALL FMODErrorCallback(FMOD_SYSTEM *system, FMOD_SYSTEM_CALLBACK_T
     FMOD_ERRORCALLBACK_INFO *callbackInfo = (FMOD_ERRORCALLBACK_INFO *)commanddata1;
 
     if ((callbackInfo->instancetype == FMOD_ERRORCALLBACK_INSTANCETYPE_CHANNEL || callbackInfo->instancetype == FMOD_ERRORCALLBACK_INSTANCETYPE_CHANNELCONTROL) 
-        && callbackInfo->result == FMOD_ERR_INVALID_HANDLE)
+        && (callbackInfo->result == FMOD_ERR_INVALID_HANDLE || callbackInfo->result == FMOD_ERR_CHANNEL_STOLEN))
     {
         return FMOD_OK;
     }
