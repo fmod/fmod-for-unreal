@@ -10,7 +10,7 @@
 #include "Misc/ScopeLock.h"
 #include "FMODStudioPrivatePCH.h"
 
-FMOD_RESULT F_CALLBACK FMODLogCallback(FMOD_DEBUG_FLAGS flags, const char *file, int line, const char *func, const char *message)
+FMOD_RESULT F_CALL FMODLogCallback(FMOD_DEBUG_FLAGS flags, const char *file, int line, const char *func, const char *message)
 {
     if (flags & FMOD_DEBUG_LEVEL_ERROR)
     {
@@ -43,7 +43,7 @@ FMOD_RESULT F_CALLBACK FMODLogCallback(FMOD_DEBUG_FLAGS flags, const char *file,
     return FMOD_OK;
 }
 
-FMOD_RESULT F_CALLBACK FMODErrorCallback(FMOD_SYSTEM *system, FMOD_SYSTEM_CALLBACK_TYPE type, void *commanddata1, void* commanddata2, void *userdata)
+FMOD_RESULT F_CALL FMODErrorCallback(FMOD_SYSTEM *system, FMOD_SYSTEM_CALLBACK_TYPE type, void *commanddata1, void* commanddata2, void *userdata)
 {
     FMOD_ERRORCALLBACK_INFO *callbackInfo = (FMOD_ERRORCALLBACK_INFO *)commanddata1;
 
@@ -80,10 +80,10 @@ public:
     {
     }
 
-    static FMOD_RESULT F_CALLBACK OpenCallback(const char *name, unsigned int *filesize, void **handle, void * /*userdata*/);
-    static FMOD_RESULT F_CALLBACK CloseCallback(void *handle, void * /*userdata*/);
-    static FMOD_RESULT F_CALLBACK ReadCallback(void *handle, void *buffer, unsigned int sizebytes, unsigned int *bytesread, void * /*userdata*/);
-    static FMOD_RESULT F_CALLBACK SeekCallback(void *handle, unsigned int pos, void * /*userdata*/);
+    static FMOD_RESULT F_CALL OpenCallback(const char *name, unsigned int *filesize, void **handle, void * /*userdata*/);
+    static FMOD_RESULT F_CALL CloseCallback(void *handle, void * /*userdata*/);
+    static FMOD_RESULT F_CALL ReadCallback(void *handle, void *buffer, unsigned int sizebytes, unsigned int *bytesread, void * /*userdata*/);
+    static FMOD_RESULT F_CALL SeekCallback(void *handle, unsigned int pos, void * /*userdata*/);
 
     static FMOD_RESULT OpenInternal(const char *name, unsigned int *filesize, void **handle);
     static FMOD_RESULT CloseInternal(void *handle);
@@ -221,7 +221,7 @@ private:
 
 static FFMODFileSystem gFileSystem;
 
-FMOD_RESULT F_CALLBACK FFMODFileSystem::OpenCallback(const char *name, unsigned int *filesize, void **handle, void * /*userdata*/)
+FMOD_RESULT F_CALL FFMODFileSystem::OpenCallback(const char *name, unsigned int *filesize, void **handle, void * /*userdata*/)
 {
     FScopeLock lock(&gFileSystem.mCrit);
     gFileSystem.mName = name;
@@ -249,7 +249,7 @@ FMOD_RESULT FFMODFileSystem::OpenInternal(const char *name, unsigned int *filesi
     return FMOD_OK;
 }
 
-FMOD_RESULT F_CALLBACK FFMODFileSystem::CloseCallback(void *handle, void * /*userdata*/)
+FMOD_RESULT F_CALL FFMODFileSystem::CloseCallback(void *handle, void * /*userdata*/)
 {
     FScopeLock lock(&gFileSystem.mCrit);
     gFileSystem.mHandleIn = handle;
@@ -271,7 +271,7 @@ FMOD_RESULT FFMODFileSystem::CloseInternal(void *handle)
     return FMOD_OK;
 }
 
-FMOD_RESULT F_CALLBACK FFMODFileSystem::ReadCallback(void *handle, void *buffer, unsigned int sizebytes, unsigned int *bytesread, void * /*userdata*/)
+FMOD_RESULT F_CALL FFMODFileSystem::ReadCallback(void *handle, void *buffer, unsigned int sizebytes, unsigned int *bytesread, void * /*userdata*/)
 {
     FScopeLock lock(&gFileSystem.mCrit);
     gFileSystem.mHandleIn = handle;
@@ -308,7 +308,7 @@ FMOD_RESULT FFMODFileSystem::ReadInternal(void *handle, void *buffer, unsigned i
     return FMOD_OK;
 }
 
-FMOD_RESULT F_CALLBACK FFMODFileSystem::SeekCallback(void *handle, unsigned int pos, void * /*userdata*/)
+FMOD_RESULT F_CALL FFMODFileSystem::SeekCallback(void *handle, unsigned int pos, void * /*userdata*/)
 {
     FScopeLock lock(&gFileSystem.mCrit);
     gFileSystem.mHandleIn = handle;

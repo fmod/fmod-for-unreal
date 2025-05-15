@@ -20,31 +20,32 @@
 #include "Sequencer/FMODEventParameterTrackEditor.h"
 #include "AssetTypeActions_FMODEvent.h"
 
-#include "AssetRegistryModule.h"
-#include "UnrealEd/Public/AssetSelection.h"
-#include "Slate/Public/Framework/Notifications/NotificationManager.h"
-#include "Slate/Public/Widgets/Notifications/SNotificationList.h"
+#include "Framework/Application/SlateApplication.h"
+#include "AssetRegistry/AssetRegistryModule.h"
+#include "AssetSelection.h"
+#include "Framework/Notifications/NotificationManager.h"
+#include "Widgets/Notifications/SNotificationList.h"
 #include "Developer/Settings/Public/ISettingsModule.h"
 #include "Developer/Settings/Public/ISettingsSection.h"
-#include "UnrealEd/Public/Editor.h"
+#include "Editor.h"
 #include "Slate/SceneViewport.h"
-#include "LevelEditor/Public/LevelEditor.h"
-#include "Sockets/Public/SocketSubsystem.h"
-#include "Sockets/Public/Sockets.h"
-#include "Sockets/Public/IPAddress.h"
-#include "UnrealEd/Public/FileHelpers.h"
-#include "Sequencer/Public/ISequencerModule.h"
-#include "Sequencer/Public/SequencerChannelInterface.h"
-#include "MovieSceneTools/Public/ClipboardTypes.h"
-#include "Engine/Public/DebugRenderSceneProxy.h"
-#include "Engine/Classes/Debug/DebugDrawService.h"
+#include "Editor/LevelEditor/Public/LevelEditor.h"
+#include "SocketSubsystem.h"
+#include "Sockets.h"
+#include "IPAddress.h"
+#include "FileHelpers.h"
+#include "ISequencerModule.h"
+#include "SequencerChannelInterface.h"
+#include "ClipboardTypes.h"
+#include "DebugRenderSceneProxy.h"
+#include "Debug/DebugDrawService.h"
 #include "Settings/ProjectPackagingSettings.h"
 #include "UnrealEdGlobals.h"
-#include "UnrealEd/Public/LevelEditorViewport.h"
+#include "LevelEditorViewport.h"
 #include "ActorFactories/ActorFactory.h"
 #include "Engine/Canvas.h"
 #include "Editor/UnrealEdEngine.h"
-#include "Slate/Public/Framework/MultiBox/MultiBoxBuilder.h"
+#include "Framework/MultiBox/MultiBoxBuilder.h"
 #include "Misc/MessageDialog.h"
 #include "HAL/FileManager.h"
 #include "Interfaces/IMainFrameModule.h"
@@ -241,7 +242,7 @@ public:
     FTickerDelegate OnTick;
 
     /** Handle for registered delegates. */
-    FDelegateHandle TickDelegateHandle;
+    FTSTicker::FDelegateHandle TickDelegateHandle;
     FDelegateHandle BeginPIEDelegateHandle;
     FDelegateHandle EndPIEDelegateHandle;
     FDelegateHandle PausePIEDelegateHandle;
@@ -333,7 +334,7 @@ void FFMODStudioEditorModule::OnPostEngineInit()
         {
             RegisterHelpMenuEntries();
             MainMenuExtender = MakeShareable(new FExtender);
-            MainMenuExtender->AddMenuExtension("FileLoadAndSave", EExtensionHook::After, NULL,
+            MainMenuExtender->AddMenuExtension("FileOpen", EExtensionHook::After, NULL,
                 FMenuExtensionDelegate::CreateRaw(this, &FFMODStudioEditorModule::AddFileMenuExtension));
             LevelEditor->GetMenuExtensibilityManager()->AddExtender(MainMenuExtender);
         }
@@ -357,7 +358,7 @@ void FFMODStudioEditorModule::OnPostEngineInit()
     ViewportDrawingDelegateHandle = UDebugDrawService::Register(TEXT("Editor"), ViewportDrawingDelegate);
 
     OnTick = FTickerDelegate::CreateRaw(this, &FFMODStudioEditorModule::Tick);
-    TickDelegateHandle = FTicker::GetCoreTicker().AddTicker(OnTick);
+    TickDelegateHandle = FTSTicker::GetCoreTicker().AddTicker(OnTick);
 
     // Create asset builder
     AssetBuilder.Create();
@@ -410,7 +411,7 @@ void FFMODStudioEditorModule::RegisterHelpMenuEntries()
         NAME_None,
         LOCTEXT("FMODHelpCHMTitle", "FMOD Documentation..."),
         LOCTEXT("FMODHelpCHMToolTip", "Opens the local FMOD documentation."),
-        FSlateIcon(FEditorStyle::GetStyleSetName(), "LevelEditor.BrowseAPIReference"),
+        FSlateIcon(FAppStyle::GetAppStyleSetName(), "LevelEditor.BrowseAPIReference"),
         FUIAction(FExecuteAction::CreateRaw(this, &FFMODStudioEditorModule::OpenIntegrationDocs))
     ));
 #endif
@@ -419,7 +420,7 @@ void FFMODStudioEditorModule::RegisterHelpMenuEntries()
         NAME_None,
         LOCTEXT("FMODHelpOnlineTitle", "FMOD Online Documentation..."),
         LOCTEXT("FMODHelpOnlineToolTip", "Go to the online FMOD documentation."),
-        FSlateIcon(FEditorStyle::GetStyleSetName(), "LevelEditor.BrowseDocumentation"),
+        FSlateIcon(FAppStyle::GetAppStyleSetName(), "LevelEditor.BrowseDocumentation"),
         FUIAction(FExecuteAction::CreateRaw(this, &FFMODStudioEditorModule::OpenAPIDocs))
     ));
 
@@ -427,7 +428,7 @@ void FFMODStudioEditorModule::RegisterHelpMenuEntries()
         NAME_None,
         LOCTEXT("FMODHelpVideosTitle", "FMOD Tutorial Videos..."),
         LOCTEXT("FMODHelpVideosToolTip", "Go to the online FMOD tutorial videos."),
-        FSlateIcon(FEditorStyle::GetStyleSetName(), "LevelEditor.Tutorials"),
+        FSlateIcon(FAppStyle::GetAppStyleSetName(), "LevelEditor.Tutorials"),
         FUIAction(FExecuteAction::CreateRaw(this, &FFMODStudioEditorModule::OpenVideoTutorials))
     ));
 
@@ -519,12 +520,12 @@ void FFMODStudioEditorModule::ShowVersion()
 
 void FFMODStudioEditorModule::OpenIntegrationDocs()
 {
-    FPlatformProcess::LaunchFileInDefaultExternalApplication(TEXT("https://fmod.com/docs/2.02/unreal"));
+    FPlatformProcess::LaunchFileInDefaultExternalApplication(TEXT("https://www.fmod.com/docs/unreal"));
 }
 
 void FFMODStudioEditorModule::OpenAPIDocs()
 {
-    FPlatformProcess::LaunchFileInDefaultExternalApplication(TEXT("https://fmod.com/docs/2.02/api"));
+    FPlatformProcess::LaunchFileInDefaultExternalApplication(TEXT("https://www.fmod.com/docs/api"));
 }
 
 void FFMODStudioEditorModule::OpenVideoTutorials()
@@ -837,6 +838,9 @@ void FFMODStudioEditorModule::ValidateFMOD()
     // Look for banks that may have failed to load
     if (bAnyBankFiles)
     {
+        if (!IFMODStudioModule::Get().AreAuditioningBanksLoaded()) {
+            IFMODStudioModule::Get().LoadAuditioningBanks();
+        }
         FMOD::Studio::System *StudioSystem = IFMODStudioModule::Get().GetStudioSystem(EFMODSystemContext::Auditioning);
         int BankCount = 0;
         StudioSystem->getBankCount(&BankCount);
@@ -966,7 +970,7 @@ void FFMODStudioEditorModule::ValidateFMOD()
                 PackagingSettings->DirectoriesToAlwaysStageAsNonUFS.Add(Settings.BankOutputDirectory);
             }
 
-            PackagingSettings->UpdateDefaultConfigFile();
+            PackagingSettings->TryUpdateDefaultConfigFile();
         }
     }
     else if (!bPackagingFound)
@@ -979,7 +983,7 @@ void FFMODStudioEditorModule::ValidateFMOD()
         if (EAppReturnType::Yes == FMessageDialog::Open(EAppMsgType::YesNo, message))
         {
             PackagingSettings->DirectoriesToAlwaysStageAsNonUFS.Add(Settings.BankOutputDirectory);
-            PackagingSettings->UpdateDefaultConfigFile();
+            PackagingSettings->TryUpdateDefaultConfigFile();
         }
     }
 
@@ -1007,7 +1011,7 @@ void FFMODStudioEditorModule::ValidateFMOD()
                 GeneratedDir.Path = Settings.GetFullContentPath() / folder;
                 PackagingSettings->DirectoriesToAlwaysCook.Add(GeneratedDir);
             }
-            PackagingSettings->UpdateDefaultConfigFile();
+            PackagingSettings->TryUpdateDefaultConfigFile();
         }
     }
 
@@ -1120,7 +1124,7 @@ void FFMODStudioEditorModule::EndPIE(bool simulating)
 
 void FFMODStudioEditorModule::PausePIE(bool simulating)
 {
-    UE_LOG(LogFMOD, Verbose, TEXT("FFMODStudioEditorModule PausePIE%d"));
+    UE_LOG(LogFMOD, Verbose, TEXT("FFMODStudioEditorModule PausePIE: %d"), simulating);
     IFMODStudioModule::Get().SetSystemPaused(true);
 }
 
@@ -1173,7 +1177,7 @@ void FFMODStudioEditorModule::ShutdownModule()
         BankUpdateNotifier.BanksUpdatedEvent.RemoveAll(this);
 
         // Unregister tick function.
-        FTicker::GetCoreTicker().RemoveTicker(TickDelegateHandle);
+        FTSTicker::GetCoreTicker().RemoveTicker(TickDelegateHandle);
 
         FEditorDelegates::BeginPIE.Remove(BeginPIEDelegateHandle);
         FEditorDelegates::EndPIE.Remove(EndPIEDelegateHandle);
@@ -1270,7 +1274,7 @@ void FFMODStudioEditorModule::ReloadBanks()
 void FFMODStudioEditorModule::ShowNotification(const FText &Text, SNotificationItem::ECompletionState State)
 {
     FNotificationInfo Info(Text);
-    Info.Image = FEditorStyle::GetBrush(TEXT("NoBrush"));
+    Info.Image = FAppStyle::GetBrush(TEXT("NoBrush"));
     Info.FadeInDuration = 0.1f;
     Info.FadeOutDuration = 0.5f;
     Info.ExpireDuration = State == SNotificationItem::CS_Fail ? 6.0f : 1.5f;

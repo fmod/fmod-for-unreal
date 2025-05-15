@@ -29,6 +29,7 @@ namespace UnrealBuildTool.Rules
                 {
                     "Core",
                     "CoreUObject",
+                    "DeveloperToolSettings",
                     "Engine",
                     "FMODStudio",
                     "InputCore",
@@ -51,6 +52,7 @@ namespace UnrealBuildTool.Rules
                     "MovieSceneTools",
                     "PropertyEditor",
                     "Settings",
+                    "SequencerCore",
                     "Slate",
                     "SlateCore",
                     "Sockets",

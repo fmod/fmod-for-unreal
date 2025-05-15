@@ -7,7 +7,7 @@
 #include "MovieSceneTimeHelpers.h"
 #include "MovieSceneToolHelpers.h"
 #include "ScopedTransaction.h"
-#include "EditorWidgets/Public/SEnumCombobox.h"
+#include "Editor/EditorWidgets/Public/SEnumCombo.h"
 #include "EditorStyleSet.h"
 #include "Channels/MovieSceneChannelTraits.h"
 
@@ -131,8 +131,7 @@ bool CanCreateKeyEditor(const FFMODEventControlChannel *Channel)
     return true;
 }
 
-TSharedRef<SWidget> CreateKeyEditor(const TMovieSceneChannelHandle<FFMODEventControlChannel> &Channel, UMovieSceneSection *Section,
-    const FGuid &InObjectBindingID, TWeakPtr<FTrackInstancePropertyBindings> PropertyBindings, TWeakPtr<ISequencer> InSequencer)
+TSharedRef<SWidget> CreateKeyEditor(const TMovieSceneChannelHandle<FFMODEventControlChannel> &Channel, const UE::Sequencer::FCreateKeyEditorParams& Params)
 {
     const FFMODEventControlChannel *RawChannel = Channel.Get();
 
@@ -142,7 +141,7 @@ TSharedRef<SWidget> CreateKeyEditor(const TMovieSceneChannelHandle<FFMODEventCon
     }
 
     UEnum *Enum = RawChannel->GetEnum();
-    return SNew(SFMODEventControlKeyEditor, Channel, Section, InSequencer, Enum);
+	return CreateKeyEditor(Channel.Cast<FFMODEventControlChannel>(), Params);
 }
 
 void DrawKeys(FFMODEventControlChannel *Channel, TArrayView<const FKeyHandle> InKeyHandles, const UMovieSceneSection* InOwner, TArrayView<FKeyDrawParams> OutKeyDrawParams)
@@ -151,9 +150,9 @@ void DrawKeys(FFMODEventControlChannel *Channel, TArrayView<const FKeyHandle> In
     static const FName KeyRightBrushName("Sequencer.KeyRight");
     static const FName KeyDiamondBrushName("Sequencer.KeyDiamond");
 
-    const FSlateBrush *LeftKeyBrush = FEditorStyle::GetBrush(KeyLeftBrushName);
-    const FSlateBrush *RightKeyBrush = FEditorStyle::GetBrush(KeyRightBrushName);
-    const FSlateBrush *DiamondBrush = FEditorStyle::GetBrush(KeyDiamondBrushName);
+    const FSlateBrush *LeftKeyBrush = FAppStyle::GetBrush(KeyLeftBrushName);
+    const FSlateBrush *RightKeyBrush = FAppStyle::GetBrush(KeyRightBrushName);
+    const FSlateBrush *DiamondBrush = FAppStyle::GetBrush(KeyDiamondBrushName);
 
     TMovieSceneChannelData<uint8> ChannelData = Channel->GetData();
 

@@ -532,7 +532,7 @@ void UFMODAudioComponent::Deactivate()
     Super::Deactivate();
 }
 
-FMOD_RESULT F_CALLBACK UFMODAudioComponent_EventCallback(FMOD_STUDIO_EVENT_CALLBACK_TYPE type, FMOD_STUDIO_EVENTINSTANCE *event, void *parameters)
+FMOD_RESULT F_CALL UFMODAudioComponent_EventCallback(FMOD_STUDIO_EVENT_CALLBACK_TYPE type, FMOD_STUDIO_EVENTINSTANCE *event, void *parameters)
 {
     UFMODAudioComponent *Component = nullptr;
     FMOD::Studio::EventInstance *Instance = (FMOD::Studio::EventInstance *)event;
@@ -572,7 +572,7 @@ void UFMODAudioComponent_ReleaseProgrammerSound(FMOD_STUDIO_PROGRAMMER_SOUND_PRO
     }
 }
 
-FMOD_RESULT F_CALLBACK UFMODAudioComponent_EventCallbackDestroyProgrammerSound(FMOD_STUDIO_EVENT_CALLBACK_TYPE type, FMOD_STUDIO_EVENTINSTANCE *event, void *parameters)
+FMOD_RESULT F_CALL UFMODAudioComponent_EventCallbackDestroyProgrammerSound(FMOD_STUDIO_EVENT_CALLBACK_TYPE type, FMOD_STUDIO_EVENTINSTANCE *event, void *parameters)
 {
     UFMODAudioComponent_ReleaseProgrammerSound((FMOD_STUDIO_PROGRAMMER_SOUND_PROPERTIES *)parameters);
     return FMOD_OK;
@@ -728,14 +728,15 @@ void UFMODAudioComponent::SetProgrammerSound(FMOD::Sound *Sound)
 
 void UFMODAudioComponent::Play()
 {
-    PlayInternal(EFMODSystemContext::Max);
+    PlayInternal(EFMODSystemContext::Runtime);
 }
 
 void UFMODAudioComponent::PlayInternal(EFMODSystemContext::Type Context, bool bReset)
 {
     Stop();
 
-    if (!FMODUtils::IsWorldAudible(GetWorld(), Context == EFMODSystemContext::Editor))
+    if (!FMODUtils::IsWorldAudible(GetWorld(), Context == EFMODSystemContext::Editor
+        || Context == EFMODSystemContext::Auditioning))
     {
         return;
     }

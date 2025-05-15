@@ -6,7 +6,7 @@
 /* constants / callbacks) to develop using the C++ language.                                */
 /*                                                                                          */
 /* For more detail visit:                                                                   */
-/* https://fmod.com/docs/2.02/api/studio-api.html                                           */
+/* https://fmod.com/docs/2.03/api/studio-api.html                                           */
 /* ======================================================================================== */
 #ifndef FMOD_STUDIO_HPP
 #define FMOD_STUDIO_HPP
@@ -194,6 +194,7 @@ namespace Studio
 
         // Property access
         FMOD_RESULT F_API getDescription(EventDescription **description) const;
+        FMOD_RESULT F_API getSystem(System **system) const;
 
         // Playback control
         FMOD_RESULT F_API getVolume(float *volume, float *finalvolume = 0) const;

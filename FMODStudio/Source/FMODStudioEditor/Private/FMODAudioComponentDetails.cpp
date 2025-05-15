@@ -1,15 +1,15 @@
 // Copyright (c), Firelight Technologies Pty, Ltd. 2012-2025.
 
 #include "FMODAudioComponentDetails.h"
-#include "Toolkits/AssetEditorManager.h"
+#include "Subsystems/AssetEditorSubsystem.h"
 #include "FMODAmbientSound.h"
 #include "FMODStudioModule.h"
 #include "FMODEvent.h"
 #include "fmod_studio.hpp"
-#include "UnrealEd/Public/Editor.h"
+#include "Editor.h"
 #include "Widgets/Input/SButton.h"
-#include "PropertyEditor/Public/DetailLayoutBuilder.h"
-#include "PropertyEditor/Public/DetailCategoryBuilder.h"
+#include "Editor/PropertyEditor/Public/DetailLayoutBuilder.h"
+#include "Editor/PropertyEditor/Public/DetailCategoryBuilder.h"
 
 #define LOCTEXT_NAMESPACE "FMODStudio"
 

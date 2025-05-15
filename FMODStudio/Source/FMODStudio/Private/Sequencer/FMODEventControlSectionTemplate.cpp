@@ -52,7 +52,7 @@ struct FPlayingToken : IMovieScenePreAnimatedToken
         }
     }
 
-    virtual void RestoreState(UObject &Object, const UE::MovieScene::FRestoreStateParams& Params) override
+    virtual void RestoreState(UObject &Object, const UE::MovieScene::FRestoreStateParams &Params) override
     {
         UFMODAudioComponent *AudioComponent = CastChecked<UFMODAudioComponent>(&Object);
 
@@ -175,6 +175,12 @@ void FFMODEventControlSectionTemplate::Setup(FPersistentEvaluationData &Persiste
     {
         RuntimeSequenceSetup = true;
     }
+#if WITH_EDITOR
+    if (!RuntimeSequenceSetup)
+    {
+        IFMODStudioModule::Get().LoadEditorBanks();
+    }
+#endif
 }
 
 void FFMODEventControlSectionTemplate::TearDown(FPersistentEvaluationData &PersistentData, IMovieScenePlayer &Player) const
@@ -183,6 +189,12 @@ void FFMODEventControlSectionTemplate::TearDown(FPersistentEvaluationData &Persi
     {
         RuntimeSequenceSetup = false;
     }
+#if WITH_EDITOR
+    if (!RuntimeSequenceSetup)
+    {
+        IFMODStudioModule::Get().UnloadEditorBanks();
+    }
+#endif
 }
 
 void FFMODEventControlSectionTemplate::Evaluate(const FMovieSceneEvaluationOperand &Operand, const FMovieSceneContext &Context,

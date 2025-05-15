@@ -6,7 +6,7 @@
 /* callbacks) to develop using the C interface                                              */
 /*                                                                                          */
 /* For more detail visit:                                                                   */
-/* https://fmod.com/docs/2.02/api/core-api.html                                             */
+/* https://fmod.com/docs/2.03/api/core-api.html                                             */
 /* ======================================================================================== */
 
 #ifndef _FMOD_H
@@ -98,7 +98,7 @@ FMOD_RESULT F_API FMOD_System_GetDefaultMixMatrix       (FMOD_SYSTEM *system, FM
 FMOD_RESULT F_API FMOD_System_GetSpeakerModeChannels    (FMOD_SYSTEM *system, FMOD_SPEAKERMODE mode, int *channels);
 
 /* System information functions. */
-FMOD_RESULT F_API FMOD_System_GetVersion                (FMOD_SYSTEM *system, unsigned int *version);
+FMOD_RESULT F_API FMOD_System_GetVersion                (FMOD_SYSTEM *system, unsigned int *version, unsigned int *buildnumber);
 FMOD_RESULT F_API FMOD_System_GetOutputHandle           (FMOD_SYSTEM *system, void **handle);
 FMOD_RESULT F_API FMOD_System_GetChannelsPlaying        (FMOD_SYSTEM *system, int *channels, int *realchannels);
 FMOD_RESULT F_API FMOD_System_GetCPUUsage               (FMOD_SYSTEM *system, FMOD_CPU_USAGE *usage);

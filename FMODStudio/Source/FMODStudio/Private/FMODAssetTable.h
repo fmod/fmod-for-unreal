@@ -16,6 +16,10 @@ public:
 
     //~ FGCObject
     void AddReferencedObjects(FReferenceCollector& Collector) override;
+    virtual FString GetReferencerName() const override
+    {
+        return TEXT("FFMODAssetTable");
+    }
 
     void Load();
 
@@ -38,6 +42,6 @@ private:
     FString GetLocalizedBankPath(const UDataTable* BankTable) const;
 
     FString ActiveLocale;
-    UFMODBankLookup *BankLookup;
-    UDataTable *AssetLookup;
+    TObjectPtr<UFMODBankLookup> BankLookup;
+    TObjectPtr<UDataTable> AssetLookup;
 };

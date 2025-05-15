@@ -76,17 +76,10 @@ class UFMODAudioComponent *UFMODBlueprintStatics::PlayEventAttached(class UFMODE
         return nullptr;
     }
 
-    UWorld* const ThisWorld = AttachToComponent->GetWorld();
-    if (ThisWorld && ThisWorld->IsNetMode(NM_DedicatedServer))
-    {
-        // FAudioDevice::CreateComponent will fail to create the AudioComponent in a real dedicated server, but we need to check netmode here for Editor support.
-        return nullptr;
-    }
-
     AActor *Actor = AttachToComponent->GetOwner();
 
     // Avoid creating component if we're trying to play a sound on an already destroyed actor.
-    if (Actor && Actor->IsPendingKill())
+    if (!IsValid(Actor))
     {
         return nullptr;
     }
@@ -95,12 +88,12 @@ class UFMODAudioComponent *UFMODBlueprintStatics::PlayEventAttached(class UFMODE
     if (Actor)
     {
         // Use actor as outer if we have one.
-        AudioComponent = NewObject<UFMODAudioComponent>(Actor, UFMODAudioComponent::StaticClass());
+        AudioComponent = NewObject<UFMODAudioComponent>(Actor);
     }
     else
     {
         // Let engine pick the outer (transient package).
-        AudioComponent = NewObject<UFMODAudioComponent>(UFMODAudioComponent::StaticClass());
+        AudioComponent = NewObject<UFMODAudioComponent>();
     }
     check(AudioComponent);
     AudioComponent->Event = Event;
@@ -110,7 +103,7 @@ class UFMODAudioComponent *UFMODBlueprintStatics::PlayEventAttached(class UFMODE
 #if WITH_EDITORONLY_DATA
     AudioComponent->bVisualizeComponent = false;
 #endif
-    AudioComponent->RegisterComponentWithWorld(ThisWorld);
+    AudioComponent->RegisterComponentWithWorld(AttachToComponent->GetWorld());
 
     AudioComponent->AttachToComponent(AttachToComponent, FAttachmentTransformRules::KeepRelativeTransform, AttachPointName);
     if (LocationType == EAttachLocation::KeepWorldPosition)
@@ -266,10 +259,10 @@ TArray<FFMODEventInstance> UFMODBlueprintStatics::FindEventInstances(UObject *Wo
             if (Capacity > 0)
             {
                 TArray<FMOD::Studio::EventInstance *> InstancePointers;
-                InstancePointers.SetNum(Capacity, true);
+                InstancePointers.SetNum(Capacity, EAllowShrinking::Yes);
                 int Count = 0;
                 EventDesc->getInstanceList(InstancePointers.GetData(), Capacity, &Count);
-                Instances.SetNum(Count, true);
+                Instances.SetNum(Count, EAllowShrinking::Yes);
                 for (int i = 0; i < Count; ++i)
                 {
                     Instances[i].Instance = InstancePointers[i];
@@ -489,7 +482,7 @@ void UFMODBlueprintStatics::EventInstanceSetProperty(FFMODEventInstance EventIns
 
         if (Result != FMOD_OK)
         {
-            UE_LOG(LogFMOD, Warning, TEXT("Failed to set event instance property type %d to value %f (%s)"), (int)Property, Value,
+            UE_LOG(LogFMOD, Warning, TEXT("Failed to set event instance property type %d to value %f (%hs)"), (int)Property, Value,
                 FMOD_ErrorString(Result));
         }
     }

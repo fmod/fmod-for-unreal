@@ -140,7 +140,7 @@ class FMODSTUDIO_API UFMODAudioComponent : public USceneComponent
 
     friend struct FFMODEventControlExecutionToken;
     friend struct FPlayingToken;
-    friend FMOD_RESULT F_CALLBACK UFMODAudioComponent_EventCallback(FMOD_STUDIO_EVENT_CALLBACK_TYPE type, FMOD_STUDIO_EVENTINSTANCE *event, void *parameters);
+    friend FMOD_RESULT F_CALL UFMODAudioComponent_EventCallback(FMOD_STUDIO_EVENT_CALLBACK_TYPE type, FMOD_STUDIO_EVENTINSTANCE *event, void *parameters);
 
 public:
     /** The event asset to use for this sound. */
@@ -450,7 +450,7 @@ private:
     /** The length of the current Event in milliseconds. */
     int32 EventLength;
 
-    /** Used by FPlayingToken to prevent restarting from delayed sequencer state restore. */
+    /** To prevent restarting by delayed state restore from sequencer. */
     bool bPlayEnded;
 
     FVector Velocity;

@@ -5,7 +5,7 @@
 /* This header is included by fmod.hpp (C++ interface) and fmod.h (C interface)             */
 /*                                                                                          */
 /* For more detail visit:                                                                   */
-/* https://fmod.com/docs/2.02/api/core-api-common.html                                      */
+/* https://fmod.com/docs/2.03/api/core-api-common.html                                      */
 /* ======================================================================================== */
 #ifndef _FMOD_COMMON_H
 #define _FMOD_COMMON_H
@@ -33,8 +33,6 @@
     #define F_API F_CALL
 #endif
 
-#define F_CALLBACK F_CALL
-
 /*
     FMOD core types
 */
@@ -56,7 +54,8 @@ typedef struct FMOD_ASYNCREADINFO  FMOD_ASYNCREADINFO;
 /*
     FMOD constants
 */
-#define FMOD_VERSION    0x00020228                     /* 0xaaaabbcc -> aaaa = product version, bb = major version, cc = minor version.*/
+#define FMOD_VERSION    0x00020307                     /* 0xaaaabbcc -> aaaa = product version, bb = major version, cc = minor version.*/
+#define FMOD_BUILDNUMBER 150747
 
 typedef unsigned int FMOD_DEBUG_FLAGS;
 #define FMOD_DEBUG_LEVEL_NONE                       0x00000000
@@ -120,15 +119,14 @@ typedef unsigned int FMOD_SYSTEM_CALLBACK_TYPE;
 #define FMOD_SYSTEM_CALLBACK_PREMIX                 0x00000020
 #define FMOD_SYSTEM_CALLBACK_POSTMIX                0x00000040
 #define FMOD_SYSTEM_CALLBACK_ERROR                  0x00000080
-#define FMOD_SYSTEM_CALLBACK_MIDMIX                 0x00000100
-#define FMOD_SYSTEM_CALLBACK_THREADDESTROYED        0x00000200
-#define FMOD_SYSTEM_CALLBACK_PREUPDATE              0x00000400
-#define FMOD_SYSTEM_CALLBACK_POSTUPDATE             0x00000800
-#define FMOD_SYSTEM_CALLBACK_RECORDLISTCHANGED      0x00001000
-#define FMOD_SYSTEM_CALLBACK_BUFFEREDNOMIX          0x00002000
-#define FMOD_SYSTEM_CALLBACK_DEVICEREINITIALIZE     0x00004000
-#define FMOD_SYSTEM_CALLBACK_OUTPUTUNDERRUN         0x00008000
-#define FMOD_SYSTEM_CALLBACK_RECORDPOSITIONCHANGED  0x00010000
+#define FMOD_SYSTEM_CALLBACK_THREADDESTROYED        0x00000100
+#define FMOD_SYSTEM_CALLBACK_PREUPDATE              0x00000200
+#define FMOD_SYSTEM_CALLBACK_POSTUPDATE             0x00000400
+#define FMOD_SYSTEM_CALLBACK_RECORDLISTCHANGED      0x00000800
+#define FMOD_SYSTEM_CALLBACK_BUFFEREDNOMIX          0x00001000
+#define FMOD_SYSTEM_CALLBACK_DEVICEREINITIALIZE     0x00002000
+#define FMOD_SYSTEM_CALLBACK_OUTPUTUNDERRUN         0x00004000
+#define FMOD_SYSTEM_CALLBACK_RECORDPOSITIONCHANGED  0x00008000
 #define FMOD_SYSTEM_CALLBACK_ALL                    0xFFFFFFFF
 
 typedef unsigned int FMOD_MODE;
@@ -184,7 +182,6 @@ typedef unsigned int FMOD_CHANNELMASK;
 
 typedef unsigned long long FMOD_PORT_INDEX;
 #define FMOD_PORT_INDEX_NONE                        0xFFFFFFFFFFFFFFFF
-#define FMOD_PORT_INDEX_FLAG_VR_CONTROLLER          0x1000000000000000
 
 typedef int FMOD_THREAD_PRIORITY;
 /* Platform specific priority range */
@@ -701,6 +698,8 @@ typedef enum FMOD_PORT_TYPE
     FMOD_PORT_TYPE_PERSONAL,
     FMOD_PORT_TYPE_VIBRATION,
     FMOD_PORT_TYPE_AUX,
+    FMOD_PORT_TYPE_PASSTHROUGH,
+    FMOD_PORT_TYPE_VR_VIBRATION,
 
     FMOD_PORT_TYPE_MAX,
     FMOD_PORT_TYPE_FORCEINT = 65536
@@ -781,7 +780,7 @@ typedef struct FMOD_ADVANCEDSETTINGS
     int                 maxVorbisCodecs;
     int                 maxAT9Codecs;
     int                 maxFADPCMCodecs;
-    int                 maxPCMCodecs;
+    int                 maxOpusCodecs;
     int                 ASIONumChannels;
     char              **ASIOChannelList;
     FMOD_SPEAKER       *ASIOSpeakerList;
@@ -795,7 +794,6 @@ typedef struct FMOD_ADVANCEDSETTINGS
     FMOD_DSP_RESAMPLER  resamplerMethod;
     unsigned int        randomSeed;
     int                 maxConvolutionThreads;
-    int                 maxOpusCodecs;
     int                 maxSpatialObjects;
 } FMOD_ADVANCEDSETTINGS;
 

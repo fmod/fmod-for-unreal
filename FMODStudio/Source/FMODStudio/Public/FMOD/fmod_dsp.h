@@ -7,7 +7,7 @@
 /* register and use.  See the documentation and examples on how to make a working plugin.   */
 /*                                                                                          */
 /* For more detail visit:                                                                   */
-/* https://fmod.com/docs/2.02/api/plugin-api-dsp.html                                       */
+/* https://fmod.com/docs/2.03/api/plugin-api-dsp.html                                       */
 /* =========================================================================================*/
 #ifndef _FMOD_DSP_H
 #define _FMOD_DSP_H
@@ -67,6 +67,7 @@ typedef enum
     FMOD_DSP_PARAMETER_DATA_TYPE_FFT = -4,
     FMOD_DSP_PARAMETER_DATA_TYPE_3DATTRIBUTES_MULTI = -5,
     FMOD_DSP_PARAMETER_DATA_TYPE_ATTENUATION_RANGE = -6,
+    FMOD_DSP_PARAMETER_DATA_TYPE_DYNAMIC_RESPONSE = -7,
 } FMOD_DSP_PARAMETER_DATA_TYPE;
 
 /*
@@ -225,6 +226,12 @@ typedef struct FMOD_DSP_PARAMETER_FFT
     int     numchannels;
     float  *spectrum[32];
 } FMOD_DSP_PARAMETER_FFT;
+
+typedef struct FMOD_DSP_PARAMETER_DYNAMIC_RESPONSE
+{
+    int     numchannels;
+    float   rms[32];
+} FMOD_DSP_PARAMETER_DYNAMIC_RESPONSE;
 
 typedef struct FMOD_DSP_DESCRIPTION
 {
@@ -387,7 +394,7 @@ typedef struct FMOD_DSP_METERING_INFO
 #define FMOD_DSP_FREE(_state, _ptr) \
     (_state)->functions->free(_ptr, FMOD_MEMORY_NORMAL, __FILE__)
 #define FMOD_DSP_LOG(_state, _level, _location, _format, ...) \
-    (_state)->functions->log(_level, __FILE__, __LINE__, _location, _format, __VA_ARGS__)
+    (_state)->functions->log(_level, __FILE__, __LINE__, _location, _format, ##__VA_ARGS__)
 #define FMOD_DSP_GETSAMPLERATE(_state, _rate) \
     (_state)->functions->getsamplerate(_state, _rate)
 #define FMOD_DSP_GETBLOCKSIZE(_state, _blocksize) \

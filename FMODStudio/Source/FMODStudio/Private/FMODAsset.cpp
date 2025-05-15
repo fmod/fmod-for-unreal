@@ -16,9 +16,9 @@ bool UFMODAsset::IsAsset() const
 }
 
 /** Get tags to show in content view */
-void UFMODAsset::GetAssetRegistryTags(TArray<FAssetRegistryTag> &OutTags) const
+void UFMODAsset::GetAssetRegistryTags(FAssetRegistryTagsContext Context) const
 {
-    Super::GetAssetRegistryTags(OutTags);
-    OutTags.Add(
+    Super::GetAssetRegistryTags(Context);
+    Context.AddTag(
         UObject::FAssetRegistryTag("Guid", AssetGuid.ToString(EGuidFormats::DigitsWithHyphensInBraces), UObject::FAssetRegistryTag::TT_Alphabetical));
 }
