@@ -838,6 +838,9 @@ void FFMODStudioEditorModule::ValidateFMOD()
     // Look for banks that may have failed to load
     if (bAnyBankFiles)
     {
+        if (!IFMODStudioModule::Get().AreAuditioningBanksLoaded()) {
+            IFMODStudioModule::Get().LoadAuditioningBanks();
+        }
         FMOD::Studio::System *StudioSystem = IFMODStudioModule::Get().GetStudioSystem(EFMODSystemContext::Auditioning);
         int BankCount = 0;
         StudioSystem->getBankCount(&BankCount);
