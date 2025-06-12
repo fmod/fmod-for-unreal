@@ -728,7 +728,7 @@ void UFMODAudioComponent::SetProgrammerSound(FMOD::Sound *Sound)
 
 void UFMODAudioComponent::Play()
 {
-    PlayInternal(EFMODSystemContext::Max);
+    PlayInternal(EFMODSystemContext::Runtime);
 }
 
 void UFMODAudioComponent::PlayInternal(EFMODSystemContext::Type Context, bool bReset)
