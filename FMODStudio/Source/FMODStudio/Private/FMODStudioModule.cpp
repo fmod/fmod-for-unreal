@@ -208,6 +208,9 @@ public:
     void ReloadBanks();
     void LoadEditorBanks();
     void UnloadEditorBanks();
+    bool AreAuditioningBanksLoaded();
+    void LoadAuditioningBanks();
+    void UnloadAuditioningBanks();
 #endif
 
     void CreateStudioSystem(EFMODSystemContext::Type Type);
@@ -1109,6 +1112,7 @@ void FFMODStudioModule::SetInPIE(bool bInPIE, bool simulating)
                 AuditioningInstance = nullptr;
             }
             // Also make sure banks are finishing loading so they aren't grabbing file handles.
+            UnloadBanks(EFMODSystemContext::Auditioning);
             StudioSystem[EFMODSystemContext::Auditioning]->flushCommands();
         }
 
@@ -1509,6 +1513,21 @@ void FFMODStudioModule::UnloadEditorBanks()
 {
     UnloadBanks(EFMODSystemContext::Editor);
 }
+
+bool FFMODStudioModule::AreAuditioningBanksLoaded()
+{
+    return bBanksLoaded[EFMODSystemContext::Auditioning];
+}
+
+void FFMODStudioModule::LoadAuditioningBanks()
+{
+    LoadBanks(EFMODSystemContext::Auditioning);
+}
+
+void FFMODStudioModule::UnloadAuditioningBanks()
+{
+    UnloadBanks(EFMODSystemContext::Auditioning);
+}
 #endif
 
 FMOD::Studio::System *FFMODStudioModule::GetStudioSystem(EFMODSystemContext::Type Context)
@@ -1526,6 +1545,13 @@ FMOD::Studio::EventDescription *FFMODStudioModule::GetEventDescription(const UFM
     {
         Context = (bIsInPIE ? EFMODSystemContext::Runtime : EFMODSystemContext::Auditioning);
     }
+    if (Context == EFMODSystemContext::Auditioning)
+    {
+        if (!bBanksLoaded[EFMODSystemContext::Auditioning])
+        {
+            LoadBanks(EFMODSystemContext::Auditioning);
+        }
+    }
     if (StudioSystem[Context] != nullptr && IsValid(Event) && Event->AssetGuid.IsValid())
     {
         FMOD::Studio::ID Guid = FMODUtils::ConvertGuid(Event->AssetGuid);
@@ -1539,6 +1565,10 @@ FMOD::Studio::EventDescription *FFMODStudioModule::GetEventDescription(const UFM
 FMOD::Studio::EventInstance *FFMODStudioModule::CreateAuditioningInstance(const UFMODEvent *Event)
 {
     StopAuditioningInstance();
+    if (!bBanksLoaded[EFMODSystemContext::Auditioning])
+    {
+        LoadBanks(EFMODSystemContext::Auditioning);
+    }
     if (IsValid(Event))
     {
         FMOD::Studio::EventDescription *EventDesc = GetEventDescription(Event, EFMODSystemContext::Auditioning);
