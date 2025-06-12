@@ -178,5 +178,14 @@ public:
 
     /** Unload Editor banks. */
     virtual void UnloadEditorBanks() = 0;
+
+    /** Check whether Auditioning banks are loaded. */
+    virtual bool AreAuditioningBanksLoaded() = 0;
+
+    /** Load Auditioning banks. */
+    virtual void LoadAuditioningBanks() = 0;
+
+    /** Unload Auditioning banks. */
+    virtual void UnloadAuditioningBanks() = 0;
 #endif
 };
