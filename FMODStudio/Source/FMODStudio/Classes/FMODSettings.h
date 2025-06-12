@@ -87,7 +87,8 @@ namespace EFMODPlatforms
         Switch,
         XboxOne,
         XSX,
-        Editor
+        Editor,
+        Reserved1,
     };
 }
 
