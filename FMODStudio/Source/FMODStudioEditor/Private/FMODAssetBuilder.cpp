@@ -191,10 +191,11 @@ void FFMODAssetBuilder::BuildAssets(const UFMODSettings& InSettings, const FStri
                         AssetsToDelete.Add(Asset);
                     }
 
-                    AssetLookup->RemoveRow(Entry.Key);
+                    // Removed to avoid crash in UE5.6.0
+                    //AssetLookup->RemoveRow(Entry.Key);
                 }
 
-                bAssetLookupModified = true;
+                //bAssetLookupModified = true;
             }
 
             if (bAssetLookupCreated || bAssetLookupModified)
@@ -356,12 +357,13 @@ void FFMODAssetBuilder::BuildBankLookup(const FString &AssetName, const FString 
     // Remove stale banks from lookup
     if (StaleBanks.Num() > 0)
     {
+        /* // Removed to avoid crash in UE5.6.0
         for (const auto& RowName : StaleBanks)
         {
             BankLookup->DataTable->RemoveRow(RowName);
         }
-
         bModified = true;
+        */
     }
 
     // Remove stale localized bank entries from lookup
@@ -380,11 +382,13 @@ void FFMODAssetBuilder::BuildBankLookup(const FString &AssetName, const FString 
                 RowsToRemove.Add(innerrowname);
             }
         }
+        /* // Removed to avoid crash in UE5.6.0
         for (auto& rowname : RowsToRemove)
         {
             outerrow->Banks->RemoveRow(rowname);
             bModified = true;
         }
+        */
     }
 
     if (bCreated)

@@ -101,8 +101,6 @@ namespace UnrealBuildTool.Rules
                 {
                     linkExtension = dllExtension = ".dylib";
                     libPrefix = "lib";
-
-                    libPath = System.IO.Path.Combine(ModuleDirectory, "../../Libs/Mac/");
                 }
                 else if (Target.Platform == UnrealTargetPlatform.Android)
                 {

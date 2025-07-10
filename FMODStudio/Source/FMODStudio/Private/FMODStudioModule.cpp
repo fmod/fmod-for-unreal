@@ -738,7 +738,8 @@ void FFMODStudioModule::CreateStudioSystem(EFMODSystemContext::Type Type)
 
     if (!Settings.StudioBankKey.IsEmpty())
     {
-        advStudioSettings.encryptionkey = TCHAR_TO_UTF8(*Settings.StudioBankKey);
+        auto conv = StringCast<TCHAR>(*Settings.StudioBankKey);
+        advStudioSettings.encryptionkey = (const char*)conv.Get();
     }
 
     verifyfmod(StudioSystem[Type]->setAdvancedSettings(&advStudioSettings));
@@ -810,6 +811,59 @@ void FFMODStudioModule::DestroyStudioSystem(EFMODSystemContext::Type Type)
 
 void FFMODStudioModule::UnloadBanks(EFMODSystemContext::Type Type)
 {
+#if WITH_EDITOR
+    // Unload all events and banks to remove warning spam when using split banks
+    if (StudioSystem[Type] && bLoadAllSampleData)
+    {
+        int bankCount;
+        verifyfmod(StudioSystem[Type]->getBankCount(&bankCount));
+        if (bankCount > 0)
+        {
+            TArray<FMOD::Studio::Bank*> bankArray;
+            TArray<FMOD::Studio::EventDescription*> eventArray;
+            TArray<FMOD::Studio::EventInstance*> instanceArray;
+
+            bankArray.SetNumUninitialized(bankCount, EAllowShrinking::No);
+            verifyfmod(StudioSystem[Type]->getBankList(bankArray.GetData(), bankCount, &bankCount));
+            for (int i = 0; i < bankCount; i++)
+            {
+                int eventCount;
+                verifyfmod(bankArray[i]->getEventCount(&eventCount));
+                if (eventCount > 0)
+                {
+                    eventArray.SetNumUninitialized(eventCount, EAllowShrinking::No);
+                    verifyfmod(bankArray[i]->getEventList(eventArray.GetData(), eventCount, &eventCount));
+                    for (int j = 0; j < eventCount; j++)
+                    {
+                        int instanceCount;
+                        verifyfmod(eventArray[j]->getInstanceCount(&instanceCount));
+                        if (instanceCount > 0)
+                        {
+                            instanceArray.SetNumUninitialized(instanceCount, EAllowShrinking::No);
+                            verifyfmod(eventArray[j]->getInstanceList(instanceArray.GetData(), instanceCount, &instanceCount));
+                            for (int k = 0; k < instanceCount; k++)
+                            {
+                                verifyfmod(instanceArray[k]->stop(FMOD_STUDIO_STOP_IMMEDIATE));
+                                verifyfmod(instanceArray[k]->release());
+                            }
+                        }
+                    }
+                }
+            }
+
+            for (int i = 0; i < bankCount; i++)
+            {
+                FMOD_STUDIO_LOADING_STATE state;
+                bankArray[i]->getSampleLoadingState(&state);
+                if (state == FMOD_STUDIO_LOADING_STATE_LOADED)
+                {
+                    verifyfmod(bankArray[i]->unloadSampleData());
+                }
+            }
+        }
+    }
+#endif
+
     if (StudioSystem[Type])
     {
         verifyfmod(StudioSystem[Type]->unloadAll());

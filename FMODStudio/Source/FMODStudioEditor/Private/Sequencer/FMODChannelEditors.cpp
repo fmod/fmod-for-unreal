@@ -141,7 +141,7 @@ TSharedRef<SWidget> CreateKeyEditor(const TMovieSceneChannelHandle<FFMODEventCon
     }
 
     UEnum *Enum = RawChannel->GetEnum();
-	return CreateKeyEditor(Channel.Cast<FFMODEventControlChannel>(), Params);
+	return SNew(SFMODEventControlKeyEditor, Channel, TWeakObjectPtr(Params.OwningSection), Params.Sequencer.ToWeakPtr(), Enum);
 }
 
 void DrawKeys(FFMODEventControlChannel *Channel, TArrayView<const FKeyHandle> InKeyHandles, const UMovieSceneSection* InOwner, TArrayView<FKeyDrawParams> OutKeyDrawParams)
