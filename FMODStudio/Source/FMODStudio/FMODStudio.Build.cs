@@ -19,6 +19,7 @@ namespace UnrealBuildTool.Rules
         protected virtual bool ConsoleDelayLoad             { get { return false; } }
         protected virtual bool LinkDebugFiles               { get { return false; } }
         protected virtual bool CopyLibs                     { get { return false; } }
+        protected virtual bool ImportLibraries              { get { return false; } }
 
         public FMODStudio(ReadOnlyTargetRules Target) : base(Target)
         {
@@ -78,10 +79,12 @@ namespace UnrealBuildTool.Rules
 
             string linkExtension = "";
             string dllExtension = "";
+            string staticLibExtension = "";
             string libPrefix = "";
             string libPath = FMODLibDir;
 
             bool bAddRuntimeDependencies = true;
+            bool bImportLibraries = ImportLibraries;
             bool bAddDelayLoad = false;
             bool bLinkDebugFiles = false;
 
@@ -114,13 +117,17 @@ namespace UnrealBuildTool.Rules
                 {
                     linkExtension = "_iphoneos.a";
                     libPrefix = "lib";
+                    staticLibExtension = ".a";
                     bAddRuntimeDependencies = false;
+                    bImportLibraries = true;
                 }
                 else if (Target.Platform == UnrealTargetPlatform.TVOS)
                 {
                     linkExtension = "_appletvos.a";
                     libPrefix = "lib";
+                    staticLibExtension = ".a";
                     bAddRuntimeDependencies = false;
+                    bImportLibraries = true;
                 }
                 else if (Target.Platform == UnrealTargetPlatform.Linux)
                 {
@@ -133,6 +140,7 @@ namespace UnrealBuildTool.Rules
             else
             {
                 linkExtension = ConsoleLinkExt;
+                staticLibExtension = ConsoleLinkExt;
                 dllExtension = ConsoleDllExt;
                 libPrefix = ConsoleLibPrefix;
 
@@ -194,6 +202,16 @@ namespace UnrealBuildTool.Rules
                     string pluginPath = System.IO.Path.Combine(libPath, plugin + dllExtension);
                     System.Console.WriteLine("Adding reference to FMOD plugin: " + pluginPath);
                     RuntimeDependencies.Add(pluginPath);
+                }
+            }
+
+            if (bImportLibraries)
+            {
+                foreach (string plugin in plugins)
+                {
+                    string pluginPath = System.IO.Path.Combine(libPath, plugin + staticLibExtension);
+                    System.Console.WriteLine("Adding reference to FMOD plugin: " + pluginPath);
+                    PublicAdditionalLibraries.Add(pluginPath);
                 }
             }
 

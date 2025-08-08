@@ -139,6 +139,7 @@ class FMODSTUDIO_API UFMODAudioComponent : public USceneComponent
     GENERATED_UCLASS_BODY()
 
     friend struct FFMODEventControlExecutionToken;
+    friend class UFMODBlueprintStatics;
     friend struct FPlayingToken;
     friend FMOD_RESULT F_CALL UFMODAudioComponent_EventCallback(FMOD_STUDIO_EVENT_CALLBACK_TYPE type, FMOD_STUDIO_EVENTINSTANCE *event, void *parameters);
 
