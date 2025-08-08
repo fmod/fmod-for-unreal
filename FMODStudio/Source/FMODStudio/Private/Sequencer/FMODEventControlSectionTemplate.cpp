@@ -207,25 +207,16 @@ void FFMODEventControlSectionTemplate::Evaluate(const FMovieSceneEvaluationOpera
         return;
     }
 
-    const bool bPlaying = Context.IsSilent() == false && Context.GetDirection() == EPlayDirection::Forwards &&
-                          Context.GetRange().Size<FFrameTime>() >= FFrameTime(0) && Context.GetStatus() == EMovieScenePlayerStatus::Playing;
+    TRange<FFrameNumber> PlaybackRange = Context.GetFrameNumberRange();
+    TMovieSceneChannelData<const uint8> ChannelData = ControlKeys.GetData();
 
-    if (!bPlaying && IsEditorSequence && !RuntimeSequenceSetup)
+    bool bScrubbed = PlaybackRange.GetUpperBoundValue() - PlaybackRange.GetLowerBoundValue() == 1;
+    if (bScrubbed)
     {
-        if (Context.GetStatus() == EMovieScenePlayerStatus::Paused)
-        {
-            ExecutionTokens.Add(FFMODEventControlExecutionToken(EventControlKeyInternal::Pause, FFrameTime(0)));
-        }
-        else
-        {
-            ExecutionTokens.Add(FFMODEventControlExecutionToken(EventControlKeyInternal::Stop, FFrameTime(0)));
-        }
+        ExecutionTokens.Add(FFMODEventControlExecutionToken(EventControlKeyInternal::Stop, FFrameTime(0)));
     }
     else
     {
-        TRange<FFrameNumber> PlaybackRange = Context.GetFrameNumberRange();
-        TMovieSceneChannelData<const uint8> ChannelData = ControlKeys.GetData();
-
         // Find the index of the key handle that exists before this time
         TArrayView<const FFrameNumber> Times = ChannelData.GetTimes();
         TArrayView<const uint8> Values = ChannelData.GetValues();
@@ -236,15 +227,15 @@ void FFMODEventControlSectionTemplate::Evaluate(const FMovieSceneEvaluationOpera
             FFMODEventControlExecutionToken NewToken(MapControlKey((EFMODEventControlKey)Values[LastKeyIndex]), Times[LastKeyIndex]);
             ExecutionTokens.Add(MoveTemp(NewToken));
         }
-    }
 
-    // Handle direct pause/unpause calls on sequence
-    if (Context.GetStatus() == EMovieScenePlayerStatus::Stopped)
-    {
-        ExecutionTokens.Add(FFMODEventControlExecutionToken(EventControlKeyInternal::SequencePause, FFrameTime(0)));
-    }
-    else
-    {
-        ExecutionTokens.Add(FFMODEventControlExecutionToken(EventControlKeyInternal::SequenceResume, FFrameTime(0)));
+        // Handle direct pause/unpause calls on sequence
+        if (Context.GetStatus() == EMovieScenePlayerStatus::Stopped)
+        {
+            ExecutionTokens.Add(FFMODEventControlExecutionToken(EventControlKeyInternal::SequencePause, FFrameTime(0)));
+        }
+        else
+        {
+            ExecutionTokens.Add(FFMODEventControlExecutionToken(EventControlKeyInternal::SequenceResume, FFrameTime(0)));
+        }
     }
 }
