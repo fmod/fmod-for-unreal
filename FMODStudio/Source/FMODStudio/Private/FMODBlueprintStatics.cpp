@@ -117,7 +117,9 @@ class UFMODAudioComponent *UFMODBlueprintStatics::PlayEventAttached(class UFMODE
 
     if (bAutoPlay)
     {
-        AudioComponent->Play();
+        EFMODSystemContext::Type SystemContext =
+            (GWorld && GWorld->WorldType == EWorldType::Editor) ? EFMODSystemContext::Auditioning : EFMODSystemContext::Runtime;
+        AudioComponent->PlayInternal(SystemContext);
     }
     return AudioComponent;
 }

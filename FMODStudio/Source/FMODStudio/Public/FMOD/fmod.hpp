@@ -131,6 +131,7 @@ namespace FMOD
         FMOD_RESULT F_API createStream            (const char *name_or_data, FMOD_MODE mode, FMOD_CREATESOUNDEXINFO *exinfo, Sound **sound);
         FMOD_RESULT F_API createDSP               (const FMOD_DSP_DESCRIPTION *description, DSP **dsp);
         FMOD_RESULT F_API createDSPByType         (FMOD_DSP_TYPE type, DSP **dsp);
+        FMOD_RESULT F_API createDSPConnection     (FMOD_DSPCONNECTION_TYPE type, DSPConnection **connection);
         FMOD_RESULT F_API createChannelGroup      (const char *name, ChannelGroup **channelgroup);
         FMOD_RESULT F_API createSoundGroup        (const char *name, SoundGroup **soundgroup);
         FMOD_RESULT F_API createReverb3D          (Reverb3D **reverb);

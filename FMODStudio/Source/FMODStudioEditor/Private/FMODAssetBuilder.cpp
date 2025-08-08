@@ -43,6 +43,7 @@ void FFMODAssetBuilder::Create()
 
 void FFMODAssetBuilder::ProcessBanks()
 {
+    FlushAsyncLoading();
     TArray<UObject*> AssetsToSave;
     TArray<UObject*> AssetsToDelete;
     const UFMODSettings& Settings = *GetDefault<UFMODSettings>();

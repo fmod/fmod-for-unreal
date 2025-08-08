@@ -4,6 +4,7 @@
 #include "FMODSettings.h"
 #include "FMODAudioComponent.h"
 #include "FMODBlueprintStatics.h"
+#include "FMODCallbackHandler.h"
 #include "FMODAssetTable.h"
 #include "FMODFileCallbacks.h"
 #include "FMODUtils.h"
@@ -738,18 +739,48 @@ void FFMODStudioModule::CreateStudioSystem(EFMODSystemContext::Type Type)
 
     if (!Settings.StudioBankKey.IsEmpty())
     {
-        advStudioSettings.encryptionkey = TCHAR_TO_UTF8(*Settings.StudioBankKey);
+        auto conv = StringCast<TCHAR>(*Settings.StudioBankKey);
+        advStudioSettings.encryptionkey = (const char*)conv.Get();
     }
 
     verifyfmod(StudioSystem[Type]->setAdvancedSettings(&advStudioSettings));
 
+    if (Settings.GetCallbackHandler())
+    {
+        UClass* CallbackClass = Settings.GetCallbackHandler().LoadSynchronous();
+        if (CallbackClass && CallbackClass->ImplementsInterface(UFMODCallbackHandler::StaticClass()))
+        {
+            UObject* CallbackInstance = NewObject<UObject>(GetTransientPackage(), CallbackClass);
+            if (IFMODCallbackHandler* Callback = Cast<IFMODCallbackHandler>(CallbackInstance))
+            {
+                Callback->PreInitialize(StudioSystem[Type]);
+            }
+            else
+            {
+                UE_LOG(LogFMOD, Error, TEXT("CallbackHandler failed cast to IFMODCallbackHandler."));
+            }
+
+        }
+        else
+        {
+            UE_LOG(LogFMOD, Error, TEXT("CallbackHandler does not implement IFMODCallbackHandler."));
+        }
+    }
+    else
+    {
+        UE_LOG(LogFMOD, Log, TEXT("CallbackHandler not set."));
+    }
+
     verifyfmod(StudioSystem[Type]->initialize(Settings.TotalChannelCount, StudioInitFlags, InitFlags, InitData));
 
+#if PLATFORM_IOS || PLATFORM_TVOS || defined(FMOD_DONT_LOAD_LIBRARIES)
+#else
     for (FString PluginName : Settings.PluginFiles)
     {
         if (!PluginName.IsEmpty())
             LoadPlugin(Type, *PluginName);
     }
+#endif
 
     if (Type == EFMODSystemContext::Runtime)
     {
@@ -810,6 +841,59 @@ void FFMODStudioModule::DestroyStudioSystem(EFMODSystemContext::Type Type)
 
 void FFMODStudioModule::UnloadBanks(EFMODSystemContext::Type Type)
 {
+#if WITH_EDITOR
+    // Unload all events and banks to remove warning spam when using split banks
+    if (StudioSystem[Type] && bLoadAllSampleData)
+    {
+        int bankCount;
+        verifyfmod(StudioSystem[Type]->getBankCount(&bankCount));
+        if (bankCount > 0)
+        {
+            TArray<FMOD::Studio::Bank*> bankArray;
+            TArray<FMOD::Studio::EventDescription*> eventArray;
+            TArray<FMOD::Studio::EventInstance*> instanceArray;
+
+            bankArray.SetNumUninitialized(bankCount, false);
+            verifyfmod(StudioSystem[Type]->getBankList(bankArray.GetData(), bankCount, &bankCount));
+            for (int i = 0; i < bankCount; i++)
+            {
+                int eventCount;
+                verifyfmod(bankArray[i]->getEventCount(&eventCount));
+                if (eventCount > 0)
+                {
+                    eventArray.SetNumUninitialized(eventCount, false);
+                    verifyfmod(bankArray[i]->getEventList(eventArray.GetData(), eventCount, &eventCount));
+                    for (int j = 0; j < eventCount; j++)
+                    {
+                        int instanceCount;
+                        verifyfmod(eventArray[j]->getInstanceCount(&instanceCount));
+                        if (instanceCount > 0)
+                        {
+                            instanceArray.SetNumUninitialized(instanceCount, false);
+                            verifyfmod(eventArray[j]->getInstanceList(instanceArray.GetData(), instanceCount, &instanceCount));
+                            for (int k = 0; k < instanceCount; k++)
+                            {
+                                verifyfmod(instanceArray[k]->stop(FMOD_STUDIO_STOP_IMMEDIATE));
+                                verifyfmod(instanceArray[k]->release());
+                            }
+                        }
+                    }
+                }
+            }
+
+            for (int i = 0; i < bankCount; i++)
+            {
+                FMOD_STUDIO_LOADING_STATE state;
+                bankArray[i]->getSampleLoadingState(&state);
+                if (state == FMOD_STUDIO_LOADING_STATE_LOADED)
+                {
+                    verifyfmod(bankArray[i]->unloadSampleData());
+                }
+            }
+        }
+    }
+#endif
+
     if (StudioSystem[Type])
     {
         verifyfmod(StudioSystem[Type]->unloadAll());
@@ -1148,6 +1232,7 @@ void FFMODStudioModule::SetInPIE(bool bInPIE, bool simulating)
     else
     {
         ReverbSnapshots.Reset();
+        UnloadBanks(EFMODSystemContext::Runtime);
         DestroyStudioSystem(EFMODSystemContext::Runtime);
         flags = FMOD_DEBUG_LEVEL_WARNING;
     }

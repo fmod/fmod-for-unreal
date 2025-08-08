@@ -54,6 +54,7 @@ UFMODSettings::UFMODSettings(const FObjectInitializer &ObjectInitializer)
     , FileBufferSize(2048)
     , StudioUpdatePeriod(0)
     , bLockAllBuses(false)
+    , CallbackHandler(nullptr)
     , LiveUpdatePort(9264)
     , EditorLiveUpdatePort(9265)
     , ReloadBanksDelay(5)
@@ -297,4 +298,9 @@ bool UFMODSettings::SetCodecs(FMOD_ADVANCEDSETTINGS& advSettings) const
         }
     }
     return true;
+}
+
+TSoftClassPtr<UObject> UFMODSettings::GetCallbackHandler() const
+{
+    return Platforms.Contains(CurrentPlatform()) ? Platforms.Find(CurrentPlatform())->CallbackHandler : CallbackHandler;
 }
