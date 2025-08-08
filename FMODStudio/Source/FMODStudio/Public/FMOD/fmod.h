@@ -109,6 +109,7 @@ FMOD_RESULT F_API FMOD_System_CreateSound               (FMOD_SYSTEM *system, co
 FMOD_RESULT F_API FMOD_System_CreateStream              (FMOD_SYSTEM *system, const char *name_or_data, FMOD_MODE mode, FMOD_CREATESOUNDEXINFO *exinfo, FMOD_SOUND **sound);
 FMOD_RESULT F_API FMOD_System_CreateDSP                 (FMOD_SYSTEM *system, const FMOD_DSP_DESCRIPTION *description, FMOD_DSP **dsp);
 FMOD_RESULT F_API FMOD_System_CreateDSPByType           (FMOD_SYSTEM *system, FMOD_DSP_TYPE type, FMOD_DSP **dsp);
+FMOD_RESULT F_API FMOD_System_CreateDSPConnection       (FMOD_SYSTEM *system, FMOD_DSPCONNECTION_TYPE type, FMOD_DSPCONNECTION **connection);
 FMOD_RESULT F_API FMOD_System_CreateChannelGroup        (FMOD_SYSTEM *system, const char *name, FMOD_CHANNELGROUP **channelgroup);
 FMOD_RESULT F_API FMOD_System_CreateSoundGroup          (FMOD_SYSTEM *system, const char *name, FMOD_SOUNDGROUP **soundgroup);
 FMOD_RESULT F_API FMOD_System_CreateReverb3D            (FMOD_SYSTEM *system, FMOD_REVERB3D **reverb);
