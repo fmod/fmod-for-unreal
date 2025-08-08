@@ -74,7 +74,7 @@ void FFMODAudioLinkInputClient::Register(const FName& NameOfProducingSource)
             AudioDevice->DeviceID);
 
         UE_CLOG(!FFMODAudioLinkFactory::bHasSubmix,
-            LogFMODAudioLink, Warning, TEXT("FMODAudioLink: No initial submix got routed to AudioLink. Consider creating custom versions of global submixes in Project Settings Audio, and Enable Audio Link in their advanced settings."));
+            LogFMODAudioLink, Verbose, TEXT("FMODAudioLink: No initial submix got routed to AudioLink. Consider creating custom versions of global submixes in Project Settings Audio, and Enable Audio Link in their advanced settings."));
     });
 }
 
