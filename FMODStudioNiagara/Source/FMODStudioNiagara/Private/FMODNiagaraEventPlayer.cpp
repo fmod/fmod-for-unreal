@@ -576,7 +576,10 @@ void UFMODNiagaraEventPlayer::PlayPersistentAudio(FVectorVMContext& Context)
                         bool bStopWithEffect = InstanceData->bStopWhenComponentIsDestroyed;
                         TWeakObjectPtr<UFMODAudioComponent> AudioComponent = UFMODBlueprintStatics::PlayEventAttached(Sound.Get(), NiagaraComponent, NAME_None, Position, EAttachLocation::KeepWorldPosition, bStopWithEffect, true, true);
 
-                        AudioComponent->Play();
+                        if (AudioComponent != nullptr)
+                        {
+                            AudioComponent->Play();
+                        }
 
                         InstanceData->PersistentAudioMapping.Add(Handle, AudioComponent);
                     }
