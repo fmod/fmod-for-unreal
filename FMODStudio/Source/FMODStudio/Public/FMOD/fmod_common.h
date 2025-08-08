@@ -56,7 +56,7 @@ typedef struct FMOD_ASYNCREADINFO  FMOD_ASYNCREADINFO;
 /*
     FMOD constants
 */
-#define FMOD_VERSION    0x00020229                     /* 0xaaaabbcc -> aaaa = product version, bb = major version, cc = minor version.*/
+#define FMOD_VERSION    0x00020230                     /* 0xaaaabbcc -> aaaa = product version, bb = major version, cc = minor version.*/
 
 typedef unsigned int FMOD_DEBUG_FLAGS;
 #define FMOD_DEBUG_LEVEL_NONE                       0x00000000
@@ -473,7 +473,7 @@ typedef enum FMOD_SPEAKERMODE
 typedef enum FMOD_SPEAKER
 {
     FMOD_SPEAKER_NONE = -1,
-    FMOD_SPEAKER_FRONT_LEFT = 0,
+    FMOD_SPEAKER_FRONT_LEFT,
     FMOD_SPEAKER_FRONT_RIGHT,
     FMOD_SPEAKER_FRONT_CENTER,
     FMOD_SPEAKER_LOW_FREQUENCY,
