@@ -54,6 +54,7 @@ UFMODSettings::UFMODSettings(const FObjectInitializer &ObjectInitializer)
     , FileBufferSize(2048)
     , StudioUpdatePeriod(0)
     , bLockAllBuses(false)
+    , CallbackHandler(nullptr)
     , LiveUpdatePort(9264)
     , EditorLiveUpdatePort(9265)
     , ReloadBanksDelay(5)
@@ -273,4 +274,9 @@ int32 UFMODSettings::GetRealChannelCount() const
 TMap<TEnumAsByte<EFMODCodec::Type>, int32> UFMODSettings::GetCodecs() const
 {
     return Platforms.Contains(CurrentPlatform()) ? Platforms.Find(CurrentPlatform())->Codecs : Codecs;
+}
+
+TSoftClassPtr<UObject> UFMODSettings::GetCallbackHandler() const
+{
+    return Platforms.Contains(CurrentPlatform()) ? Platforms.Find(CurrentPlatform())->CallbackHandler : CallbackHandler;
 }
