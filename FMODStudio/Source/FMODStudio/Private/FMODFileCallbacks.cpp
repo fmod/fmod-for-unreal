@@ -36,7 +36,7 @@ FMOD_RESULT F_CALL FMODLogCallback(FMOD_DEBUG_FLAGS flags, const char *file, int
             }
         }
     }
-    else if (flags & FMOD_DEBUG_LEVEL_LOG)
+    else if (flags & FMOD_DEBUG_LEVEL_LOG || flags & FMOD_DEBUG_TYPE_VIRTUAL)
     {
         UE_LOG(LogFMOD, Log, TEXT("%s(%d) - %s"), UTF8_TO_TCHAR(file), line, UTF8_TO_TCHAR(message));
     }

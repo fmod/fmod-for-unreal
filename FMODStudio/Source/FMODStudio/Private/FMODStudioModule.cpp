@@ -4,6 +4,7 @@
 #include "FMODSettings.h"
 #include "FMODAudioComponent.h"
 #include "FMODBlueprintStatics.h"
+#include "FMODCallbackHandler.h"
 #include "FMODAssetTable.h"
 #include "FMODFileCallbacks.h"
 #include "FMODUtils.h"
@@ -736,21 +737,47 @@ void FFMODStudioModule::CreateStudioSystem(EFMODSystemContext::Type Type)
     advStudioSettings.cbsize = sizeof(advStudioSettings);
     advStudioSettings.studioupdateperiod = Settings.StudioUpdatePeriod;
 
-    if (!Settings.StudioBankKey.IsEmpty())
-    {
-        auto conv = StringCast<TCHAR>(*Settings.StudioBankKey);
-        advStudioSettings.encryptionkey = (const char*)conv.Get();
-    }
+    auto conv = StringCast<TCHAR>(*Settings.StudioBankKey);
+    advStudioSettings.encryptionkey = (const char*)conv.Get();
 
     verifyfmod(StudioSystem[Type]->setAdvancedSettings(&advStudioSettings));
 
+    if (Settings.GetCallbackHandler())
+    {
+        UClass* CallbackClass = Settings.GetCallbackHandler().LoadSynchronous();
+        if (CallbackClass && CallbackClass->ImplementsInterface(UFMODCallbackHandler::StaticClass()))
+        {
+            UObject* CallbackInstance = NewObject<UObject>(GetTransientPackage(), CallbackClass);
+            if (IFMODCallbackHandler* Callback = Cast<IFMODCallbackHandler>(CallbackInstance))
+            {
+                Callback->PreInitialize(StudioSystem[Type]);
+            }
+            else
+            {
+                UE_LOG(LogFMOD, Error, TEXT("CallbackHandler failed cast to IFMODCallbackHandler."));
+            }
+
+        }
+        else
+        {
+            UE_LOG(LogFMOD, Error, TEXT("CallbackHandler does not implement IFMODCallbackHandler."));
+        }
+    }
+    else
+    {
+        UE_LOG(LogFMOD, Log, TEXT("CallbackHandler not set."));
+    }
+
     verifyfmod(StudioSystem[Type]->initialize(Settings.TotalChannelCount, StudioInitFlags, InitFlags, InitData));
 
+#if PLATFORM_IOS || PLATFORM_TVOS || defined(FMOD_DONT_LOAD_LIBRARIES)
+#else
     for (FString PluginName : Settings.PluginFiles)
     {
         if (!PluginName.IsEmpty())
             LoadPlugin(Type, *PluginName);
     }
+#endif
 
     if (Type == EFMODSystemContext::Runtime)
     {
@@ -1202,6 +1229,7 @@ void FFMODStudioModule::SetInPIE(bool bInPIE, bool simulating)
     else
     {
         ReverbSnapshots.Reset();
+        UnloadBanks(EFMODSystemContext::Runtime);
         DestroyStudioSystem(EFMODSystemContext::Runtime);
         flags = FMOD_DEBUG_LEVEL_WARNING;
     }

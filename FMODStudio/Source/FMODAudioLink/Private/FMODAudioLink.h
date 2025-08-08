@@ -28,9 +28,5 @@ struct FFMODAudioLink : IAudioLink
         {
             ConsumerSP->Stop();
         }
-        if (AudioDevice && ProducerSP.IsValid())
-        {
-            ProducerSP->Stop(AudioDevice);
-        }
     }
 };

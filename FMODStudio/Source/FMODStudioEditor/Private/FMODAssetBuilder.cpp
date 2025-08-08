@@ -18,6 +18,7 @@
 #include "SourceControlHelpers.h"
 #include "HAL/FileManager.h"
 #include "Misc/MessageDialog.h"
+#include "DataTableEditorUtils.h"
 
 #include "fmod_studio.hpp"
 
@@ -43,6 +44,7 @@ void FFMODAssetBuilder::Create()
 
 void FFMODAssetBuilder::ProcessBanks()
 {
+    FlushAsyncLoading();
     TArray<UObject*> AssetsToSave;
     TArray<UObject*> AssetsToDelete;
     const UFMODSettings& Settings = *GetDefault<UFMODSettings>();
@@ -190,12 +192,10 @@ void FFMODAssetBuilder::BuildAssets(const UFMODSettings& InSettings, const FStri
                         UE_LOG(LogFMOD, Log, TEXT("Deleting stale asset %s/%s."), *Entry.Value.PackageName, *Entry.Value.AssetName);
                         AssetsToDelete.Add(Asset);
                     }
-
-                    // Removed to avoid crash in UE5.6.0
-                    //AssetLookup->RemoveRow(Entry.Key);
+                    FDataTableEditorUtils::RemoveRow(AssetLookup, Entry.Key);
                 }
 
-                //bAssetLookupModified = true;
+                bAssetLookupModified = true;
             }
 
             if (bAssetLookupCreated || bAssetLookupModified)
@@ -357,13 +357,11 @@ void FFMODAssetBuilder::BuildBankLookup(const FString &AssetName, const FString 
     // Remove stale banks from lookup
     if (StaleBanks.Num() > 0)
     {
-        /* // Removed to avoid crash in UE5.6.0
         for (const auto& RowName : StaleBanks)
         {
-            BankLookup->DataTable->RemoveRow(RowName);
+            FDataTableEditorUtils::RemoveRow(BankLookup->DataTable, RowName);
         }
         bModified = true;
-        */
     }
 
     // Remove stale localized bank entries from lookup
@@ -382,13 +380,11 @@ void FFMODAssetBuilder::BuildBankLookup(const FString &AssetName, const FString 
                 RowsToRemove.Add(innerrowname);
             }
         }
-        /* // Removed to avoid crash in UE5.6.0
         for (auto& rowname : RowsToRemove)
         {
-            outerrow->Banks->RemoveRow(rowname);
+            FDataTableEditorUtils::RemoveRow(outerrow->Banks, rowname);
             bModified = true;
         }
-        */
     }
 
     if (bCreated)

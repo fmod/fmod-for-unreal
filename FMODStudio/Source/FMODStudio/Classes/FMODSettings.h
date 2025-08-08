@@ -6,6 +6,7 @@
 #include "Engine/EngineTypes.h"
 #include "GenericPlatform/GenericPlatform.h"
 #include "fmod_common.h"
+#include "FMODCallbackHandler.h"
 #include "FMODSettings.generated.h"
 
 class Paths;
@@ -87,7 +88,8 @@ namespace EFMODPlatforms
         Switch,
         XboxOne,
         XSX,
-        Editor
+        Editor,
+        Reserved1,
     };
 }
 
@@ -165,12 +167,19 @@ struct FFMODPlatformSettings
     */
     UPROPERTY(config, EditAnywhere, Category = PlatformSettings, meta = (ClampMin = "0"))
     TMap<TEnumAsByte<EFMODCodec::Type>, int32> Codecs;
+    /**
+     * Callback handler implementing IFMODCallbackHandler for calling into system at specific points in the integration's lifecycle.
+     */
+    UPROPERTY(config, EditAnywhere, Category = Advanced, meta = (MustImplement = "/Script/FMODStudio.FMODCallbackHandler"))
+    TSoftClassPtr<UObject> CallbackHandler;
+
     FFMODPlatformSettings()
         : RealChannelCount(64)
         , SampleRate(0)
         , SpeakerMode(EFMODSpeakerMode::Surround_5_1)
         , OutputType(EFMODOutput::TYPE_AUTODETECT)
         , CustomPoolSize(0)
+        , CallbackHandler(0)
     {}
 };
 
@@ -334,6 +343,12 @@ public:
     FCustomPoolSizes MemoryPoolSizes;
 
     /**
+     * Callback handler implementing IFMODCallbackHandler for calling into system at specific points in the integration's lifecycle.
+     */
+    UPROPERTY(config, EditAnywhere, Category = Advanced, meta = (MustImplement = "/Script/FMODStudio.FMODCallbackHandler"))
+    TSoftClassPtr<UObject> CallbackHandler;
+
+    /**
      * Live update port to use, or 0 for default.
      */
     UPROPERTY(config, EditAnywhere, Category = Advanced, meta = (EditCondition = "bEnableLiveUpdate"))
@@ -397,39 +412,39 @@ public:
     UPROPERTY(config, EditAnywhere, Category = Advanced)
     FString SkipLoadBankName;
 
-    /*
-    * Specify the key for loading sounds from encrypted banks.
-    */
+    /**
+     * Specify the key for loading sounds from encrypted banks.
+     */
     UPROPERTY(config, EditAnywhere, Category = Advanced, meta = (DisplayName = "Encryption Key"))
     FString StudioBankKey;
 
     /**
-    * Force wav writer output, for debugging only.  Setting this will prevent normal sound output!
-    */
+     * Force wav writer output, for debugging only.  Setting this will prevent normal sound output!
+     */
     UPROPERTY(config, EditAnywhere, Category = Advanced)
     FString WavWriterPath;
 
-    /*
-    * Specify the logging level to use in a debug/development build.
-    */
+    /**
+     * Specify the logging level to use in a debug/development build.
+     */
     UPROPERTY(config, EditAnywhere, Category = Advanced)
     TEnumAsByte<EFMODLogging> LoggingLevel;
 
     /**
-    * Name of the parameter used in Studio to control Occlusion effects.
-    */
+     * Name of the parameter used in Studio to control Occlusion effects.
+     */
     UPROPERTY(config, EditAnywhere, Category = Advanced)
     FString OcclusionParameter;
 
     /**
-    * Name of the parameter used in Studio to control Ambient volume.
-    */
+     * Name of the parameter used in Studio to control Ambient volume.
+     */
     UPROPERTY(config, EditAnywhere, Category = Advanced)
     FString AmbientVolumeParameter;
 
     /**
-    * Name of the parameter used in Studio to control Ambient LPF effects.
-    */
+     * Name of the parameter used in Studio to control Ambient LPF effects.
+     */
     UPROPERTY(config, EditAnywhere, Category = Advanced)
     FString AmbientLPFParameter;
 
@@ -481,6 +496,9 @@ private:
 
     /** Set the maximum codecs for the current platform. */
     bool SetCodecs(FMOD_ADVANCEDSETTINGS& advSettings) const;
+
+    /** Get the callback handler for the current platform. */
+    TSoftClassPtr<UObject> GetCallbackHandler() const;
 
     /** List of generated folder names that contain FMOD uassets. */
     TArray<FString> GeneratedFolders = {
