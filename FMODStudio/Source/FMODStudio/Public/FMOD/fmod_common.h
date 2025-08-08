@@ -54,7 +54,7 @@ typedef struct FMOD_ASYNCREADINFO  FMOD_ASYNCREADINFO;
 /*
     FMOD constants
 */
-#define FMOD_VERSION    0x00020308                     /* 0xaaaabbcc -> aaaa = product version, bb = major version, cc = minor version.*/
+#define FMOD_VERSION    0x00020309                     /* 0xaaaabbcc -> aaaa = product version, bb = major version, cc = minor version.*/
 #define FMOD_BUILDNUMBER 121212
 
 typedef unsigned int FMOD_DEBUG_FLAGS;
@@ -66,6 +66,7 @@ typedef unsigned int FMOD_DEBUG_FLAGS;
 #define FMOD_DEBUG_TYPE_FILE                        0x00000200
 #define FMOD_DEBUG_TYPE_CODEC                       0x00000400
 #define FMOD_DEBUG_TYPE_TRACE                       0x00000800
+#define FMOD_DEBUG_TYPE_VIRTUAL                     0x00001000
 #define FMOD_DEBUG_DISPLAY_TIMESTAMPS               0x00010000
 #define FMOD_DEBUG_DISPLAY_LINENUMBERS              0x00020000
 #define FMOD_DEBUG_DISPLAY_THREAD                   0x00040000
@@ -470,7 +471,7 @@ typedef enum FMOD_SPEAKERMODE
 typedef enum FMOD_SPEAKER
 {
     FMOD_SPEAKER_NONE = -1,
-    FMOD_SPEAKER_FRONT_LEFT = 0,
+    FMOD_SPEAKER_FRONT_LEFT,
     FMOD_SPEAKER_FRONT_RIGHT,
     FMOD_SPEAKER_FRONT_CENTER,
     FMOD_SPEAKER_LOW_FREQUENCY,
@@ -652,6 +653,7 @@ typedef enum FMOD_DSPCONNECTION_TYPE
     FMOD_DSPCONNECTION_TYPE_SIDECHAIN,
     FMOD_DSPCONNECTION_TYPE_SEND,
     FMOD_DSPCONNECTION_TYPE_SEND_SIDECHAIN,
+    FMOD_DSPCONNECTION_TYPE_PREALLOCATED,
 
     FMOD_DSPCONNECTION_TYPE_MAX,
     FMOD_DSPCONNECTION_TYPE_FORCEINT = 65536
