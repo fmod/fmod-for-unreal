@@ -642,10 +642,15 @@ void FFMODStudioModule::CreateStudioSystem(EFMODSystemContext::Type Type)
         outputType = FMOD_OUTPUTTYPE_WAVWRITER;
         InitData = (void *)WavWriterDestUTF8.Get();
     }
+    else if (Type == EFMODSystemContext::Editor)
+    {
+        outputType = FMOD_OUTPUTTYPE_NOSOUND;
+    }
     else
     {
         outputType = ConvertOutputType(Settings.GetOutputType());
     }
+
     verifyfmod(lowLevelSystem->setOutput(outputType));
 
     int DriverIndex = 0;
@@ -719,11 +724,14 @@ void FFMODStudioModule::CreateStudioSystem(EFMODSystemContext::Type Type)
     if (Type == EFMODSystemContext::Runtime)
     {
         advSettings.profilePort = Settings.LiveUpdatePort;
+        advSettings.maxSpatialObjects = 0;
     }
     else if (Type == EFMODSystemContext::Auditioning)
     {
         advSettings.profilePort = Settings.EditorLiveUpdatePort;
+        advSettings.maxSpatialObjects = 8;
     }
+
     advSettings.randomSeed = FMath::Rand();
     verifyfmod(lowLevelSystem->setAdvancedSettings(&advSettings));
 
