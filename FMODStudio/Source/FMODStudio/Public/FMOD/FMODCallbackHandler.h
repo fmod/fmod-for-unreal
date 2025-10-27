@@ -23,5 +23,5 @@ public:
     /**
      * Method called just before the FMOD System initializes.
      */
-    virtual void PreInitialize(FMOD::Studio::System*) = 0;
+    virtual void PreInitialize(FMOD::Studio::System* system) = 0;
 };
