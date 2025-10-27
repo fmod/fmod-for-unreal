@@ -223,6 +223,7 @@ public:
 
     virtual const FFMODListener &GetNearestListener(const FVector &Location) override;
 
+    virtual float DistanceSquaredToNearestListener(const FVector &location) override;
     virtual bool HasListenerMoved() override;
 
     virtual void SetSystemPaused(bool paused) override;
@@ -610,10 +611,15 @@ void FFMODStudioModule::CreateStudioSystem(EFMODSystemContext::Type Type)
         outputType = FMOD_OUTPUTTYPE_WAVWRITER;
         InitData = (void *)WavWriterDestUTF8.Get();
     }
+    else if (Type == EFMODSystemContext::Editor)
+    {
+        outputType = FMOD_OUTPUTTYPE_NOSOUND;
+    }
     else
     {
         outputType = ConvertOutputType(Settings.GetOutputType());
     }
+
     verifyfmod(lowLevelSystem->setOutput(outputType));
 
     int DriverIndex = 0;
@@ -683,11 +689,14 @@ void FFMODStudioModule::CreateStudioSystem(EFMODSystemContext::Type Type)
     if (Type == EFMODSystemContext::Runtime)
     {
         advSettings.profilePort = Settings.LiveUpdatePort;
+        advSettings.maxSpatialObjects = 0;
     }
     else if (Type == EFMODSystemContext::Auditioning)
     {
         advSettings.profilePort = Settings.EditorLiveUpdatePort;
+        advSettings.maxSpatialObjects = 8;
     }
+
     advSettings.randomSeed = FMath::Rand();
     verifyfmod(lowLevelSystem->setAdvancedSettings(&advSettings));
 
@@ -889,6 +898,8 @@ bool FFMODStudioModule::Tick(float DeltaTime)
         SET_DWORD_STAT(STAT_FMOD_Real_Channels, realChannels);
         SET_DWORD_STAT(STAT_FMOD_Total_Channels, channels);
 
+        UFMODAudioComponent::UpdateActiveComponents();
+
         verifyfmod(ClockSinks[EFMODSystemContext::Runtime]->LastResult);
     }
     if (ClockSinks[EFMODSystemContext::Editor].IsValid())
@@ -998,6 +1009,16 @@ const FFMODListener &FFMODStudioModule::GetNearestListener(const FVector &Locati
         }
     }
     return Listeners[BestListener];
+}
+
+float FFMODStudioModule::DistanceSquaredToNearestListener(const FVector& Location)
+{
+    if (ListenerCount == 0)
+    {
+        return FLT_MAX;
+    }
+
+    return FVector::DistSquared(Location, GetNearestListener(Location).Transform.GetTranslation());
 }
 
 // Partially copied from FAudioDevice::SetListener

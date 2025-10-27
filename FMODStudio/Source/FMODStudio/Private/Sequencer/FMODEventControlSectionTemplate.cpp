@@ -108,9 +108,9 @@ struct FFMODEventControlExecutionToken : IMovieSceneExecutionToken
             if (IsValid(AudioComponent))
             {
                 EFMODSystemContext::Type SystemContext =
-                    (GWorld && GWorld->WorldType == EWorldType::Editor) ? EFMODSystemContext::Editor : EFMODSystemContext::Runtime;
+                    (GWorld && GWorld->WorldType == EWorldType::Editor) ? EFMODSystemContext::Auditioning : EFMODSystemContext::Runtime;
 
-                if (EventControlKey == EventControlKeyInternal::Stop && KeyTime == 0 && SystemContext == EFMODSystemContext::Editor)
+                if (EventControlKey == EventControlKeyInternal::Stop && KeyTime == 0 && SystemContext == EFMODSystemContext::Auditioning)
                 {
                     // Skip state saving when auditioning sequencer
                 }
