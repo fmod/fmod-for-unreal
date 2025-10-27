@@ -137,6 +137,11 @@ public:
     /** Return a list of banks that failed to load due to an error */
     virtual TArray<FString> GetFailedBankLoads(EFMODSystemContext::Type Context) = 0;
 
+    /**
+     * Return the squared distance to the nearest Listener
+    */
+    virtual float DistanceSquaredToNearestListener(const FVector& Location) = 0;
+
     /** Return a list of plugins that appear to be needed  */
     virtual TArray<FString> GetRequiredPlugins() = 0;
 
