@@ -1,6 +1,6 @@
 #include "FMODAssetBuilder.h"
 
-#include "AssetRegistryModule.h"
+#include "AssetRegistry/AssetRegistryModule.h"
 #include "FMODAssetLookup.h"
 #include "FMODAssetTable.h"
 #include "FMODBank.h"
@@ -18,6 +18,7 @@
 #include "SourceControlHelpers.h"
 #include "HAL/FileManager.h"
 #include "Misc/MessageDialog.h"
+#include "DataTableEditorUtils.h"
 
 #include "fmod_studio.hpp"
 
@@ -43,6 +44,7 @@ void FFMODAssetBuilder::Create()
 
 void FFMODAssetBuilder::ProcessBanks()
 {
+    FlushAsyncLoading();
     TArray<UObject*> AssetsToSave;
     TArray<UObject*> AssetsToDelete;
     const UFMODSettings& Settings = *GetDefault<UFMODSettings>();
@@ -127,7 +129,7 @@ void FFMODAssetBuilder::BuildAssets(const UFMODSettings& InSettings, const FStri
             bool bAssetLookupCreated = false;
             bool bAssetLookupModified = false;
 
-            UDataTable *AssetLookup = FindObject<UDataTable>(AssetLookupPackage, *AssetLookupName, true);
+            UDataTable *AssetLookup = FindObject<UDataTable>(AssetLookupPackage, *AssetLookupName, EFindObjectFlags::ExactClass);
 
             if (!AssetLookup)
             {
@@ -190,8 +192,7 @@ void FFMODAssetBuilder::BuildAssets(const UFMODSettings& InSettings, const FStri
                         UE_LOG(LogFMOD, Log, TEXT("Deleting stale asset %s/%s."), *Entry.Value.PackageName, *Entry.Value.AssetName);
                         AssetsToDelete.Add(Asset);
                     }
-
-                    AssetLookup->RemoveRow(Entry.Key);
+                    FDataTableEditorUtils::RemoveRow(AssetLookup, Entry.Key);
                 }
 
                 bAssetLookupModified = true;
@@ -219,7 +220,7 @@ void FFMODAssetBuilder::BuildBankLookup(const FString &AssetName, const FString 
     bool bCreated = false;
     bool bModified = false;
 
-    BankLookup = FindObject<UFMODBankLookup>(Package, *AssetName, true);
+    BankLookup = FindObject<UFMODBankLookup>(Package, *AssetName, EFindObjectFlags::ExactClass);
 
     if (!BankLookup)
     {
@@ -358,9 +359,8 @@ void FFMODAssetBuilder::BuildBankLookup(const FString &AssetName, const FString 
     {
         for (const auto& RowName : StaleBanks)
         {
-            BankLookup->DataTable->RemoveRow(RowName);
+            FDataTableEditorUtils::RemoveRow(BankLookup->DataTable, RowName);
         }
-
         bModified = true;
     }
 
@@ -382,7 +382,7 @@ void FFMODAssetBuilder::BuildBankLookup(const FString &AssetName, const FString 
         }
         for (auto& rowname : RowsToRemove)
         {
-            outerrow->Banks->RemoveRow(rowname);
+            FDataTableEditorUtils::RemoveRow(outerrow->Banks, rowname);
             bModified = true;
         }
     }
@@ -582,7 +582,7 @@ UFMODAsset *FFMODAssetBuilder::CreateAsset(const AssetCreateInfo& CreateInfo, TA
         UPackage *ReverbPackage = CreatePackage(*ReverbPackagePath);
         ReverbPackage->FullyLoad();
 
-        UFMODSnapshotReverb *AssetReverb = FindObject<UFMODSnapshotReverb>(ReverbPackage, *SanitizedAssetName, true);
+        UFMODSnapshotReverb *AssetReverb = FindObject<UFMODSnapshotReverb>(ReverbPackage, *SanitizedAssetName, EFindObjectFlags::ExactClass);
         bCreated = false;
         bModified = false;
 

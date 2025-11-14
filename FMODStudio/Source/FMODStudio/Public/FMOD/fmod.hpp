@@ -6,7 +6,7 @@
 /* callbacks) to develop using the C++ language.                                            */
 /*                                                                                          */
 /* For more detail visit:                                                                   */
-/* https://fmod.com/docs/2.02/api/core-api.html                                             */
+/* https://fmod.com/docs/2.03/api/core-api.html                                             */
 /* ======================================================================================== */
 #ifndef _FMOD_HPP
 #define _FMOD_HPP
@@ -120,7 +120,7 @@ namespace FMOD
         FMOD_RESULT F_API getSpeakerModeChannels  (FMOD_SPEAKERMODE mode, int *channels);
 
         // System information functions.
-        FMOD_RESULT F_API getVersion              (unsigned int *version);
+        FMOD_RESULT F_API getVersion              (unsigned int *version, unsigned int *buildnumber = 0);
         FMOD_RESULT F_API getOutputHandle         (void **handle);
         FMOD_RESULT F_API getChannelsPlaying      (int *channels, int *realchannels = 0);
         FMOD_RESULT F_API getCPUUsage             (FMOD_CPU_USAGE *usage);
@@ -131,6 +131,7 @@ namespace FMOD
         FMOD_RESULT F_API createStream            (const char *name_or_data, FMOD_MODE mode, FMOD_CREATESOUNDEXINFO *exinfo, Sound **sound);
         FMOD_RESULT F_API createDSP               (const FMOD_DSP_DESCRIPTION *description, DSP **dsp);
         FMOD_RESULT F_API createDSPByType         (FMOD_DSP_TYPE type, DSP **dsp);
+        FMOD_RESULT F_API createDSPConnection     (FMOD_DSPCONNECTION_TYPE type, DSPConnection **connection);
         FMOD_RESULT F_API createChannelGroup      (const char *name, ChannelGroup **channelgroup);
         FMOD_RESULT F_API createSoundGroup        (const char *name, SoundGroup **soundgroup);
         FMOD_RESULT F_API createReverb3D          (Reverb3D **reverb);
@@ -455,6 +456,7 @@ namespace FMOD
 
         // Connection / disconnection / input and output enumeration.
         FMOD_RESULT F_API addInput               (DSP *input, DSPConnection **connection = 0, FMOD_DSPCONNECTION_TYPE type = FMOD_DSPCONNECTION_TYPE_STANDARD);
+        FMOD_RESULT F_API addInputPreallocated   (DSP *input, DSPConnection **connection = 0);
         FMOD_RESULT F_API disconnectFrom         (DSP *target, DSPConnection *connection = 0);
         FMOD_RESULT F_API disconnectAll          (bool inputs, bool outputs);
         FMOD_RESULT F_API getNumInputs           (int *numinputs);

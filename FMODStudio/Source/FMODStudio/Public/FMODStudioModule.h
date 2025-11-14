@@ -172,5 +172,20 @@ public:
 
     /** Called by the editor module when banks have been modified on disk */
     virtual void ReloadBanks() = 0;
+
+    /** Load Editor banks for auditioning in Sequnecer. */
+    virtual void LoadEditorBanks() = 0;
+
+    /** Unload Editor banks. */
+    virtual void UnloadEditorBanks() = 0;
+
+    /** Check whether Auditioning banks are loaded. */
+    virtual bool AreAuditioningBanksLoaded() = 0;
+
+    /** Load Auditioning banks. */
+    virtual void LoadAuditioningBanks() = 0;
+
+    /** Unload Auditioning banks. */
+    virtual void UnloadAuditioningBanks() = 0;
 #endif
 };

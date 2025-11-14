@@ -6,7 +6,6 @@
 
 #include "NiagaraTypes.h"
 #include "NiagaraCustomVersion.h"
-#include "Internationalization/Internationalization.h"
 #include "NiagaraSystemInstance.h"
 #include "NiagaraWorldManager.h"
 #include "Kismet/GameplayStatics.h"
@@ -22,49 +21,16 @@ const FName UFMODNiagaraEventPlayer::SetPersistentAudioRotationName(TEXT("Update
 const FName UFMODNiagaraEventPlayer::SetPersistentAudioFloatParamName(TEXT("SetFloatParameter"));
 const FName UFMODNiagaraEventPlayer::PausePersistentAudioName(TEXT("SetPaused"));
 
-class FNiagaraWorldManager;
-/**
-Async task to play the audio on the game thread and isolate from the niagara tick
-*/
-class FNiagaraAudioPlayerAsyncTask
+struct FNiagaraAudioPlayerDIFunctionVersion
 {
-    TWeakObjectPtr<UFMODEvent> WeakSound;
-    TArray<FEventParticleData> Data;
-    TWeakObjectPtr<UWorld> WeakWorld;
-
-public:
-    FNiagaraAudioPlayerAsyncTask(TWeakObjectPtr<UFMODEvent> InSound, TArray<FEventParticleData>& Data, TWeakObjectPtr<UWorld> InWorld)
-        : WeakSound(InSound)
-        , Data(Data)
-        , WeakWorld(InWorld)
+    enum Type
     {
-    }
+        InitialVersion = 0,
+        LWCConversion = 1,
 
-    FORCEINLINE TStatId GetStatId() const { RETURN_QUICK_DECLARE_CYCLE_STAT(FNiagaraAudioPlayerAsyncTask, STATGROUP_TaskGraphTasks); }
-    static FORCEINLINE ENamedThreads::Type GetDesiredThread() { return ENamedThreads::GameThread; }
-    static FORCEINLINE ESubsequentsMode::Type GetSubsequentsMode() { return ESubsequentsMode::FireAndForget; }
-
-    void DoTask(ENamedThreads::Type CurrentThread, const FGraphEventRef& MyCompletionGraphEvent)
-    {
-        UWorld* World = WeakWorld.Get();
-        if (World == nullptr)
-        {
-            UE_LOG(LogFMODNiagara, Warning, TEXT("Invalid world reference in event player, skipping play"));
-            return;
-        }
-
-        UFMODEvent* Sound = WeakSound.Get();
-        if (Sound == nullptr)
-        {
-            UE_LOG(LogFMODNiagara, Warning, TEXT("Invalid sound reference in event player, skipping play"));
-            return;
-        }
-
-        for (const FEventParticleData& ParticleData : Data)
-        {
-            UFMODBlueprintStatics::PlayEventAtLocation(World, Sound, FTransform(ParticleData.Rotation, ParticleData.Position), true);
-        }
-    }
+        VersionPlusOne,
+        LatestVersion = VersionPlusOne - 1
+    };
 };
 
 UFMODNiagaraEventPlayer::UFMODNiagaraEventPlayer(FObjectInitializer const& ObjectInitializer)
@@ -74,6 +40,28 @@ UFMODNiagaraEventPlayer::UFMODNiagaraEventPlayer(FObjectInitializer const& Objec
     bLimitPlaysPerTick = true;
     MaxPlaysPerTick = 10;
 }
+
+#if WITH_EDITORONLY_DATA
+bool UFMODNiagaraEventPlayer::UpgradeFunctionCall(FNiagaraFunctionSignature& FunctionSignature)
+{
+    // always upgrade to the latest version
+    if (FunctionSignature.FunctionVersion < FNiagaraAudioPlayerDIFunctionVersion::LatestVersion)
+    {
+        TArray<FNiagaraFunctionSignature> AllFunctions;
+        GetFunctions(AllFunctions);
+        for (const FNiagaraFunctionSignature& Sig : AllFunctions)
+        {
+            if (FunctionSignature.Name == Sig.Name)
+            {
+                FunctionSignature = Sig;
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+#endif
 
 void UFMODNiagaraEventPlayer::PostInitProperties()
 {
@@ -89,6 +77,7 @@ void UFMODNiagaraEventPlayer::PostInitProperties()
 bool UFMODNiagaraEventPlayer::InitPerInstanceData(void* PerInstanceData, FNiagaraSystemInstance* SystemInstance)
 {
     FEventPlayerInterface_InstanceData* PIData = new (PerInstanceData) FEventPlayerInterface_InstanceData;
+    PIData->LWCConverter = SystemInstance->GetLWCConverter();
     if (bLimitPlaysPerTick)
     {
         PIData->MaxPlaysPerTick = MaxPlaysPerTick;
@@ -157,7 +146,7 @@ void UFMODNiagaraEventPlayer::DestroyPerInstanceData(void* PerInstanceData, FNia
     {
         if (Entry.Value.IsValid())
         {
-            Entry.Value->Stop();
+            Entry.Value->StudioInstance->stop(FMOD_STUDIO_STOP_IMMEDIATE);
         }
     }
     InstData->~FEventPlayerInterface_InstanceData();
@@ -215,7 +204,14 @@ bool UFMODNiagaraEventPlayer::PerInstanceTickPostSimulate(void* PerInstanceData,
                 break;
             }
         }
-        TGraphTask<FNiagaraAudioPlayerAsyncTask>::CreateTask().ConstructAndDispatchWhenReady(PIData->EventToPlay, Data, SystemInstance->GetWorld());
+
+        if (World && PIData->EventToPlay.IsValid())
+        {
+            for (const FEventParticleData& ParticleData : Data)
+            {
+                UFMODBlueprintStatics::PlayEventAtLocation(World, EventToPlay, FTransform(ParticleData.Rotation, ParticleData.Position), true);
+            }
+        }
     }
 
     // process the persistent audio updates
@@ -257,15 +253,15 @@ void UFMODNiagaraEventPlayer::GetFunctions(TArray<FNiagaraFunctionSignature>& Ou
     Sig.Name = PlayAudioName;
 #if WITH_EDITORONLY_DATA
     Sig.Description = NSLOCTEXT("FMODStudio", "PlayEventFunctionDescription", "This function plays an event at the given location after the simulation has ticked.");
-    Sig.ExperimentalMessage = NSLOCTEXT("FMODStudio", "PlayEventFunctionExperimental", "The return value of the event function call currently needs to be wired to a particle parameter, because otherwise it will be removed by the compiler.");
+    Sig.FunctionVersion = FNiagaraAudioPlayerDIFunctionVersion::LatestVersion;
 #endif
     Sig.bMemberFunction = true;
     Sig.bRequiresContext = false;
     Sig.bSupportsGPU = false;
-    Sig.bExperimental = true;
+    Sig.bRequiresExecPin = true;
     Sig.Inputs.Add(FNiagaraVariable(FNiagaraTypeDefinition(GetClass()), TEXT("Event Player")));
     Sig.Inputs.Add(FNiagaraVariable(FNiagaraTypeDefinition::GetBoolDef(), TEXT("Play Event")));
-    Sig.Inputs.Add(FNiagaraVariable(FNiagaraTypeDefinition::GetVec3Def(), TEXT("PositionWS")));
+    Sig.Inputs.Add(FNiagaraVariable(FNiagaraTypeDefinition::GetPositionDef(), TEXT("PositionWS")));
     Sig.Inputs.Add(FNiagaraVariable(FNiagaraTypeDefinition::GetVec3Def(), TEXT("RotationWS")));
     Sig.Outputs.Add(FNiagaraVariable(FNiagaraTypeDefinition::GetBoolDef(), TEXT("Success")));
     OutFunctions.Add(Sig);
@@ -274,6 +270,7 @@ void UFMODNiagaraEventPlayer::GetFunctions(TArray<FNiagaraFunctionSignature>& Ou
     Sig.Name = PlayPersistentAudioName;
 #if WITH_EDITORONLY_DATA
     Sig.Description = NSLOCTEXT("FMODStudio", "PlayPersistentEventFunctionDescription", "This function plays an Event at the given location after the simulation has ticked. The returned handle can be used to control the sound in subsequent ticks.");
+    Sig.FunctionVersion = FNiagaraAudioPlayerDIFunctionVersion::LatestVersion;
 #endif
     Sig.bMemberFunction = true;
     Sig.bRequiresContext = false;
@@ -282,7 +279,7 @@ void UFMODNiagaraEventPlayer::GetFunctions(TArray<FNiagaraFunctionSignature>& Ou
     Sig.Inputs.Add(FNiagaraVariable(FNiagaraTypeDefinition(GetClass()), TEXT("Event Player")));
     Sig.Inputs.Add(FNiagaraVariable(FNiagaraTypeDefinition::GetBoolDef(), TEXT("Play Event")));
     Sig.Inputs.Add(FNiagaraVariable(FNiagaraTypeDefinition::GetIntDef(), TEXT("Existing Event Handle")));
-    Sig.Inputs.Add(FNiagaraVariable(FNiagaraTypeDefinition::GetVec3Def(), TEXT("Position WS")));
+    Sig.Inputs.Add(FNiagaraVariable(FNiagaraTypeDefinition::GetPositionDef(), TEXT("Position WS")));
     Sig.Inputs.Add(FNiagaraVariable(FNiagaraTypeDefinition::GetVec3Def(), TEXT("Rotation WS")));
     Sig.Outputs.Add(FNiagaraVariable(FNiagaraTypeDefinition::GetIntDef(), TEXT("Event Handle")));
     OutFunctions.Add(Sig);
@@ -291,6 +288,7 @@ void UFMODNiagaraEventPlayer::GetFunctions(TArray<FNiagaraFunctionSignature>& Ou
     Sig.Name = SetPersistentAudioFloatParamName;
 #if WITH_EDITORONLY_DATA
     Sig.Description = NSLOCTEXT("FMODStudio", "SetPersistentEventFloatParamFunctionDescription", "If an active event effect can be found for the given handle then the given sound cue parameter will be set on it.");
+    Sig.FunctionVersion = FNiagaraAudioPlayerDIFunctionVersion::LatestVersion;
 #endif
     Sig.bMemberFunction = true;
     Sig.bRequiresContext = false;
@@ -306,6 +304,7 @@ void UFMODNiagaraEventPlayer::GetFunctions(TArray<FNiagaraFunctionSignature>& Ou
     Sig.Name = SetPersistentAudioLocationName;
 #if WITH_EDITORONLY_DATA
     Sig.Description = NSLOCTEXT("FMODStudio", "SetPersistentEventLocationFunctionDescription", "If an active event effect can be found for the given handle then the this will adjusts its world position.");
+    Sig.FunctionVersion = FNiagaraAudioPlayerDIFunctionVersion::LatestVersion;
 #endif
     Sig.bMemberFunction = true;
     Sig.bRequiresContext = false;
@@ -313,13 +312,14 @@ void UFMODNiagaraEventPlayer::GetFunctions(TArray<FNiagaraFunctionSignature>& Ou
     Sig.bRequiresExecPin = true;
     Sig.Inputs.Add(FNiagaraVariable(FNiagaraTypeDefinition(GetClass()), TEXT("Event Player")));
     Sig.Inputs.Add(FNiagaraVariable(FNiagaraTypeDefinition::GetIntDef(), TEXT("Event Handle")));
-    Sig.Inputs.Add(FNiagaraVariable(FNiagaraTypeDefinition::GetVec3Def(), TEXT("Position WS")));
+    Sig.Inputs.Add(FNiagaraVariable(FNiagaraTypeDefinition::GetPositionDef(), TEXT("Position WS")));
     OutFunctions.Add(Sig);
 
     Sig = FNiagaraFunctionSignature();
     Sig.Name = SetPersistentAudioRotationName;
 #if WITH_EDITORONLY_DATA
     Sig.Description = NSLOCTEXT("FMODStudio", "SetPersistentEventRotationFunctionDescription", "If an active event effect can be found for the given handle then the this will adjusts its rotation in the world.");
+    Sig.FunctionVersion = FNiagaraAudioPlayerDIFunctionVersion::LatestVersion;
 #endif
     Sig.bMemberFunction = true;
     Sig.bRequiresContext = false;
@@ -334,6 +334,7 @@ void UFMODNiagaraEventPlayer::GetFunctions(TArray<FNiagaraFunctionSignature>& Ou
     Sig.Name = PausePersistentAudioName;
 #if WITH_EDITORONLY_DATA
     Sig.Description = NSLOCTEXT("FMODStudio", "SetPersistentEventPausedDescription", "If an active event effect can be found for the given handle then the this will either pause or unpause the effect.");
+    Sig.FunctionVersion = FNiagaraAudioPlayerDIFunctionVersion::LatestVersion;
 #endif
     Sig.bMemberFunction = true;
     Sig.bRequiresContext = false;
@@ -383,7 +384,7 @@ void UFMODNiagaraEventPlayer::GetVMExternalFunction(const FVMExternalFunctionBin
     }
 }
 
-void UFMODNiagaraEventPlayer::SetParameterFloat(FVectorVMContext& Context)
+void UFMODNiagaraEventPlayer::SetParameterFloat(FVectorVMExternalFunctionContext& Context)
 {
     VectorVM::FUserPtrHandler<FEventPlayerInterface_InstanceData> InstData(Context);
 
@@ -392,7 +393,7 @@ void UFMODNiagaraEventPlayer::SetParameterFloat(FVectorVMContext& Context)
     FNDIInputParam<float> ValueParam(Context);
     checkfSlow(InstData.Get(), TEXT("Event player has invalid instance data. %s"), *GetPathName());
 
-    for (int32 i = 0; i < Context.NumInstances; ++i)
+    for (int32 i = 0; i < Context.GetNumInstances(); ++i)
     {
         int32 Handle = AudioHandleInParam.GetAndAdvance();
         int32 NameIndex = NameIndexParam.GetAndAdvance();
@@ -415,18 +416,18 @@ void UFMODNiagaraEventPlayer::SetParameterFloat(FVectorVMContext& Context)
     }
 }
 
-void UFMODNiagaraEventPlayer::UpdateLocation(FVectorVMContext& Context)
+void UFMODNiagaraEventPlayer::UpdateLocation(FVectorVMExternalFunctionContext& Context)
 {
     VectorVM::FUserPtrHandler<FEventPlayerInterface_InstanceData> InstData(Context);
 
     FNDIInputParam<int32> AudioHandleInParam(Context);
-    FNDIInputParam<FVector> LocationParam(Context);
+    FNDIInputParam<FVector3f> LocationParam(Context);
     checkfSlow(InstData.Get(), TEXT("Audio player interface has invalid instance data. %s"), *GetPathName());
 
-    for (int32 i = 0; i < Context.NumInstances; ++i)
+    for (int32 i = 0; i < Context.GetNumInstances(); ++i)
     {
         int32 Handle = AudioHandleInParam.GetAndAdvance();
-        FVector Location = LocationParam.GetAndAdvance();
+        FVector Location = InstData->LWCConverter.ConvertSimulationVectorToWorld(LocationParam.GetAndAdvance());
 
         if (Handle > 0)
         {
@@ -444,18 +445,18 @@ void UFMODNiagaraEventPlayer::UpdateLocation(FVectorVMContext& Context)
     }
 }
 
-void UFMODNiagaraEventPlayer::UpdateRotation(FVectorVMContext& Context)
+void UFMODNiagaraEventPlayer::UpdateRotation(FVectorVMExternalFunctionContext& Context)
 {
     VectorVM::FUserPtrHandler<FEventPlayerInterface_InstanceData> InstData(Context);
 
     FNDIInputParam<int32> AudioHandleInParam(Context);
-    FNDIInputParam<FVector> RotationParam(Context);
+    FNDIInputParam<FVector3f> RotationParam(Context);
     checkfSlow(InstData.Get(), TEXT("Event player has invalid instance data. %s"), *GetPathName());
 
-    for (int32 i = 0; i < Context.NumInstances; ++i)
+    for (int32 i = 0; i < Context.GetNumInstances(); ++i)
     {
         int32 Handle = AudioHandleInParam.GetAndAdvance();
-        FVector Rotation = RotationParam.GetAndAdvance();
+        FVector3f Rotation = RotationParam.GetAndAdvance();
 
         if (Handle > 0)
         {
@@ -474,7 +475,7 @@ void UFMODNiagaraEventPlayer::UpdateRotation(FVectorVMContext& Context)
     }
 }
 
-void UFMODNiagaraEventPlayer::SetPausedState(FVectorVMContext& Context)
+void UFMODNiagaraEventPlayer::SetPausedState(FVectorVMExternalFunctionContext& Context)
 {
     VectorVM::FUserPtrHandler<FEventPlayerInterface_InstanceData> InstData(Context);
 
@@ -482,7 +483,7 @@ void UFMODNiagaraEventPlayer::SetPausedState(FVectorVMContext& Context)
     FNDIInputParam<FNiagaraBool> PausedParam(Context);
     checkfSlow(InstData.Get(), TEXT("Event player has invalid instance data. %s"), *GetPathName());
 
-    for (int32 i = 0; i < Context.NumInstances; ++i)
+    for (int32 i = 0; i < Context.GetNumInstances(); ++i)
     {
         int32 Handle = AudioHandleInParam.GetAndAdvance();
         bool IsPaused = PausedParam.GetAndAdvance();
@@ -503,7 +504,7 @@ void UFMODNiagaraEventPlayer::SetPausedState(FVectorVMContext& Context)
     }
 }
 
-void UFMODNiagaraEventPlayer::PlayOneShotAudio(FVectorVMContext& Context)
+void UFMODNiagaraEventPlayer::PlayOneShotAudio(FVectorVMExternalFunctionContext& Context)
 {
     VectorVM::FUserPtrHandler<FEventPlayerInterface_InstanceData> InstData(Context);
 
@@ -522,11 +523,12 @@ void UFMODNiagaraEventPlayer::PlayOneShotAudio(FVectorVMContext& Context)
     checkfSlow(InstData.Get(), TEXT("Event player has invalid instance data. %s"), *GetPathName());
     bool ValidSoundData = InstData->EventToPlay.IsValid();
 
-    for (int32 i = 0; i < Context.NumInstances; ++i)
+    for (int32 i = 0; i < Context.GetNumInstances(); ++i)
     {
         FNiagaraBool ShouldPlay = PlayDataParam.GetAndAdvance();
         FEventParticleData Data;
-        Data.Position = FVector(PositionParamX.GetAndAdvance(), PositionParamY.GetAndAdvance(), PositionParamZ.GetAndAdvance());
+        FNiagaraPosition SimulationPosition(PositionParamX.GetAndAdvance(), PositionParamY.GetAndAdvance(), PositionParamZ.GetAndAdvance());
+        Data.Position = InstData->LWCConverter.ConvertSimulationPositionToWorld(SimulationPosition);
         Data.Rotation = FRotator(RotationParamX.GetAndAdvance(), RotationParamY.GetAndAdvance(), RotationParamZ.GetAndAdvance());
 
         FNiagaraBool Valid;
@@ -538,25 +540,25 @@ void UFMODNiagaraEventPlayer::PlayOneShotAudio(FVectorVMContext& Context)
     }
 }
 
-void UFMODNiagaraEventPlayer::PlayPersistentAudio(FVectorVMContext& Context)
+void UFMODNiagaraEventPlayer::PlayPersistentAudio(FVectorVMExternalFunctionContext& Context)
 {
     VectorVM::FUserPtrHandler<FEventPlayerInterface_InstanceData> InstData(Context);
 
     FNDIInputParam<FNiagaraBool> PlayAudioParam(Context);
     FNDIInputParam<int32> AudioHandleInParam(Context);
-    FNDIInputParam<FVector> PositionParam(Context);
-    FNDIInputParam<FVector> RotationParam(Context);
+    FNDIInputParam<FVector3f> PositionParam(Context);
+    FNDIInputParam<FVector3f> RotationParam(Context);
 
     FNDIOutputParam<int32> AudioHandleOutParam(Context);
 
     checkfSlow(InstData.Get(), TEXT("Event player has invalid instance data. %s"), *GetPathName());
 
-    for (int32 i = 0; i < Context.NumInstances; ++i)
+    for (int32 i = 0; i < Context.GetNumInstances(); ++i)
     {
         bool ShouldPlay = PlayAudioParam.GetAndAdvance();
         int32 Handle = AudioHandleInParam.GetAndAdvance();
-        FVector Position = PositionParam.GetAndAdvance();
-        FVector InRot = RotationParam.GetAndAdvance();
+        FVector Position = InstData->LWCConverter.ConvertSimulationVectorToWorld(PositionParam.GetAndAdvance());
+        FVector3f InRot = RotationParam.GetAndAdvance();
         FRotator Rotation = FRotator(InRot.X, InRot.Y, InRot.Z);
 
         FPersistentEventParticleData AudioData;

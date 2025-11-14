@@ -7,9 +7,9 @@
 #include "FMODUtils.h"
 #include "FMODStudioModule.h"
 #include "FMODStudioEditorModule.h"
-#include "UnrealEd/Public/Editor.h"
+#include "Editor.h"
 #include "Framework/MultiBox/MultiBoxBuilder.h"
-#include "EditorStyle/Public/EditorStyleSet.h"
+#include "Editor/EditorStyle/Public/EditorStyleSet.h"
 
 #define LOCTEXT_NAMESPACE "AssetTypeActions"
 
@@ -40,12 +40,12 @@ void FAssetTypeActions_FMODEvent::GetActions(const TArray<UObject *> &InObjects,
     auto Events = GetTypedWeakObjectPtrs<UFMODEvent>(InObjects);
 
     MenuBuilder.AddMenuEntry(LOCTEXT("FMODEvent_Play", "Play"), LOCTEXT("FMODEvent_PlayTooltip", "Plays the selected FMOD event."),
-        FSlateIcon(FEditorStyle::GetStyleSetName(), "MediaAsset.AssetActions.Play"),
+        FSlateIcon(FAppStyle::GetAppStyleSetName(), "MediaAsset.AssetActions.Play"),
         FUIAction(FExecuteAction::CreateSP(this, &FAssetTypeActions_FMODEvent::ExecutePlay, Events),
             FCanExecuteAction::CreateSP(this, &FAssetTypeActions_FMODEvent::CanExecutePlayCommand, Events)));
 
     MenuBuilder.AddMenuEntry(LOCTEXT("FMODEvent_Stop", "Stop"), LOCTEXT("FMODEvent_StopTooltip", "Stops the currently playing FMOD event."),
-        FSlateIcon(FEditorStyle::GetStyleSetName(), "MediaAsset.AssetActions.Stop"),
+        FSlateIcon(FAppStyle::GetAppStyleSetName(), "MediaAsset.AssetActions.Stop"),
         FUIAction(FExecuteAction::CreateSP(this, &FAssetTypeActions_FMODEvent::ExecuteStop, Events), FCanExecuteAction()));
 }
 

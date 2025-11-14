@@ -6,7 +6,7 @@
 /* of the FMOD error codes.                                                                        */
 /*                                                                                                 */
 /* For more detail visit:                                                                          */
-/* https://fmod.com/docs/2.02/api/core-api-common.html#fmod_result                                 */
+/* https://fmod.com/docs/2.03/api/core-api-common.html#fmod_result                                 */
 /* =============================================================================================== */
 #ifndef _FMOD_ERRORS_H
 #define _FMOD_ERRORS_H

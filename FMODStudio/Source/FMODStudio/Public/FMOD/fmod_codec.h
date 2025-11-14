@@ -8,7 +8,7 @@
 /* plugin.                                                                                  */
 /*                                                                                          */
 /* For more detail visit:                                                                   */
-/* https://fmod.com/docs/2.02/api/core-api.html                                             */
+/* https://fmod.com/docs/2.03/api/core-api.html                                             */
 /* ======================================================================================== */
 #ifndef _FMOD_CODEC_H
 #define _FMOD_CODEC_H
@@ -32,27 +32,27 @@ typedef int FMOD_CODEC_SEEK_METHOD;
 /*
     Codec callbacks
 */
-typedef FMOD_RESULT (F_CALLBACK *FMOD_CODEC_OPEN_CALLBACK)         (FMOD_CODEC_STATE *codec_state, FMOD_MODE usermode, FMOD_CREATESOUNDEXINFO *userexinfo);
-typedef FMOD_RESULT (F_CALLBACK *FMOD_CODEC_CLOSE_CALLBACK)        (FMOD_CODEC_STATE *codec_state);
-typedef FMOD_RESULT (F_CALLBACK *FMOD_CODEC_READ_CALLBACK)         (FMOD_CODEC_STATE *codec_state, void *buffer, unsigned int samples_in, unsigned int *samples_out);
-typedef FMOD_RESULT (F_CALLBACK *FMOD_CODEC_GETLENGTH_CALLBACK)    (FMOD_CODEC_STATE *codec_state, unsigned int *length, FMOD_TIMEUNIT lengthtype);
-typedef FMOD_RESULT (F_CALLBACK *FMOD_CODEC_SETPOSITION_CALLBACK)  (FMOD_CODEC_STATE *codec_state, int subsound, unsigned int position, FMOD_TIMEUNIT postype);
-typedef FMOD_RESULT (F_CALLBACK *FMOD_CODEC_GETPOSITION_CALLBACK)  (FMOD_CODEC_STATE *codec_state, unsigned int *position, FMOD_TIMEUNIT postype);
-typedef FMOD_RESULT (F_CALLBACK *FMOD_CODEC_SOUNDCREATE_CALLBACK)  (FMOD_CODEC_STATE *codec_state, int subsound, FMOD_SOUND *sound);
-typedef FMOD_RESULT (F_CALLBACK *FMOD_CODEC_GETWAVEFORMAT_CALLBACK)(FMOD_CODEC_STATE *codec_state, int index, FMOD_CODEC_WAVEFORMAT *waveformat);
+typedef FMOD_RESULT (F_CALL *FMOD_CODEC_OPEN_CALLBACK)         (FMOD_CODEC_STATE *codec_state, FMOD_MODE usermode, FMOD_CREATESOUNDEXINFO *userexinfo);
+typedef FMOD_RESULT (F_CALL *FMOD_CODEC_CLOSE_CALLBACK)        (FMOD_CODEC_STATE *codec_state);
+typedef FMOD_RESULT (F_CALL *FMOD_CODEC_READ_CALLBACK)         (FMOD_CODEC_STATE *codec_state, void *buffer, unsigned int samples_in, unsigned int *samples_out);
+typedef FMOD_RESULT (F_CALL *FMOD_CODEC_GETLENGTH_CALLBACK)    (FMOD_CODEC_STATE *codec_state, unsigned int *length, FMOD_TIMEUNIT lengthtype);
+typedef FMOD_RESULT (F_CALL *FMOD_CODEC_SETPOSITION_CALLBACK)  (FMOD_CODEC_STATE *codec_state, int subsound, unsigned int position, FMOD_TIMEUNIT postype);
+typedef FMOD_RESULT (F_CALL *FMOD_CODEC_GETPOSITION_CALLBACK)  (FMOD_CODEC_STATE *codec_state, unsigned int *position, FMOD_TIMEUNIT postype);
+typedef FMOD_RESULT (F_CALL *FMOD_CODEC_SOUNDCREATE_CALLBACK)  (FMOD_CODEC_STATE *codec_state, int subsound, FMOD_SOUND *sound);
+typedef FMOD_RESULT (F_CALL *FMOD_CODEC_GETWAVEFORMAT_CALLBACK)(FMOD_CODEC_STATE *codec_state, int index, FMOD_CODEC_WAVEFORMAT *waveformat);
 
 /*
     Codec functions
 */
-typedef FMOD_RESULT (F_CALLBACK *FMOD_CODEC_METADATA_FUNC)         (FMOD_CODEC_STATE *codec_state, FMOD_TAGTYPE tagtype, char *name, void *data, unsigned int datalen, FMOD_TAGDATATYPE datatype, int unique);
-typedef void *      (F_CALLBACK *FMOD_CODEC_ALLOC_FUNC)            (unsigned int size, unsigned int align, const char *file, int line);
-typedef void        (F_CALLBACK *FMOD_CODEC_FREE_FUNC)             (void *ptr, const char *file, int line);
-typedef void        (F_CALLBACK *FMOD_CODEC_LOG_FUNC)              (FMOD_DEBUG_FLAGS level, const char *file, int line, const char *function, const char *string, ...);
+typedef FMOD_RESULT (F_CALL *FMOD_CODEC_METADATA_FUNC)         (FMOD_CODEC_STATE *codec_state, FMOD_TAGTYPE tagtype, char *name, void *data, unsigned int datalen, FMOD_TAGDATATYPE datatype, int unique);
+typedef void *      (F_CALL *FMOD_CODEC_ALLOC_FUNC)            (unsigned int size, unsigned int align, const char *file, int line);
+typedef void        (F_CALL *FMOD_CODEC_FREE_FUNC)             (void *ptr, const char *file, int line);
+typedef void        (F_CALL *FMOD_CODEC_LOG_FUNC)              (FMOD_DEBUG_FLAGS level, const char *file, int line, const char *function, const char *string, ...);
 
-typedef FMOD_RESULT (F_CALLBACK *FMOD_CODEC_FILE_READ_FUNC)        (FMOD_CODEC_STATE *codec_state, void *buffer, unsigned int sizebytes, unsigned int *bytesread);
-typedef FMOD_RESULT (F_CALLBACK *FMOD_CODEC_FILE_SEEK_FUNC)        (FMOD_CODEC_STATE *codec_state, unsigned int pos, FMOD_CODEC_SEEK_METHOD method);
-typedef FMOD_RESULT (F_CALLBACK *FMOD_CODEC_FILE_TELL_FUNC)        (FMOD_CODEC_STATE *codec_state, unsigned int *pos);
-typedef FMOD_RESULT (F_CALLBACK *FMOD_CODEC_FILE_SIZE_FUNC)        (FMOD_CODEC_STATE *codec_state, unsigned int *size);
+typedef FMOD_RESULT (F_CALL *FMOD_CODEC_FILE_READ_FUNC)        (FMOD_CODEC_STATE *codec_state, void *buffer, unsigned int sizebytes, unsigned int *bytesread);
+typedef FMOD_RESULT (F_CALL *FMOD_CODEC_FILE_SEEK_FUNC)        (FMOD_CODEC_STATE *codec_state, unsigned int pos, FMOD_CODEC_SEEK_METHOD method);
+typedef FMOD_RESULT (F_CALL *FMOD_CODEC_FILE_TELL_FUNC)        (FMOD_CODEC_STATE *codec_state, unsigned int *pos);
+typedef FMOD_RESULT (F_CALL *FMOD_CODEC_FILE_SIZE_FUNC)        (FMOD_CODEC_STATE *codec_state, unsigned int *size);
 
 /*
     Codec structures
@@ -121,7 +121,7 @@ struct FMOD_CODEC_STATE
 #define FMOD_CODEC_FREE(_state, _ptr) \
     (_state)->functions->free(_ptr, __FILE__, __LINE__)
 #define FMOD_CODEC_LOG(_state, _level, _location, _format, ...) \
-    (_state)->functions->log(_level, __FILE__, __LINE__, _location, _format, __VA_ARGS__)
+    (_state)->functions->log(_level, __FILE__, __LINE__, _location, _format, ##__VA_ARGS__)
 #define FMOD_CODEC_FILE_READ(_state, _buffer, _sizebytes, _bytesread) \
     (_state)->functions->read(_state, _buffer, _sizebytes, _bytesread)
 #define FMOD_CODEC_FILE_SEEK(_state, _pos, _method) \
