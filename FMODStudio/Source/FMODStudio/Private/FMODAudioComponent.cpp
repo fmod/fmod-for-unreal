@@ -16,9 +16,6 @@
 #include "Engine/Texture2D.h"
 #endif
 
-static float GetMaxDistance(const FFMODAttenuationDetails& AttenuationDetails, FMOD::Studio::EventDescription* EventDescription);
-TArray<UFMODAudioComponent*> UFMODAudioComponent::ActiveComponents;
-
 UFMODAudioComponent::UFMODAudioComponent(const FObjectInitializer &ObjectInitializer)
     : Super(ObjectInitializer)
     , Event(nullptr)
@@ -47,7 +44,6 @@ UFMODAudioComponent::UFMODAudioComponent(const FObjectInitializer &ObjectInitial
     , NeedDestroyProgrammerSoundCallback(false)
     , EventLength(0)
     , bPlayEnded(false)
-    , bHasTriggered(false)
     , Velocity(ForceInit)
     , LastLocation(ForceInit)
 {
@@ -105,7 +101,7 @@ void UFMODAudioComponent::OnRegister()
         FMOD_STUDIO_PLAYBACK_STATE state = FMOD_STUDIO_PLAYBACK_STOPPED;
         if (StudioInstance && StudioInstance->isValid())
         {
-            verifyfmod(StudioInstance->getPlaybackState(&state));
+            StudioInstance->getPlaybackState(&state);
         }
         if (state == FMOD_STUDIO_PLAYBACK_STOPPED)
         {
@@ -163,18 +159,13 @@ void UFMODAudioComponent::OnUpdateTransform(EUpdateTransformFlags UpdateTransfor
     Super::OnUpdateTransform(UpdateTransformFlags, Teleport);
     if (StudioInstance)
     {
-        if (OutsideMaxDistance())
-        {
-            verifyfmod(StudioInstance->stop(FMOD_STUDIO_STOP_ALLOWFADEOUT));
-        }
-
         FMOD_3D_ATTRIBUTES attr = { { 0 } };
         attr.position = FMODUtils::ConvertWorldVector(GetComponentTransform().GetLocation());
         attr.up = FMODUtils::ConvertUnitVector(GetComponentTransform().GetUnitAxis(EAxis::Z));
         attr.forward = FMODUtils::ConvertUnitVector(GetComponentTransform().GetUnitAxis(EAxis::X));
         attr.velocity = FMODUtils::ConvertWorldVector(Velocity);
 
-        verifyfmod(StudioInstance->set3DAttributes(&attr));
+        StudioInstance->set3DAttributes(&attr);
 
         UpdateInteriorVolumes();
         UpdateAttenuation();
@@ -428,7 +419,6 @@ void UFMODAudioComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
     {
         Stop();
         OnEventStopped.Broadcast();
-        DeregisterActiveComponent(this);
     }
     Release();
 
@@ -491,20 +481,12 @@ void UFMODAudioComponent::TickComponent(float DeltaTime, enum ELevelTick TickTyp
                 OnSoundStopped.Broadcast();
             }
 
-            if (OutsideMaxDistance())
-            {
-                verifyfmod(StudioInstance->stop(FMOD_STUDIO_STOP_ALLOWFADEOUT));
-            }
-
-            verifyfmod(StudioInstance->getPlaybackState(&state));
+            StudioInstance->getPlaybackState(&state);
         }
 
         if (state == FMOD_STUDIO_PLAYBACK_STOPPED)
         {
-            if (!ActiveComponents.Contains(this))
-            {
-                OnPlaybackCompleted();
-            }
+            OnPlaybackCompleted();
         }
     }
 }
@@ -546,7 +528,6 @@ void UFMODAudioComponent::Deactivate()
     if (ShouldActivate() == false)
     {
         Stop();
-        DeregisterActiveComponent(this);
     }
     Super::Deactivate();
 }
@@ -718,93 +699,10 @@ void UFMODAudioComponent::EventCallbackCreateProgrammerSound(FMOD_STUDIO_PROGRAM
     }
 }
 
-bool UFMODAudioComponent::OutsideMaxDistance(FMOD::Studio::EventDescription* StudioDescription)
-{
-    const UFMODSettings& Settings = *GetDefault<UFMODSettings>();
-    if (!Settings.bStopEventsOutsideMaxDistance)
-    {
-        return false;
-    }
-
-    if (!StudioDescription && StudioInstance && StudioInstance->isValid())
-    {
-        verifyfmod(StudioInstance->getDescription(&StudioDescription));
-    }
-
-    if (StudioDescription)
-    {
-        bool is3D = false;
-        verifyfmod(StudioDescription->is3D(&is3D));
-        if (is3D)
-        {
-            float maxDist = GetMaxDistance(AttenuationDetails, StudioDescription);
-            return GetStudioModule().DistanceSquaredToNearestListener(GetComponentLocation()) >  maxDist * maxDist;
-        }
-    }
-    return false;
-}
-
-float GetMaxDistance(const FFMODAttenuationDetails& AttenuationDetails, FMOD::Studio::EventDescription* EventDescription)
-{
-    if (AttenuationDetails.bOverrideAttenuation)
-    {
-        return FMODUtils::DistanceToUEScale(AttenuationDetails.MaximumDistance);
-    }
-
-    if (EventDescription)
-    {
-        float maxDist = 0;
-        verifyfmod(EventDescription->getMinMaxDistance(nullptr, &maxDist));
-        return FMODUtils::DistanceToUEScale(maxDist);
-    }
-    else
-    {
-        return 0;
-    }
-}
-
 void UFMODAudioComponent::EventCallbackSoundStopped()
 {
     FScopeLock Lock(&CallbackLock);
     TriggerSoundStoppedDelegate = true;
-}
-
-void UFMODAudioComponent::RegisterActiveComponent(UFMODAudioComponent* component)
-{
-    if (component)
-    {
-        if (!ActiveComponents.Contains(component))
-        {
-            ActiveComponents.Add(component);
-        }
-    }
-}
-
-void UFMODAudioComponent::DeregisterActiveComponent(UFMODAudioComponent* component)
-{
-    if (component)
-    {
-        if (ActiveComponents.Contains(component))
-        {
-            ActiveComponents.Remove(component);
-        }
-    }
-}
-
-void UFMODAudioComponent::UpdatePlayingStatus(bool force, FMOD::Studio::EventDescription* StudioDescription)
-{
-    bool playInstance = !OutsideMaxDistance();
-    if (force || playInstance != IsPlaying())
-    {
-        if (playInstance)
-        {
-            PlayInstance(StudioDescription ? StudioDescription : GetStudioModule().GetEventDescription(Event, EFMODSystemContext::Runtime));
-        }
-        else
-        {
-            Stop();
-        }
-    }
 }
 
 void UFMODAudioComponent::EventCallbackDestroyProgrammerSound(FMOD_STUDIO_PROGRAMMER_SOUND_PROPERTIES *props)
@@ -828,14 +726,6 @@ void UFMODAudioComponent::SetProgrammerSound(FMOD::Sound *Sound)
     ProgrammerSound = Sound;
 }
 
-void UFMODAudioComponent::UpdateActiveComponents()
-{
-    for (int i = 0; i < ActiveComponents.Num(); i++)
-    {
-        ActiveComponents[i]->UpdatePlayingStatus();
-    }
-}
-
 void UFMODAudioComponent::Play()
 {
     PlayInternal(EFMODSystemContext::Runtime);
@@ -845,148 +735,97 @@ void UFMODAudioComponent::PlayInternal(EFMODSystemContext::Type Context, bool bR
 {
     Stop();
 
-    // Only play events in PIE/game, not when placing them in the editor
-    if (!FMODUtils::IsWorldAudible(GetWorld(), Context == EFMODSystemContext::Auditioning))
+    if (!FMODUtils::IsWorldAudible(GetWorld(), Context == EFMODSystemContext::Editor))
     {
         return;
     }
 
     UE_LOG(LogFMOD, Verbose, TEXT("UFMODAudioComponent %p Play"), this);
-    FMOD::Studio::EventDescription* StudioDescription = GetStudioModule().GetEventDescription(Event, Context);
-    if (StudioDescription)
+
+    // Only play events in PIE/game, not when placing them in the editor
+    FMOD::Studio::EventDescription *EventDesc = GetStudioModule().GetEventDescription(Event, Context);
+    if (EventDesc != nullptr)
     {
-        if (bHasTriggered && bTriggerOnce)
+        EventDesc->getLength(&EventLength);
+        if (!StudioInstance || !StudioInstance->isValid())
         {
-            return;
+            FMOD_RESULT result = EventDesc->createInstance(&StudioInstance);
+            if (result != FMOD_OK)
+                return;
         }
 
-        const UFMODSettings& Settings = *GetDefault<UFMODSettings>();
-        bool is3D = false;
-        verifyfmod(StudioDescription->is3D(&is3D));
-        bool playInstance = true;
-        if (is3D && Settings.bStopEventsOutsideMaxDistance)
+        const UFMODSettings &Settings = *GetDefault<UFMODSettings>();
+        FMOD_STUDIO_PARAMETER_DESCRIPTION paramDesc = {};
+        FString param = Settings.OcclusionParameter;
+        if (!param.IsEmpty())
         {
-            playInstance = !OutsideMaxDistance(StudioDescription);
-        }
-
-        if (playInstance)
-        {
-            if (is3D && Settings.bStopEventsOutsideMaxDistance)
+            if (EventDesc->getParameterDescriptionByName(TCHAR_TO_UTF8(*Settings.OcclusionParameter), &paramDesc) == FMOD_OK)
             {
-                // Play oneshot once
-                bool isOneShot = false;
-                verifyfmod(StudioDescription->isOneshot(&isOneShot));
-                if (!isOneShot)
+                OcclusionID = paramDesc.id;
+                bApplyOcclusionParameter = true;
+            }
+        }
+
+        paramDesc = {};
+        param = Settings.AmbientVolumeParameter;
+        if (!param.IsEmpty())
+        {
+            if (EventDesc->getParameterDescriptionByName(TCHAR_TO_UTF8(*param), &paramDesc) == FMOD_OK)
+            {
+                AmbientVolumeID = paramDesc.id;
+                LastVolume = -1.0f;     // Invalidate LastVolume so the AmbientVolumeParameter of the Event will be set later on
+                bApplyAmbientVolumes = true;
+            }
+        }
+
+        paramDesc = {};
+        param = Settings.AmbientLPFParameter;
+        if (!param.IsEmpty())
+        {
+            if (EventDesc->getParameterDescriptionByName(TCHAR_TO_UTF8(*Settings.AmbientLPFParameter), &paramDesc) == FMOD_OK)
+            {
+                AmbientLPFID = paramDesc.id;
+                LastLPF = -1.0f;     // Invalidate LastLPF so the AmbientLPFParameter of the Event will be set later on
+                bApplyAmbientVolumes = true;
+            }
+        }
+
+        OnUpdateTransform(EUpdateTransformFlags::SkipPhysicsUpdate);
+        // Set initial parameters
+        for (auto Kvp : ParameterCache)
+        {
+            FMOD_RESULT Result = StudioInstance->setParameterByName(TCHAR_TO_UTF8(*Kvp.Key.ToString()), Kvp.Value);
+            if (Result != FMOD_OK)
+            {
+                UE_LOG(LogFMOD, Warning, TEXT("Failed to set initial parameter %s"), *Kvp.Key.ToString());
+            }
+        }
+        for (int i = 0; i < EFMODEventProperty::Count; ++i)
+        {
+            if (StoredProperties[i] != -1.0f)
+            {
+                FMOD_RESULT Result = StudioInstance->setProperty((FMOD_STUDIO_EVENT_PROPERTY)i, StoredProperties[i]);
+                if (Result != FMOD_OK)
                 {
-                    RegisterActiveComponent(this);
+                    UE_LOG(LogFMOD, Warning, TEXT("Failed to set initial property %d"), i);
                 }
-
-                UpdatePlayingStatus(true, StudioDescription);
-            }
-            else
-            {
-                PlayInstance(StudioDescription);
             }
         }
+
+        if (bEnableTimelineCallbacks || !ProgrammerSoundName.IsEmpty())
+        {
+            verifyfmod(StudioInstance->setCallback(UFMODAudioComponent_EventCallback));
+        }
+
+        verifyfmod(StudioInstance->setUserData(this));
+        verifyfmod(StudioInstance->start());
+        UE_LOG(LogFMOD, Verbose, TEXT("Playing component %p"), this);
 
         if (bReset || ShouldActivate() == true)
         {
             Super::Activate(bReset);
         }
     }
-}
-
-void UFMODAudioComponent::PlayInstance(FMOD::Studio::EventDescription* StudioDescription)
-{
-    if (!StudioInstance->isValid())
-    {
-        StudioInstance = nullptr;
-    }
-
-    bool isOneShot = false;
-    verifyfmod(StudioDescription->isOneshot(&isOneShot));
-    // Let previous oneshot instances play out
-    if (isOneShot && StudioInstance->isValid())
-    {
-        verifyfmod(StudioInstance->release());
-        StudioInstance = nullptr;
-    }
-
-    verifyfmod(StudioDescription->getLength(&EventLength));
-    if (!StudioInstance || !StudioInstance->isValid())
-    {
-        FMOD_RESULT Result = StudioDescription->createInstance(&StudioInstance);
-        if (Result != FMOD_OK)
-            return;
-    }
-
-    const UFMODSettings& Settings = *GetDefault<UFMODSettings>();
-    FMOD_STUDIO_PARAMETER_DESCRIPTION paramDesc = {};
-    FString param = Settings.OcclusionParameter;
-    if (!param.IsEmpty())
-    {
-        if (StudioDescription->getParameterDescriptionByName(TCHAR_TO_UTF8(*Settings.OcclusionParameter), &paramDesc) == FMOD_OK)
-        {
-            OcclusionID = paramDesc.id;
-            bApplyOcclusionParameter = true;
-        }
-    }
-
-    paramDesc = {};
-    param = Settings.AmbientVolumeParameter;
-    if (!param.IsEmpty())
-    {
-        if (StudioDescription->getParameterDescriptionByName(TCHAR_TO_UTF8(*param), &paramDesc) == FMOD_OK)
-        {
-            AmbientVolumeID = paramDesc.id;
-            LastVolume = -1.0f;     // Invalidate LastVolume so the AmbientVolumeParameter of the Event will be set later on
-            bApplyAmbientVolumes = true;
-        }
-    }
-
-    paramDesc = {};
-    param = Settings.AmbientLPFParameter;
-    if (!param.IsEmpty())
-    {
-        if (StudioDescription->getParameterDescriptionByName(TCHAR_TO_UTF8(*Settings.AmbientLPFParameter), &paramDesc) == FMOD_OK)
-        {
-            AmbientLPFID = paramDesc.id;
-            LastLPF = -1.0f;     // Invalidate LastLPF so the AmbientLPFParameter of the Event will be set later on
-            bApplyAmbientVolumes = true;
-        }
-    }
-
-    OnUpdateTransform(EUpdateTransformFlags::SkipPhysicsUpdate);
-    // Set initial parameters
-    for (auto Kvp : ParameterCache)
-    {
-        FMOD_RESULT Result = StudioInstance->setParameterByName(TCHAR_TO_UTF8(*Kvp.Key.ToString()), Kvp.Value);
-        if (Result != FMOD_OK)
-        {
-            UE_LOG(LogFMOD, Warning, TEXT("Failed to set initial parameter %s"), *Kvp.Key.ToString());
-        }
-    }
-    for (int i = 0; i < EFMODEventProperty::Count; ++i)
-    {
-        if (StoredProperties[i] != -1.0f)
-        {
-            FMOD_RESULT Result = StudioInstance->setProperty((FMOD_STUDIO_EVENT_PROPERTY)i, StoredProperties[i]);
-            if (Result != FMOD_OK)
-            {
-                UE_LOG(LogFMOD, Warning, TEXT("Failed to set initial property %d"), i);
-            }
-        }
-    }
-
-    if (bEnableTimelineCallbacks || !ProgrammerSoundName.IsEmpty())
-    {
-        verifyfmod(StudioInstance->setCallback(UFMODAudioComponent_EventCallback));
-    }
-
-    verifyfmod(StudioInstance->setUserData(this));
-    verifyfmod(StudioInstance->start());
-    bHasTriggered = true;
-    UE_LOG(LogFMOD, Verbose, TEXT("Playing component %p"), this);
 }
 
 void UFMODAudioComponent::PauseInternal(PauseContext Pauser)
@@ -1094,7 +933,7 @@ void UFMODAudioComponent::OnPlaybackCompleted()
         // Fire callback after we have cleaned up our instance
         OnEventStopped.Broadcast();
     }
-
+    
     // Auto destruction is handled via marking object for deletion.
     if (bAutoDestroy)
     {
@@ -1104,10 +943,7 @@ void UFMODAudioComponent::OnPlaybackCompleted()
 
 bool UFMODAudioComponent::IsPlaying(void)
 {
-    FMOD_STUDIO_PLAYBACK_STATE state = FMOD_STUDIO_PLAYBACK_STOPPED;
-    verifyfmod(StudioInstance->getPlaybackState(&state));
-
-    return state != FMOD_STUDIO_PLAYBACK_STOPPED;
+    return IsActive();
 }
 
 void UFMODAudioComponent::SetVolume(float Volume)
