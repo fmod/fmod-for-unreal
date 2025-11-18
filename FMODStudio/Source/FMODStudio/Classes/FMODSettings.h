@@ -88,7 +88,8 @@ namespace EFMODPlatforms
         Switch,
         XboxOne,
         XSX,
-        Editor
+        Editor,
+        Reserved1,
     };
 }
 
@@ -231,12 +232,6 @@ public:
     */
     UPROPERTY(config, EditAnywhere, Category = Basic)
     TEnumAsByte<EFMODOutput::Type> OutputType;
-
-    /**
-    * Whether the FMOD Audio Component should stop events that are further than their maximum distance from the nearest listener.
-    */
-    UPROPERTY(config, EditAnywhere, Category = Basic)
-    bool bStopEventsOutsideMaxDistance;
 
     /**
     * Locales for localized banks. These should match the project locales configured in the FMOD Studio project.
