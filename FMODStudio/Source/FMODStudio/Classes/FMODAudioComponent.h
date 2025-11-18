@@ -274,8 +274,6 @@ public:
     /** Set a programmer sound to use for this audio component.  Lifetime of sound must exceed that of the audio component. */
     void SetProgrammerSound(FMOD::Sound *Sound);
 
-    static void UpdateActiveComponents();
-
     /** FMOD Custom Attenuation Details. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = FMODAudio)
     struct FFMODAttenuationDetails AttenuationDetails;
@@ -312,9 +310,6 @@ public:
     virtual void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
     // End ActorComponent interface.
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = FMODAudio)
-    bool bTriggerOnce;
-
 protected:
     // Begin UObject interface.
     virtual void OnUpdateTransform(EUpdateTransformFlags UpdateTransformFlags, ETeleportType Teleport = ETeleportType::None) override;
@@ -342,11 +337,8 @@ private:
     /** Stored properties to apply next time we create an instance. */
     float StoredProperties[EFMODEventProperty::Count];
 
-    /** Function to prepare to play an event */
+    /** Internal play function which can play events in the editor. */
     void PlayInternal(EFMODSystemContext::Type Context, bool bReset = false);
-
-    /** Internal function to start the event instance */
-    void PlayInstance(FMOD::Studio::EventDescription* StudioDescription);
 
     /** Pause the audio component from a sequencer call. */
     void PauseInternal(PauseContext Pauser);
@@ -384,17 +376,8 @@ private:
     /** Called when the event has finished stopping. */
     void OnPlaybackCompleted();
 
-    /** Check if StudioInstance has moved outside the max distance. */
-    bool OutsideMaxDistance(FMOD::Studio::EventDescription* StudioDescription = nullptr);
-
     void EventCallbackSoundStopped();
     bool TriggerSoundStoppedDelegate;
-
-    static void RegisterActiveComponent(UFMODAudioComponent* component);
-
-    static void DeregisterActiveComponent(UFMODAudioComponent* component);
-
-    void UpdatePlayingStatus(bool force = false, FMOD::Studio::EventDescription* StudioDescription = nullptr);
 
 #if WITH_EDITORONLY_DATA
     void UpdateSpriteTexture();
@@ -471,9 +454,6 @@ private:
     /** Used by FPlayingToken to prevent restarting from delayed sequencer state restore. */
     bool bPlayEnded;
 
-    bool bHasTriggered;
-
-    static TArray<UFMODAudioComponent*> ActiveComponents;
     FVector Velocity;
     FVector LastLocation;
 };
