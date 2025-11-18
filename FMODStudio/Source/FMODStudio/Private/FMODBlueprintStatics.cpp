@@ -16,8 +16,6 @@
 /////////////////////////////////////////////////////
 // UFMODBlueprintStatics
 
-bool OutsideMaxDistance(FMOD::Studio::EventDescription* EventDescription, FVector Location);
-
 UFMODBlueprintStatics::UFMODBlueprintStatics(const FObjectInitializer &ObjectInitializer)
     : Super(ObjectInitializer)
 {
@@ -40,35 +38,20 @@ FFMODEventInstance UFMODBlueprintStatics::PlayEventAtLocation(
         FMOD::Studio::EventDescription *EventDesc = IFMODStudioModule::Get().GetEventDescription(Event);
         if (EventDesc != nullptr)
         {
-            bool playInstance = !OutsideMaxDistance(EventDesc, Location.GetLocation());
-
-            if (playInstance)
+            FMOD::Studio::EventInstance *EventInst = nullptr;
+            EventDesc->createInstance(&EventInst);
+            if (EventInst != nullptr)
             {
-                FMOD::Studio::EventInstance *EventInst = nullptr;
-                verifyfmod(EventDesc->createInstance(&EventInst));
-                if (EventInst != nullptr)
+                FMOD_3D_ATTRIBUTES EventAttr = { { 0 } };
+                FMODUtils::Assign(EventAttr, Location);
+                EventInst->set3DAttributes(&EventAttr);
+
+                if (bAutoPlay)
                 {
-                    FMOD_3D_ATTRIBUTES EventAttr = { { 0 } };
-                    FMODUtils::Assign(EventAttr, Location);
-                    verifyfmod(EventInst->set3DAttributes(&EventAttr));
-
-                    FMOD_RESULT result = FMOD_ERR_BADCOMMAND;
-                    if (bAutoPlay)
-                    {
-                        result = EventInst->start();
-                        verifyfmod(result);
-                    }
-
-                    if (result == FMOD_OK)
-                    {
-                        verifyfmod(EventInst->release());
-                        Instance.Instance = EventInst;
-                    }
-                    else
-                    {
-                        UE_LOG(LogFMOD, Warning, TEXT("Failed to play event at location."));
-                    }
+                    EventInst->start();
+                    EventInst->release();
                 }
+                Instance.Instance = EventInst;
             }
         }
     }
@@ -688,20 +671,4 @@ void UFMODBlueprintStatics::MixerResume()
 void UFMODBlueprintStatics::SetLocale(const FString& Locale)
 {
     IFMODStudioModule::Get().SetLocale(Locale);
-}
-
-bool OutsideMaxDistance(FMOD::Studio::EventDescription* EventDescription, FVector Location)
-{
-    bool is3D = false;
-    verifyfmod(EventDescription->is3D(&is3D));
-
-    if (!is3D || !GetDefault<UFMODSettings>()->bStopEventsOutsideMaxDistance)
-    {
-        return false;
-    }
-
-    float maxDist = 0;
-    verifyfmod(EventDescription->getMinMaxDistance(nullptr, &maxDist));
-
-    return IFMODStudioModule::Get().DistanceSquaredToNearestListener(Location) > FMODUtils::DistanceToUEScale(maxDist) * FMODUtils::DistanceToUEScale(maxDist);;
 }
