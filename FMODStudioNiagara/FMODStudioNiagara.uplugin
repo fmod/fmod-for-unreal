@@ -2,8 +2,8 @@
     "FileVersion": 3,
 
     "FriendlyName": "FMOD Studio Niagara Integration",
-    "Version" : 20311,
-    "VersionName" : "2.03.11",
+    "Version" : 20312,
+    "VersionName" : "2.03.12",
     "CreatedBy": "Firelight Technologies",
     "CreatedByURL" : "http://fmod.com",
     "Description" : "FMOD Studio with Niagara Integration.",

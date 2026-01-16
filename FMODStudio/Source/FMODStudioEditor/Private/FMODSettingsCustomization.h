@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2025.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2019-2026.
 
 #pragma once
 

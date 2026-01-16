@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2025.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2026.
 
 #pragma once
 
@@ -15,7 +15,7 @@ class FMODSTUDIO_API AFMODAmbientSound : public AActor
 public:
     /** The Audio component for this actor */
     UPROPERTY(Category = Sound, VisibleAnywhere, BlueprintReadOnly, meta = (ExposeFunctionCategories = "Sound"))
-    UFMODAudioComponent *AudioComponent;
+    TObjectPtr<UFMODAudioComponent> AudioComponent;
 
 // Begin AActor interface.
 #if WITH_EDITOR
