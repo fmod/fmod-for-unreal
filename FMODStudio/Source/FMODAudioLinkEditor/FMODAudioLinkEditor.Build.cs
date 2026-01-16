@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2025-2025.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2026-2026.
 
 using UnrealBuildTool;
 using System;
