@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2025.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2026.
 
 #pragma once
 
@@ -27,7 +27,7 @@ public:
 private:
     TSharedRef<SBorder> ConstructToolbar(FMOD::Studio::EventDescription *EventDescription);
     TSharedRef<SExpandableArea> ConstructInfo(FMOD::Studio::EventDescription *EventDescription);
-    TSharedRef<SExpandableArea> ConstructParameters(FMOD::Studio::EventDescription *EventDescription);
+    TSharedRef<SExpandableArea> ConstructParameters(FMOD::Studio::EventDescription *EventDescription, bool bCacheAutomatedParams = false);
     TSharedRef<SExpandableArea> ConstructUserProperties(FMOD::Studio::EventDescription *EventDescription);
 
     /** Editor that owns this panel */
@@ -38,5 +38,6 @@ private:
     FReply OnClickedPause();
 
     TOptional<float> GetParameterValue(FMOD_STUDIO_PARAMETER_ID ParameterId) const;
+    FText GetParameterValueAsText(FMOD_STUDIO_PARAMETER_ID ParameterId) const;
     void OnParameterValueChanged(float NewValue, FMOD_STUDIO_PARAMETER_ID ParameterId);
 };
