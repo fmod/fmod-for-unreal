@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2025.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2026.
 
 #include "FMODStudioEditorModule.h"
 #include "FMODStudioModule.h"
@@ -682,55 +682,33 @@ void FFMODStudioEditorModule::ValidateFMOD()
         {
             StudioPathString = TEXT("");
         }
-
         FString CanonicalBankPath = FullBankPath;
+        FPaths::MakePathRelativeTo(CanonicalBankPath, *StudioProjectPath);
         FPaths::CollapseRelativeDirectories(CanonicalBankPath);
         FPaths::NormalizeDirectoryName(CanonicalBankPath);
         FPaths::RemoveDuplicateSlashes(CanonicalBankPath);
-        FPaths::NormalizeDirectoryName(CanonicalBankPath);
+
         FString CanonicalStudioPath = StudioPathString;
-
-        if (FPaths::IsRelative(CanonicalStudioPath) && !StudioProjectDir.IsEmpty() && !StudioPathString.IsEmpty())
-        {
-            CanonicalStudioPath = FPaths::Combine(*StudioProjectDir, *CanonicalStudioPath);
-        }
-
         FPaths::CollapseRelativeDirectories(CanonicalStudioPath);
         FPaths::NormalizeDirectoryName(CanonicalStudioPath);
         FPaths::RemoveDuplicateSlashes(CanonicalStudioPath);
-        FPaths::NormalizeDirectoryName(CanonicalStudioPath);
 
         if (!FPaths::IsSamePath(CanonicalBankPath, CanonicalStudioPath))
         {
-            FString BankPathToSet = FullBankPath;
-
-            // Extra logic - if we have put the studio project inside the game project, then make it relative
-            if (!StudioProjectDir.IsEmpty())
-            {
-                FString GameBaseDir = FPaths::ConvertRelativePathToFull(FPaths::ProjectDir());
-                FString BankPathFromGameProject = FullBankPath;
-                FString StudioProjectFromGameProject = StudioProjectDir;
-                if (FPaths::MakePathRelativeTo(BankPathFromGameProject, *GameBaseDir) && !BankPathFromGameProject.Contains(TEXT("..")) &&
-                    FPaths::MakePathRelativeTo(StudioProjectFromGameProject, *GameBaseDir) && !StudioProjectFromGameProject.Contains(TEXT("..")))
-                {
-                    FPaths::MakePathRelativeTo(BankPathToSet, *(StudioProjectDir + TEXT("/")));
-                }
-            }
-
             ProblemsFound++;
 
             FText AskMessage = FText::Format(LOCTEXT("SetStudioBuildStudio_Ask",
                                                  "FMOD Studio build path should be set up.\n\nCurrent Studio build path: {0}\nNew build path: "
                                                  "{1}\n\nDo you want to fix up the project now?"),
-                FText::FromString(StudioPathString), FText::FromString(BankPathToSet));
+                FText::FromString(StudioPathString), FText::FromString(CanonicalBankPath));
 
             if (EAppReturnType::Yes == FMessageDialog::Open(EAppMsgType::YesNo, AskMessage))
             {
                 FString Result;
-                StudioLink.Execute(*FString::Printf(TEXT("studio.project.workspace.builtBanksOutputDirectory = \"%s\";"), *BankPathToSet), Result);
+                StudioLink.Execute(*FString::Printf(TEXT("studio.project.workspace.builtBanksOutputDirectory = \"%s\";"), *CanonicalBankPath), Result);
                 StudioLink.Execute(TEXT("studio.project.workspace.builtBanksOutputDirectory"), Result);
 
-                if (Result != BankPathToSet)
+                if (Result != CanonicalBankPath)
                 {
                     FMessageDialog::Open(EAppMsgType::Ok,
                         LOCTEXT("SetStudioBuildStudio_Save",
@@ -738,7 +716,7 @@ void FFMODStudioEditorModule::ValidateFMOD()
                 }
 
                 FMessageDialog::Open(
-                    EAppMsgType::Ok, LOCTEXT("SetStudioBuildStudio_Save", "Please go to FMOD Studio, save your project and build banks."));
+                    EAppMsgType::Ok, LOCTEXT("SetStudioBuildStudio_Save", "Saving your FMOD Studio Project."));
                 // Just try to do it again anyway
                 StudioLink.Execute(TEXT("studio.project.save()"), Result);
                 StudioLink.Execute(TEXT("studio.project.build()"), Result);
