@@ -113,7 +113,7 @@ void UFMODNiagaraEventPlayer::CacheDefaultParameterValues()
             EventToPlay->GetParameterDescriptions(ParameterDescriptions);
             for (const FMOD_STUDIO_PARAMETER_DESCRIPTION& ParameterDescription : ParameterDescriptions)
             {
-                if (ShouldCacheParameter(ParameterDescription))
+                if (!FMODUtils::isParameterAutomated(ParameterDescription))
                 {
                     ParameterNames.Add(ParameterDescription.name);
                 }
@@ -121,21 +121,6 @@ void UFMODNiagaraEventPlayer::CacheDefaultParameterValues()
             bDefaultParameterValuesCached = true;
         }
     }
-}
-
-bool UFMODNiagaraEventPlayer::ShouldCacheParameter(const FMOD_STUDIO_PARAMETER_DESCRIPTION& ParameterDescription)
-{
-    const UFMODSettings& Settings = *GetDefault<UFMODSettings>();
-
-    if (((ParameterDescription.flags & FMOD_STUDIO_PARAMETER_GLOBAL) == 0) &&
-        (ParameterDescription.type == FMOD_STUDIO_PARAMETER_GAME_CONTROLLED) &&
-        ParameterDescription.name != Settings.OcclusionParameter &&
-        ParameterDescription.name != Settings.AmbientVolumeParameter &&
-        ParameterDescription.name != Settings.AmbientLPFParameter)
-    {
-        return true;
-    }
-    return false;
 }
 #endif // WITH_EDITOR
 

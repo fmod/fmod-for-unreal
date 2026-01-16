@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2025.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2019-2026.
 
 #include "FMODSettingsCustomization.h"
 
@@ -49,11 +49,11 @@ public:
         TSharedRef<SWidget> PackagingSettingsBadWidget = MakeRow(
             "SettingsEditor.WarningIcon",
             LOCTEXT("PackagingSettingsBadText",
-                "The packaging settings for copying the FMOD bank files to staging are not correct. It is recommended that:\n"
-                " - The bank output directory for the Desktop platform (or the forced platform if set) is added to the \"Additional Non-Asset Directories To Copy\" list.\n"
-                " - That no other directory containing FMOD banks or assets is added to either the \"Additional Non-Asset Directories To Copy\" list "
+                "To copy the FMOD bank files to staging correctly, it is recommended to:\n"
+                " - Add the bank output directory for the Desktop platform (or the forced platform if set) to the \"Additional Non-Asset Directories To Copy\" list.\n"
+                " - Add the Generated Assets to the \"Additional Asset Directories to Cook\" list."
+                " - Ensure that no other directory containing FMOD banks or assets is added to either the \"Additional Non-Asset Directories To Copy\" list "
                 "or the \"Additional Non-Asset Directories to Package\" list.\n"
-                " - The Generated Assets are added to the \"Additional Asset Directories to Cook\" list."
             ),
             LOCTEXT("FixPackagingSettings", "Fix")
         );
@@ -102,7 +102,7 @@ private:
         }
         else
         {
-            return FLinearColor(0.8f, 0, 0);
+            return FLinearColor(0.48, 0.48, 0.48); // This is the yellow that UE use for warnings.
         }
     }
 

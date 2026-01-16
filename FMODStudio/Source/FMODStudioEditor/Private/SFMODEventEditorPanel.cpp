@@ -1,12 +1,12 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2025.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2026.
 
 #include "SFMODEventEditorPanel.h"
+#include "FMODSettings.h"
 #include "FMODStudioModule.h"
 #include "FMODUtils.h"
 #include "Input/Reply.h"
 #include "Widgets/Input/SNumericEntryBox.h"
 #include "Widgets/Layout/SExpandableArea.h"
-#include "Editor/EditorStyle/Public/EditorStyleSet.h"
 #include "Widgets/Input/SButton.h"
 #include "Widgets/Layout/SScrollBox.h"
 #include "fmod_studio.hpp"
@@ -26,10 +26,12 @@ void SFMODEventEditorPanel::Construct(const FArguments &InArgs)
     TSharedRef<SBorder> ToolbarBorder = ConstructToolbar(EventDescription);
     TSharedRef<SExpandableArea> InfoArea = ConstructInfo(EventDescription);
     TSharedRef<SExpandableArea> ParametersArea = ConstructParameters(EventDescription);
+    TSharedRef<SExpandableArea> AutomatedParametersArea = ConstructParameters(EventDescription, true);
     TSharedRef<SExpandableArea> UserPropertiesArea = ConstructUserProperties(EventDescription);
 
     TSharedRef<SVerticalBox> ChildWidget = SNew(SVerticalBox) + SVerticalBox::Slot().AutoHeight().Padding(0.0f, 3.0f)[InfoArea] +
                                            SVerticalBox::Slot().AutoHeight().Padding(0.0f, 3.0f)[ParametersArea] +
+                                           SVerticalBox::Slot().AutoHeight().Padding(0.0f, 3.0f)[AutomatedParametersArea] +
                                            SVerticalBox::Slot().AutoHeight().Padding(0.0f, 3.0f)[UserPropertiesArea];
 
     ChildSlot[SNew(SVerticalBox) + SVerticalBox::Slot().AutoHeight().Padding(0.0f, 3.0f)[ToolbarBorder] +
@@ -174,7 +176,7 @@ TSharedRef<SExpandableArea> SFMODEventEditorPanel::ConstructInfo(FMOD::Studio::E
     return MakeBox(InfoBox, LOCTEXT("EventInfo", "Event Info"));
 }
 
-TSharedRef<SExpandableArea> SFMODEventEditorPanel::ConstructParameters(FMOD::Studio::EventDescription *EventDescription)
+TSharedRef<SExpandableArea> SFMODEventEditorPanel::ConstructParameters(FMOD::Studio::EventDescription *EventDescription, bool bCacheAutomatedParams)
 {
     auto EventEditor = FMODEventEditorPtr.Pin();
     TSharedRef<SVerticalBox> ParametersBox = SNew(SVerticalBox);
@@ -190,30 +192,39 @@ TSharedRef<SExpandableArea> SFMODEventEditorPanel::ConstructParameters(FMOD::Stu
         {
             FMOD_STUDIO_PARAMETER_DESCRIPTION Parameter;
             EventDescription->getParameterDescriptionByIndex(ParamIdx, &Parameter);
+            const UFMODSettings& Settings = *GetDefault<UFMODSettings>();
+            bool isParamAutomated = FMODUtils::isParameterAutomated(Parameter);
+
+            if (isParamAutomated != bCacheAutomatedParams)
+            {
+                continue;
+            }
 
             EventEditor->AddParameter(Parameter.id, Parameter.minimum);
-
-            const FString ParameterName = Parameter.type == FMOD_STUDIO_PARAMETER_GAME_CONTROLLED ? FString(UTF8_TO_TCHAR(Parameter.name)) :
-                                                                                                    FMODUtils::ParameterTypeToString(Parameter.type);
-            const FText ToolTipText = FText::Format(LOCTEXT("ParameterTooltipFormat", "{0} (Min Value: {1} - Max Value: {2})"),
-                FText::FromString(ParameterName), FText::AsNumber(Parameter.minimum, &Options), FText::AsNumber(Parameter.maximum, &Options));
-
-            ParametersBox->AddSlot().Padding(4.0f,
+            const FString ParameterName = FString(UTF8_TO_TCHAR(Parameter.name));
+            const FText ToolTipText =
+                FText::Format(LOCTEXT("ParameterTooltipFormat", "{0} (Min Value: {1} - Max Value: {2})"), FText::FromString(ParameterName),
+                    FText::AsNumber(Parameter.minimum, &Options), FText::AsNumber(Parameter.maximum, &Options));
+            ParametersBox->AddSlot().Padding(
+                4.0f,
                 2.0f)[SNew(SHorizontalBox).ToolTipText(ToolTipText) +
-                      SHorizontalBox::Slot().FillWidth(0.3f)[SNew(STextBlock).Text(FText::FromString(ParameterName))] +
-                      SHorizontalBox::Slot().MaxWidth(200.0f)[SNew(SNumericEntryBox<float>)
-                                                                  .Value(this, &SFMODEventEditorPanel::GetParameterValue, Parameter.id)
-                                                                  .OnValueChanged(this, &SFMODEventEditorPanel::OnParameterValueChanged, Parameter.id)
-                                                                  .AllowSpin(true)
-                                                                  .MinValue(Parameter.minimum)
-                                                                  .MaxValue(Parameter.maximum)
-                                                                  .MinSliderValue(Parameter.minimum)
-                                                                  .MaxSliderValue(Parameter.maximum)
-                                                                  .Delta(0.01f)]];
+                SHorizontalBox::Slot().FillWidth(0.3f)[SNew(STextBlock).Text(FText::FromString(ParameterName))] +
+                SHorizontalBox::Slot().MaxWidth(
+                    200.0f)[isParamAutomated
+                ? StaticCastSharedRef<SWidget>(SNew(STextBlock).Text(this, &SFMODEventEditorPanel::GetParameterValueAsText, Parameter.id))
+                : StaticCastSharedRef<SWidget>(SNew(SNumericEntryBox<float>)
+                                                  .Value(this, &SFMODEventEditorPanel::GetParameterValue, Parameter.id)
+                                                  .OnValueChanged(this, &SFMODEventEditorPanel::OnParameterValueChanged, Parameter.id)
+                                                  .AllowSpin(true)
+                                                  .MinValue(Parameter.minimum)
+                                                  .MaxValue(Parameter.maximum)
+                                                  .MinSliderValue(Parameter.minimum)
+                                                  .MaxSliderValue(Parameter.maximum)
+                                                  .Delta(0.01f))]];
         }
     }
-
-    return MakeBox(ParametersBox, LOCTEXT("EventParameters", "Event Parameters"));
+    return MakeBox(ParametersBox,
+        FText::Format(LOCTEXT("EventParameters", "{0} Parameters"), FText::FromString(bCacheAutomatedParams ? "Automated" : "Game Controlled")));
 }
 
 TSharedRef<SExpandableArea> SFMODEventEditorPanel::ConstructUserProperties(FMOD::Studio::EventDescription *EventDescription)
@@ -280,6 +291,11 @@ void SFMODEventEditorPanel::OnParameterValueChanged(float NewValue, FMOD_STUDIO_
 TOptional<float> SFMODEventEditorPanel::GetParameterValue(FMOD_STUDIO_PARAMETER_ID ParameterId) const
 {
     return FMODEventEditorPtr.Pin()->GetParameterValue(ParameterId);
+}
+
+FText SFMODEventEditorPanel::GetParameterValueAsText(FMOD_STUDIO_PARAMETER_ID ParameterId) const
+{
+    return FText::AsNumber(FMODEventEditorPtr.Pin()->GetParameterValue(ParameterId));
 }
 
 #undef LOC_NAMESPACE

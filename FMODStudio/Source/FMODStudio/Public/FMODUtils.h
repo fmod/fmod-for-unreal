@@ -1,9 +1,10 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2025.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2026.
 
 #pragma once
 
 #include "fmod_studio.hpp"
 #include "fmod.hpp"
+#include "FMODSettings.h"
 
 #include "Runtime/Launch/Resources/Version.h"
 #include "Engine/Engine.h"
@@ -198,5 +199,15 @@ inline FString ParameterTypeToString(FMOD_STUDIO_PARAMETER_TYPE Type)
     }
 
     return FString();
+}
+
+inline bool isParameterAutomated(FMOD_STUDIO_PARAMETER_DESCRIPTION Parameter)
+{
+    const UFMODSettings& Settings = *GetDefault<UFMODSettings>();
+    return ((Parameter.flags & FMOD_STUDIO_PARAMETER_GLOBAL) != 0
+            || Parameter.type != FMOD_STUDIO_PARAMETER_GAME_CONTROLLED
+            || Parameter.name == Settings.OcclusionParameter
+            || Parameter.name == Settings.AmbientVolumeParameter
+            || Parameter.name == Settings.AmbientLPFParameter);
 }
 }
