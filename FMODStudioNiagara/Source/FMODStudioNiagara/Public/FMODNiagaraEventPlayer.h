@@ -118,7 +118,6 @@ public:
 
 #if WITH_EDITOR
     void CacheDefaultParameterValues();
-    bool ShouldCacheParameter(const FMOD_STUDIO_PARAMETER_DESCRIPTION& ParameterDescription);
     bool bDefaultParameterValuesCached;
 #endif
 
