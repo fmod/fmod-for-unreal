@@ -1,6 +1,6 @@
 /* ======================================================================================== */
 /* FMOD Core API - DSP header file.                                                         */
-/* Copyright (c), Firelight Technologies Pty, Ltd. 2004-2025.                               */
+/* Copyright (c), Firelight Technologies Pty, Ltd. 2004-2026.                               */
 /*                                                                                          */
 /* Use this header if you are wanting to develop your own DSP plugin to use with FMODs      */
 /* dsp system.  With this header you can make your own DSP plugin that FMOD can             */
@@ -392,6 +392,35 @@ typedef struct FMOD_DSP_METERING_INFO
     strncpy((_paramstruct).label, _label, 15); \
     (_paramstruct).description  = _description; \
     (_paramstruct).datadesc.datatype     = _datatype;
+
+#define FMOD_DSP_DECLARE_PARAMDESC_FLOAT(_param, _name, _desc, _label, _min, _max, _default) \
+    static FMOD_DSP_PARAMETER_DESC _param = {FMOD_DSP_PARAMETER_TYPE_FLOAT, _name, _label, _desc}; \
+    _param.floatdesc.min = _min; \
+    _param.floatdesc.max = _max; \
+    _param.floatdesc.defaultval = _default; \
+    _param.floatdesc.mapping.type = FMOD_DSP_PARAMETER_FLOAT_MAPPING_TYPE_AUTO;
+
+#define FMOD_DSP_DECLARE_PARAMDESC_INT(_param, _name, _desc, _label, _min, _max, _default, _goestoinf) \
+    static FMOD_DSP_PARAMETER_DESC _param = {FMOD_DSP_PARAMETER_TYPE_INT, _name, _label, _desc}; \
+    _param.intdesc.min          = _min; \
+    _param.intdesc.max          = _max; \
+    _param.intdesc.defaultval   = _default; \
+    _param.intdesc.goestoinf    = _goestoinf;
+
+#define FMOD_DSP_DECLARE_PARAMDESC_ENUM(_param, _name, _desc, _valuenames, _default) \
+    static FMOD_DSP_PARAMETER_DESC _param = {FMOD_DSP_PARAMETER_TYPE_INT, _name, "", _desc}; \
+    _param.intdesc.valuenames = _valuenames; \
+    _param.intdesc.max = sizeof(_valuenames) / sizeof(_valuenames[0]) - 1; \
+    _param.intdesc.defaultval = _default;
+
+#define FMOD_DSP_DECLARE_PARAMDESC_BOOL(_param, _name, _desc, _valuenames, _default) \
+    static FMOD_DSP_PARAMETER_DESC _param = {FMOD_DSP_PARAMETER_TYPE_BOOL, _name, "", _desc}; \
+    _param.booldesc.valuenames = _valuenames; \
+    _param.booldesc.defaultval = _default;
+
+#define FMOD_DSP_DECLARE_PARAMDESC_DATA(_param, _name, _desc, _datatype) \
+    static FMOD_DSP_PARAMETER_DESC _param = {FMOD_DSP_PARAMETER_TYPE_DATA, _name, "", _desc}; \
+    _param.datadesc.datatype = _datatype;
 
 #define FMOD_DSP_ALLOC(_state, _size) \
     (_state)->functions->alloc(_size, FMOD_MEMORY_NORMAL, __FILE__)

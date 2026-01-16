@@ -112,7 +112,6 @@ public:
 #if WITH_EDITOR
     void PostEditChangeProperty(FPropertyChangedEvent& e);
     void CacheDefaultParameterValues();
-    bool ShouldCacheParameter(const FMOD_STUDIO_PARAMETER_DESCRIPTION& ParameterDescription);
     bool bDefaultParameterValuesCached;
 #endif
 
