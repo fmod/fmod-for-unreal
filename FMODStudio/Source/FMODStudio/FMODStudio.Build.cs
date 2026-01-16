@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2025.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2026.
 using UnrealBuildTool;
 using System;
 using System.IO;
@@ -131,7 +131,6 @@ namespace UnrealBuildTool.Rules
                 }
                 else if (Target.Platform == UnrealTargetPlatform.Linux)
                 {
-                    libPath = System.IO.Path.Combine(libPath, "x86_64");
                     linkExtension = ".so";
                     dllExtension = ".so";
                     libPrefix = "lib";

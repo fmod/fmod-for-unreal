@@ -677,7 +677,7 @@ void FFMODAssetBuilder::DeleteAssets(TArray<UObject*>& AssetsToDelete)
     }
 
     // Use ObjectTools to delete assets - ObjectTools::DeleteObjects handles confirmation, source control, and making read only files writables
-    ObjectTools::DeleteObjects(ObjectsToDelete, !IsRunningCommandlet());
+    ObjectTools::DeleteObjects(ObjectsToDelete, !(IsRunningCommandlet() || GIsRunningUnattendedScript));
 }
 
 #undef LOCTEXT_NAMESPACE

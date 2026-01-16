@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2025.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2026.
 
 #pragma once
 
@@ -146,11 +146,15 @@ class FMODSTUDIO_API UFMODAudioComponent : public USceneComponent
 public:
     /** The event asset to use for this sound. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = FMODAudio)
-    UFMODEvent* Event;
+    TObjectPtr<UFMODEvent> Event;
 
     /** Event parameter cache. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, SimpleDisplay, Category = FMODAudio)
     TMap<FName, float> ParameterCache;
+
+    /** Event parameter cache for automated parameters. */
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, SimpleDisplay, Category = FMODAudio)
+    TMap<FName, float> AutomatedParameterCache;
 
     /** Sound name used for programmer sound.  Will look up the name in any loaded audio table. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = FMODAudio)
@@ -393,9 +397,6 @@ private:
 
     /** Release the Studio Instance. */
     void ReleaseEventInstance();
-
-    /** Check if a parameter is game controlled or automated to determine if it should be cached. */
-    bool ShouldCacheParameter(const FMOD_STUDIO_PARAMETER_DESCRIPTION& ParameterDescription);
 
     /** Return a cached reference to the current IFMODStudioModule.*/
     IFMODStudioModule& GetStudioModule()

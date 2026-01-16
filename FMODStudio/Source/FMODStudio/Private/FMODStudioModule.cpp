@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2024.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2026.
 
 #include "FMODStudioModule.h"
 #include "FMODSettings.h"
@@ -747,7 +747,7 @@ void FFMODStudioModule::CreateStudioSystem(EFMODSystemContext::Type Type)
 
     if (!Settings.StudioBankKey.IsEmpty())
     {
-        auto conv = StringCast<TCHAR>(*Settings.StudioBankKey);
+        auto conv = StringCast<UTF8CHAR>(*Settings.StudioBankKey);
         advStudioSettings.encryptionkey = (const char*)conv.Get();
     }
 
@@ -837,10 +837,15 @@ void FFMODStudioModule::DestroyStudioSystem(EFMODSystemContext::Type Type)
 
     if (StudioSystem[Type])
     {
-        FMOD::Studio::Bus* mBus;
-        StudioSystem[Type]->getBus("bus:/", &mBus);
-        mBus->setMute(true);
-        StudioSystem[Type]->flushCommands();
+        int bankCount = 0;
+        StudioSystem[Type]->getBankCount(&bankCount);
+        if (bankCount > 0)
+        {
+            FMOD::Studio::Bus* mBus;
+            StudioSystem[Type]->getBus("bus:/", &mBus);
+            mBus->setMute(true);
+            StudioSystem[Type]->flushCommands();
+        }
 
         verifyfmod(StudioSystem[Type]->release());
         StudioSystem[Type] = nullptr;
