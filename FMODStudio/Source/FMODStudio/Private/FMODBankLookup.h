@@ -19,7 +19,7 @@ struct FMODSTUDIO_API FFMODLocalizedBankTable : public FTableRowBase
 {
     GENERATED_BODY()
     UPROPERTY(VisibleAnywhere, Category="FMOD|Internal|BankLookup")
-    UDataTable *Banks = nullptr;
+    TObjectPtr<UDataTable> Banks = nullptr;
 };
 
 UCLASS()
@@ -29,7 +29,7 @@ class FMODSTUDIO_API UFMODBankLookup : public UObject
 
 public:
     UPROPERTY(VisibleAnywhere, Category="FMOD|Internal|BankLookup")
-    UDataTable *DataTable;
+    TObjectPtr<UDataTable> DataTable;
 
     UPROPERTY(VisibleAnywhere, Category="FMOD|Internal|BankLookup")
     FString MasterBankPath;
