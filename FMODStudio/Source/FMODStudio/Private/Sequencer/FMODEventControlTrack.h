@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2025.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2026.
 
 #pragma once
 
@@ -39,5 +39,5 @@ public:
 private:
     /** List of all event control sections. */
     UPROPERTY()
-    TArray<UMovieSceneSection *> ControlSections;
+    TArray<TObjectPtr<UMovieSceneSection>> ControlSections;
 };
