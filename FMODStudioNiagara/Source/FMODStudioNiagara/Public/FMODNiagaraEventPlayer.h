@@ -57,7 +57,7 @@ class FMODSTUDIONIAGARA_API UFMODNiagaraEventPlayer : public UNiagaraDataInterfa
 public:
     /** Reference to the audio asset to play */
     UPROPERTY(EditAnywhere, Category = "Audio")
-        UFMODEvent* EventToPlay;
+        TObjectPtr<UFMODEvent> EventToPlay;
 
     /** A set of parameter names that can be referenced via index when setting sound cue parameters on persistent audio */
     UPROPERTY(VisibleAnywhere, NoClear, Category = "Parameters")
@@ -118,7 +118,6 @@ public:
 
 #if WITH_EDITOR
     void CacheDefaultParameterValues();
-    bool ShouldCacheParameter(const FMOD_STUDIO_PARAMETER_DESCRIPTION& ParameterDescription);
     bool bDefaultParameterValuesCached;
 #endif
 
