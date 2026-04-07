@@ -13,7 +13,6 @@
 #include "FMODUtils.h"
 #include "FMODSettings.h"
 #include "FMODFileCallbacks.h"
-#include "FMODStudioPrivatePCH.h"
 #include "fmod_studio.hpp"
 #include "HAL/FileManager.h"
 #include "Misc/Paths.h"

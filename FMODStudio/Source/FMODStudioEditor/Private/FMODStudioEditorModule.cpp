@@ -1058,8 +1058,8 @@ bool FFMODStudioEditorModule::Tick(float DeltaTime)
 
     BankUpdateNotifier.Update(DeltaTime);
 
-    // Update listener position for Editor sound system
-    FMOD::Studio::System *StudioSystem = IFMODStudioModule::Get().GetStudioSystem(EFMODSystemContext::Editor);
+    // Update listener position for Auditioning sound system
+    FMOD::Studio::System *StudioSystem = IFMODStudioModule::Get().GetStudioSystem(EFMODSystemContext::Auditioning);
     if (StudioSystem)
     {
         if (GCurrentLevelEditingViewportClient)
