@@ -24,9 +24,8 @@ namespace UnrealBuildTool.Rules
         public FMODStudio(ReadOnlyTargetRules Target) : base(Target)
         {
             PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
-            PrivatePCHHeaderFile = "Private/FMODStudioPrivatePCH.h";
 
-            bUseUnity = false;
+            bUseUnity = true;
 
             PublicIncludePaths.Add(Path.Combine(ModuleDirectory, "Public/FMOD"));
             PrivateIncludePaths.Add(Path.Combine(ModuleDirectory, "Classes"));
@@ -161,7 +160,7 @@ namespace UnrealBuildTool.Rules
             string fmodDllPath = System.IO.Path.Combine(libPath, fmodDllName);
             string fmodStudioDllPath = System.IO.Path.Combine(libPath, fmodStudioDllName);
 
-            System.Collections.Generic.List<string> plugins = GetPlugins(libPath);
+            System.Collections.Generic.List<string> plugins = GetPlugins(Target, libPath);
 
             if (Target.IsInPlatformGroup(UnrealPlatformGroup.Android))
             {
@@ -249,29 +248,32 @@ namespace UnrealBuildTool.Rules
             FMODAudioLinkEditor.Apply(this, Target);
         }
 
-        private System.Collections.Generic.List<string> GetPlugins(string BasePath)
+        private System.Collections.Generic.List<string> GetPlugins(ReadOnlyTargetRules Target, string BasePath)
         {
             System.Collections.Generic.List<string> AllPlugins = new System.Collections.Generic.List<string>();
-            string PluginListName = System.IO.Path.Combine(BasePath, "plugins.txt");
-            if (System.IO.File.Exists(PluginListName))
+
+            if (Target.ProjectFile == null)
+            {
+                System.Console.WriteLine("Target.ProjectFile is null, skipping plugin detection");
+            }
+            else
             {
                 try
                 {
-                    foreach (string FullEntry in System.IO.File.ReadAllLines(PluginListName))
+                    ConfigHierarchy Ini = ConfigCache.ReadHierarchy(ConfigHierarchyType.Engine, EpicGames.Core.DirectoryReference.FromFile(Target.ProjectFile), Target.Platform);
+
+                    if (Ini != null && Ini.GetArray("/Script/FMODStudio.FMODSettings", "PluginFiles", out AllPlugins))
                     {
-                        string Entry = FullEntry.Trim();
-                        if (Entry.Length > 0)
-                        {
-                            AllPlugins.Add(Entry);
-                        }
+                        System.Console.WriteLine("PluginFiles: {0}", string.Join(", ", AllPlugins));
                     }
                 }
                 catch (System.Exception ex)
                 {
-                    System.Console.WriteLine("Failed to read plugin list file: {0}", ex.Message);
+                    System.Console.WriteLine("Failed to read plugin list: {0}", ex.Message);
                 }
             }
-            return AllPlugins;
+
+            return AllPlugins ?? new System.Collections.Generic.List<string>();
         }
 
         public void AddModule(string Module, bool AddPublic = true)

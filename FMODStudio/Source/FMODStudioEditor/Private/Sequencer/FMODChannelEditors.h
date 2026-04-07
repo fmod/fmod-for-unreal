@@ -5,6 +5,8 @@
 #include "Sequencer/FMODEventControlSection.h"
 #include "ISequencerChannelInterface.h"
 
+class ISequencer;
+
 /** Key editor overrides */
 bool CanCreateKeyEditor(const FFMODEventControlChannel* Channel);
 

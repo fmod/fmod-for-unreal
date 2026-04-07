@@ -11,6 +11,8 @@
 
 #include "FMODStudioModule.h"
 
+DECLARE_LOG_CATEGORY_EXTERN(LogFMOD, Log, All);
+
 #define verifyfmod(fn)                         \
     {                                          \
         FMOD_RESULT _result = (fn);            \

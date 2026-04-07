@@ -4,7 +4,6 @@
 #include "FMODSettings.h"
 #include "HAL/FileManager.h"
 
-#include "FMODStudioEditorPrivatePCH.h"
 
 FFMODBankUpdateNotifier::FFMODBankUpdateNotifier()
     : bUpdateEnabled(true)

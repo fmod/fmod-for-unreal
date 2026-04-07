@@ -12,9 +12,8 @@ namespace UnrealBuildTool.Rules
     #endif
         {
             PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
-            PrivatePCHHeaderFile = "Private/FMODStudioEditorPrivatePCH.h";
 
-            bUseUnity = false;
+            bUseUnity = true;
 
             PrivateIncludePaths.AddRange(
                 new string[] {
