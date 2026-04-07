@@ -4,6 +4,8 @@
 #include "Channels/MovieSceneChannelHandle.h"
 #include "Sequencer/FMODEventControlSection.h"
 
+class ISequencer;
+
 /** Key editor overrides */
 bool CanCreateKeyEditor(const FFMODEventControlChannel* Channel);
 

@@ -10,6 +10,7 @@
 #include "Editor/EditorWidgets/Public/SEnumCombo.h"
 #include "EditorStyleSet.h"
 #include "Channels/MovieSceneChannelTraits.h"
+#include "ISequencer.h"
 
 class SFMODEventControlKeyEditor : public SCompoundWidget
 {
