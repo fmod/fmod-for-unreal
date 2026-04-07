@@ -10,7 +10,6 @@
 #include "Misc/App.h"
 #include "Misc/Paths.h"
 #include "Misc/ScopeLock.h"
-#include "FMODStudioPrivatePCH.h"
 #include "Components/BillboardComponent.h"
 #if WITH_EDITORONLY_DATA
 #include "Engine/Texture2D.h"
@@ -729,7 +728,7 @@ void UFMODAudioComponent::PlayInternal(EFMODSystemContext::Type Context, bool bR
 {
     Stop();
 
-    if (!FMODUtils::IsWorldAudible(GetWorld(), Context == EFMODSystemContext::Editor))
+    if (!FMODUtils::IsWorldAudible(GetWorld(), Context == EFMODSystemContext::Auditioning))
     {
         return;
     }

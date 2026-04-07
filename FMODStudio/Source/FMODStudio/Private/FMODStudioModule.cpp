@@ -35,7 +35,6 @@
 
 #include "fmod_studio.hpp"
 #include "fmod_errors.h"
-#include "FMODStudioPrivatePCH.h"
 
 #include <atomic>
 
