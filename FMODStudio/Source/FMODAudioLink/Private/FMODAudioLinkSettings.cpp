@@ -132,9 +132,10 @@ int32 UFMODAudioLinkSettings::GetReceivingBufferSizeInFrames() const
             if (CoreSystem)
             {
                 unsigned int bufferLength = 0;
-                CoreSystem->getDSPBufferSize(&bufferLength, 0);
+                int numBuffers = 0;
+                CoreSystem->getDSPBufferSize(&bufferLength, &numBuffers);
 
-                return bufferLength;
+                return bufferLength * numBuffers;
             }
         }
     }

@@ -31,7 +31,7 @@ public:
     // Called from Consumer thread at game tick rate.
     void UpdateWorldState(const FWorldState&);
     // Called from FMOD thread.
-    bool GetSamples(void* data, unsigned int datalen);
+    bool GetSamples(float* data, unsigned int datalen);
 
     IBufferedAudioOutput::FBufferFormat* GetFormat();
 
@@ -52,8 +52,8 @@ private:
     IBufferedAudioOutput::FBufferFormat UnrealFormat;
 
     FName ProducerName;
-    int32 NumStarvedBuffersInARow = 0;
     FDelegateHandle IsLoadedHandle;
+    bool bExitEarly = 0;
 };
 
 using FSharedFMODAudioLinkInputClientPtr = TSharedPtr<FFMODAudioLinkInputClient, ESPMode::ThreadSafe>;

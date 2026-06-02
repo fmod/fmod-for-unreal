@@ -198,7 +198,7 @@ namespace UnrealBuildTool.Rules
                 RuntimeDependencies.Add(fmodStudioDllPath);
                 foreach (string plugin in plugins)
                 {
-                    string pluginPath = System.IO.Path.Combine(libPath, plugin + dllExtension);
+                    string pluginPath = System.IO.Path.Combine(libPath, libPrefix + plugin + dllExtension);
                     System.Console.WriteLine("Adding reference to FMOD plugin: " + pluginPath);
                     RuntimeDependencies.Add(pluginPath);
                 }
@@ -208,7 +208,7 @@ namespace UnrealBuildTool.Rules
             {
                 foreach (string plugin in plugins)
                 {
-                    string pluginPath = System.IO.Path.Combine(libPath, plugin + staticLibExtension);
+                    string pluginPath = System.IO.Path.Combine(libPath, libPrefix + plugin + staticLibExtension);
                     System.Console.WriteLine("Adding reference to FMOD plugin: " + pluginPath);
                     PublicAdditionalLibraries.Add(pluginPath);
                 }
