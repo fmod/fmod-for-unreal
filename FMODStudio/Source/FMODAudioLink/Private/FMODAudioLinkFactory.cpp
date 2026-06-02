@@ -157,6 +157,11 @@ TUniquePtr<IAudioLink> FFMODAudioLinkFactory::CreateSourceAudioLink(const FAudio
                 int32 ReserveSizeInChannelSamples = (float)BufferSizeInChannelSamples * FMODSettingsSP->GetProducerConsumerBufferRatio();
                 int32 SilenceToAddToFirstBuffer = FMath::Min((float)BufferSizeInChannelSamples * FMODSettingsSP->GetInitialSilenceFillRatio(), ReserveSizeInChannelSamples);
 
+                IBufferedAudioOutput::FBufferFormat AudioFormat = {};
+                AudioFormat.NumChannels = InFormat.NumChannels;
+                AudioFormat.NumSamplesPerBlock = BufferSizeInChannelSamples;
+                AudioFormat.NumSamplesPerSec = InFormat.NumSamplesPerSec;
+                ConsumerSP->SetFormat(&AudioFormat);
 
                 // Set circular buffer ahead of first buffer.
                 ProducerSP->Reserve(ReserveSizeInChannelSamples, SilenceToAddToFirstBuffer);
