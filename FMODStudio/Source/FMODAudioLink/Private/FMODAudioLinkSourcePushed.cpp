@@ -5,31 +5,43 @@
 #include "FMODAudioLinkInputClient.h"
 #include "FMODAudioLinkLog.h"
 
+#include "Async/Async.h"
+
 #include "FMODEvent.h"
 
 FFMODAudioLinkSourcePushed::FFMODAudioLinkSourcePushed(const IAudioLinkFactory::FAudioLinkSourcePushedCreateArgs& InArgs, IAudioLinkFactory* InFactory)
-	: CreateArgs(InArgs)
+    : CreateArgs(InArgs)
 {
-	const FFMODAudioLinkSettingsProxy* FMODSettingsSP = static_cast<FFMODAudioLinkSettingsProxy*>(InArgs.Settings.Get());
-	
-	IAudioLinkFactory::FPushedBufferListenerCreateParams Params;
-	Params.SizeOfBufferInFrames = InArgs.NumFramesPerBuffer;
-	Params.bShouldZeroBuffer = FMODSettingsSP->ShouldClearBufferOnReceipt();
+    const FFMODAudioLinkSettingsProxy* FMODSettingsSP = static_cast<FFMODAudioLinkSettingsProxy*>(InArgs.Settings.Get());
 
-	ProducerSP = InFactory->CreatePushableBufferListener(Params);
-	ConsumerSP = MakeShared<FFMODAudioLinkInputClient, ESPMode::ThreadSafe>(ProducerSP, InArgs.Settings, InArgs.OwnerName);
+    IAudioLinkFactory::FPushedBufferListenerCreateParams Params;
+    Params.SizeOfBufferInFrames = CreateArgs.NumFramesPerBuffer;
+    Params.bShouldZeroBuffer = FMODSettingsSP->ShouldClearBufferOnReceipt();
+
+    ProducerSP = InFactory->CreatePushableBufferListener(Params);
+    ConsumerSP = MakeShared<FFMODAudioLinkInputClient, ESPMode::ThreadSafe>(ProducerSP, CreateArgs.Settings, CreateArgs.OwnerName);
 
     // Unreal uses samples for 'Channels x samples' and frames for 'samples'
     int32 BufferSizeInChannelSamples = FMODSettingsSP->GetReceivingBufferSizeInFrames() * InArgs.NumChannels;
     int32 ReserveSizeInChannelSamples = (float)BufferSizeInChannelSamples * FMODSettingsSP->GetProducerConsumerBufferRatio();
     int32 SilenceToAddToFirstBuffer = FMath::Min((float)BufferSizeInChannelSamples * FMODSettingsSP->GetInitialSilenceFillRatio(), ReserveSizeInChannelSamples);
 
-	// Set circular buffer ahead of first buffer.
-	ProducerSP->Reserve(ReserveSizeInChannelSamples, SilenceToAddToFirstBuffer);
+    // Start the FMOD input object.
+    IBufferedAudioOutput::FBufferFormat format = {};
+    format.NumSamplesPerBlock = BufferSizeInChannelSamples;
+    format.NumChannels = InArgs.NumChannels;
+    format.NumSamplesPerSec = InArgs.SampleRate;
+
+    ConsumerSP->SetFormat(&format);
+
+    // Set circular buffer ahead of first buffer.
+    ProducerSP->Reserve(ReserveSizeInChannelSamples, SilenceToAddToFirstBuffer);
+
+    ProducerSP->Start(nullptr);
 
     UE_LOG(LogFMODAudioLink, Verbose,
         TEXT("FFMODAudioLinkSourcePushed::Ctor() Name=%s, Producer=0x%p, Consumer=0x%p, p2c%%=%2.2f, PlayEvent=%s, TotalFramesForSource=%d, This=0x%p"),
-        *InArgs.OwnerName.GetPlainNameString(), ProducerSP.Get(), 
+        *CreateArgs.OwnerName.GetPlainNameString(), ProducerSP.Get(),
             ConsumerSP.Get(), FMODSettingsSP->GetProducerConsumerBufferRatio(), *FMODSettingsSP->GetLinkEvent()->GetName(), 
             CreateArgs.TotalNumFramesInSource, this);
 }
@@ -50,37 +62,29 @@ FFMODAudioLinkSourcePushed::~FFMODAudioLinkSourcePushed()
 void FFMODAudioLinkSourcePushed::OnNewBuffer(const FOnNewBufferParams& InArgs)
 {
     UE_LOG(LogFMODAudioLink, VeryVerbose,
-        TEXT("FFMODAudioLinkSourcePushed::OnNewBuffer() Name=%s, Producer=0x%p, Consumer=0x%p, SourceID=%d, RecievedFrames=%d/%d, This=0x%p"),
+        TEXT("FFMODAudioLinkSourcePushed::OnNewBuffer() Name=%s, Producer=0x%p, Consumer=0x%p, SourceID=%d, RecievedFrames=%d/%d, NumSamples=%d, This=0x%p"),
         *CreateArgs.OwnerName.GetPlainNameString(), ProducerSP.Get(), ConsumerSP.Get(), SourceId, NumFramesReceivedSoFar, 
-        CreateArgs.TotalNumFramesInSource, this);
+        CreateArgs.TotalNumFramesInSource, InArgs.Buffer.Num(), this);
 
-	NumFramesReceivedSoFar += CreateArgs.NumFramesPerBuffer;
-	
-	if (SourceId == INDEX_NONE)
-	{
-        IBufferedAudioOutput::FBufferFormat AudioFormat = {};
-        AudioFormat.NumChannels = CreateArgs.NumChannels;
-        AudioFormat.NumSamplesPerBlock = CreateArgs.NumFramesPerBuffer;
-        AudioFormat.NumSamplesPerSec = CreateArgs.SampleRate;
-        ConsumerSP->SetFormat(&AudioFormat);
+    if (SourceId == INDEX_NONE)
+    {
+        SourceId = InArgs.SourceId;
+        ConsumerSP->Start();
+    }
+    IPushableAudioOutput* Pushable = ProducerSP->GetPushableInterface();
+    if (ensure(Pushable))
+    {
+        IPushableAudioOutput::FOnNewBufferParams Params;
+        Params.AudioData = InArgs.Buffer.GetData();
+        Params.NumSamples = InArgs.Buffer.Num();
+        Params.Id = InArgs.SourceId;
+        Params.NumChannels = CreateArgs.NumChannels;
+        Params.SampleRate = CreateArgs.SampleRate;
+        Pushable->PushNewBuffer(Params);
 
-		SourceId = InArgs.SourceId;
-		ProducerSP->Start(nullptr);
-		ConsumerSP->Start();
-	}
-	check(SourceId == InArgs.SourceId);
-
-	IPushableAudioOutput* Pushable = ProducerSP->GetPushableInterface();
-	if (ensure(Pushable))
-	{
-		IPushableAudioOutput::FOnNewBufferParams Params;
-		Params.AudioData = InArgs.Buffer.GetData();
-		Params.NumSamples = InArgs.Buffer.Num();
-		Params.Id = InArgs.SourceId;
-		Params.NumChannels = CreateArgs.NumChannels;
-		Params.SampleRate = CreateArgs.SampleRate;
-		Pushable->PushNewBuffer(Params);
-	}
+        NumFramesReceivedSoFar += Params.NumSamples;
+        NumFramesReceivedSoFar %= CreateArgs.TotalNumFramesInSource;
+    }
 }
 
 void FFMODAudioLinkSourcePushed::OnSourceDone(const int32 InSourceId)
@@ -90,13 +94,13 @@ void FFMODAudioLinkSourcePushed::OnSourceDone(const int32 InSourceId)
         *CreateArgs.OwnerName.GetPlainNameString(), ProducerSP.Get(), ConsumerSP.Get(), NumFramesReceivedSoFar, 
         CreateArgs.TotalNumFramesInSource, this);
 
-	check(SourceId == InSourceId);
-	IPushableAudioOutput* Pushable = ProducerSP->GetPushableInterface();
-	if (ensure(Pushable))
-	{
-		Pushable->LastBuffer(SourceId);
-	}
-	SourceId = INDEX_NONE;
+    check(SourceId == InSourceId);
+    IPushableAudioOutput* Pushable = ProducerSP->GetPushableInterface();
+    if (ensure(Pushable))
+    {
+        Pushable->LastBuffer(SourceId);
+    }
+    SourceId = INDEX_NONE;
 }
 
 void FFMODAudioLinkSourcePushed::OnSourceReleased(const int32 InSourceId)
@@ -110,7 +114,7 @@ void FFMODAudioLinkSourcePushed::OnSourceReleased(const int32 InSourceId)
 // Called by the AudioThread, not the AudioRenderThread
 void FFMODAudioLinkSourcePushed::OnUpdateWorldState(const FOnUpdateWorldStateParams& InParams)
 {
-	FFMODAudioLinkInputClient::FWorldState UpdateParams;
-	UpdateParams.WorldTransform = InParams.WorldTransform;
-	ConsumerSP->UpdateWorldState(UpdateParams);
+    FFMODAudioLinkInputClient::FWorldState UpdateParams;
+    UpdateParams.WorldTransform = InParams.WorldTransform;
+    ConsumerSP->UpdateWorldState(UpdateParams);
 }
