@@ -69,7 +69,7 @@ void FFMODAudioLinkInputClient::Register(const FName& NameOfProducingSource)
             UE_LOG(LogFMODAudioLink, Warning, TEXT("FFMODAudioLinkInputClient::Register: No active AudioDevice at registration."));
             return;
         }
-        UE_CLOG(UNLIKELY(AudioDevice->GetMaxChannels() == 0), LogFMODAudioLink, Warning,
+        UE_CLOG(UNLIKELY(AudioDevice->GetMaxChannels() == 0), LogFMODAudioLink, Verbose,
             TEXT("FMODAudioLink: The current AudioDevice %d has 0 MaxChannels. Consider setting AudioMaxChannels to a sensible value in the Engine config file's TargetSettings for your platform."),
             AudioDevice->DeviceID);
 
@@ -104,7 +104,7 @@ FMOD_RESULT F_CALL pcmreadcallback(FMOD_SOUND* inSound, void* data, unsigned int
     FFMODAudioLinkInputClient* ConsumerSP;
     sound->getUserData((void**)&ConsumerSP);
 
-    ConsumerSP->GetSamples(data, datalen);
+    ConsumerSP->GetSamples((float*)data, datalen / sizeof(float));
 
     return FMOD_OK;
 }
@@ -137,13 +137,18 @@ FMOD_RESULT F_CALL SoundCallback(FMOD_STUDIO_EVENT_CALLBACK_TYPE type, FMOD_STUD
         exinfo.pcmreadcallback      = pcmreadcallback;                                                          /* User callback for reading. */
         exinfo.userdata             = ConsumerPtr;
 
-        FMOD::Sound* sound = NULL;
+        FMOD::Sound* ProgrammerSound = NULL;
         FString sourceName = ConsumerPtr->GetProducerName().ToString();
-        result = CoreSystem->createSound(TCHAR_TO_ANSI(*sourceName), FMOD_OPENUSER | FMOD_CREATESTREAM, &exinfo, &sound);
+        result = CoreSystem->createSound(TCHAR_TO_ANSI(*sourceName), FMOD_OPENUSER | FMOD_CREATESTREAM, &exinfo, &ProgrammerSound);
+        if (result != FMOD_OK)
+        {
+            UE_LOG(LogFMODAudioLink, Error, TEXT("CreateSound failed: %s , Result = %d."), *sourceName, result);
+        }
 
         // Pass the sound to FMOD
         FMOD_STUDIO_PROGRAMMER_SOUND_PROPERTIES* props = (FMOD_STUDIO_PROGRAMMER_SOUND_PROPERTIES*)parameters;
-        props->sound = (FMOD_SOUND*)sound;
+        props->sound = (FMOD_SOUND*)ProgrammerSound;
+        props->subsoundIndex = -1;
         UE_LOG(LogFMODAudioLink, Verbose, TEXT("Sound Created: %s , Consumer = %p."), *sourceName, ConsumerPtr);
     }
     else if (type == FMOD_STUDIO_EVENT_CALLBACK_DESTROY_PROGRAMMER_SOUND)
@@ -229,8 +234,10 @@ void FFMODAudioLinkInputClient::Stop()
     if (EventInstance->isValid())
     {
         UE_LOG(LogFMODAudioLink, Verbose, TEXT("FFMODAudioLinkInputClient::Stop: Stopping EventInstance."));
+        bExitEarly = true;
         EventInstance->stop(FMOD_STUDIO_STOP_ALLOWFADEOUT);
         EventInstance->release();
+        EventInstance->setCallback(nullptr);
     }
 
     if (IsLoadedHandle.IsValid())
@@ -263,51 +270,48 @@ void FFMODAudioLinkInputClient::UpdateWorldState(const FWorldState& InParams)
     }
 }
 
-bool FFMODAudioLinkInputClient::GetSamples(void* data, unsigned int dataLenBytes)
+bool FFMODAudioLinkInputClient::GetSamples(float* data, unsigned int dataLenSamples)
 {
     FSharedBufferedOutputPtr StrongBufferProducer{ WeakProducer.Pin() };
+    FMemory::Memset(data, 0, dataLenSamples);
     if (!StrongBufferProducer.IsValid())
     {
-        // return false, to indicate no more data.
-        FMemory::Memzero(data, dataLenBytes);
+        // No audio source
+        UE_LOG(LogFMODAudioLink, VeryVerbose, TEXT("FFMODAudioLinkInputClient::GetSamples: Producer is not valid, This=0x%p"), this);
         return false;
     }
 
-    float* dataBuffer = (float*)data;
+    static const int NumStarvedBuffersBeforeStop = 5;
+    int NumStarvedBuffersInARow = 0;
 
-    int32 FramesWritten = 0;
-
-    int32 dataLenFrames = dataLenBytes / (sizeof(float));
-
-    bool bMoreDataRemaining = StrongBufferProducer->PopBuffer(dataBuffer, dataLenFrames, FramesWritten);
-
-    // Zero any buffer space that we didn't output to.
-    int32 FramesThatNeedZeroing = dataLenFrames - FramesWritten;
-
-    UE_LOG(LogFMODAudioLink, Verbose, TEXT("FFMODAudioLinkInputClient::GetSamples: (post-pop), SamplesPopped=%d, SamplesNeeded=%d, ZeroFrames=%d, This=0x%p"),
-        FramesWritten, dataLenFrames, FramesThatNeedZeroing, this);
-
-    if (FramesThatNeedZeroing > 0)
+    int NumSamplesPopped = 0;
+    int NumSamplesReceived = 0;
+    bool bMoreDataRemaining = false;
+    do 
     {
-        FMemory::Memset(&dataBuffer[FramesWritten], 0, FramesThatNeedZeroing);
-        NumStarvedBuffersInARow++;
+        bMoreDataRemaining = StrongBufferProducer->PopBuffer(data, dataLenSamples, NumSamplesPopped);
+        NumSamplesReceived += NumSamplesPopped;
 
-        static const int32 NumStatedBuffersBeforeStop = 5;
-        if (NumStarvedBuffersInARow > NumStatedBuffersBeforeStop)
+        UE_LOG(LogFMODAudioLink, VeryVerbose, TEXT("FFMODAudioLinkInputClient::GetSamples: (post-pop), SamplesPopped=%d, SamplesNeeded=%d, NumSamplesReceived=%d, MoreRemaining=%d This=0x%p"),
+            NumSamplesPopped, dataLenSamples - NumSamplesPopped, NumSamplesReceived, bMoreDataRemaining, this);
+
+        if (NumSamplesPopped <= 0)
         {
-            UE_LOG(LogFMODAudioLink, Verbose, TEXT("FMODAudioLinkInputClient::GetSamples: Stopping Starving input object, Needed=%d, Red=%d, StarvedCount=%d, This=0x%p"),
-                dataLenFrames, FramesWritten, NumStarvedBuffersInARow, this);
+            NumStarvedBuffersInARow++;
+        }
+        else
+        {
+            NumStarvedBuffersInARow = 0;
+        }
 
-            // Terminate.
-            bMoreDataRemaining = false;
+        if (!bMoreDataRemaining || bExitEarly || NumStarvedBuffersInARow > NumStarvedBuffersBeforeStop)
+        {
+            break;
         }
     }
-    else
-    {
-        NumStarvedBuffersInARow = 0;
-    }
+    while (NumSamplesReceived < (int)dataLenSamples);
 
-    return bMoreDataRemaining;
+    return true;
 }
 
 IBufferedAudioOutput::FBufferFormat* FFMODAudioLinkInputClient::GetFormat()
@@ -317,8 +321,9 @@ IBufferedAudioOutput::FBufferFormat* FFMODAudioLinkInputClient::GetFormat()
     if (!StrongPtr.IsValid())
     {
         UE_LOG(LogFMODAudioLink, Verbose, TEXT("FMODAudioLinkInputClient::GetFormat: FSharedBufferedOutputPtr not valid."));
+        return nullptr;
     }
-    else
+    else if (UnrealFormat.NumChannels == 0)
     {
         ensure(StrongPtr->GetFormat(UnrealFormat));
     }
