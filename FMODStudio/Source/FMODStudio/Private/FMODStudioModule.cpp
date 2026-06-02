@@ -865,7 +865,7 @@ void FFMODStudioModule::UnloadBanks(EFMODSystemContext::Type Type)
             TArray<FMOD::Studio::EventDescription*> eventArray;
             TArray<FMOD::Studio::EventInstance*> instanceArray;
 
-            bankArray.SetNumUninitialized(bankCount, false);
+            bankArray.SetNumUninitialized(bankCount, EAllowShrinking::No);
             verifyfmod(StudioSystem[Type]->getBankList(bankArray.GetData(), bankCount, &bankCount));
             for (int i = 0; i < bankCount; i++)
             {
@@ -873,7 +873,7 @@ void FFMODStudioModule::UnloadBanks(EFMODSystemContext::Type Type)
                 verifyfmod(bankArray[i]->getEventCount(&eventCount));
                 if (eventCount > 0)
                 {
-                    eventArray.SetNumUninitialized(eventCount, false);
+                    eventArray.SetNumUninitialized(eventCount, EAllowShrinking::No);
                     verifyfmod(bankArray[i]->getEventList(eventArray.GetData(), eventCount, &eventCount));
                     for (int j = 0; j < eventCount; j++)
                     {
@@ -881,7 +881,7 @@ void FFMODStudioModule::UnloadBanks(EFMODSystemContext::Type Type)
                         verifyfmod(eventArray[j]->getInstanceCount(&instanceCount));
                         if (instanceCount > 0)
                         {
-                            instanceArray.SetNumUninitialized(instanceCount, false);
+                            instanceArray.SetNumUninitialized(instanceCount, EAllowShrinking::No);
                             verifyfmod(eventArray[j]->getInstanceList(instanceArray.GetData(), instanceCount, &instanceCount));
                             for (int k = 0; k < instanceCount; k++)
                             {
