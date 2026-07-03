@@ -282,7 +282,7 @@ IMPLEMENT_MODULE(FFMODStudioEditorModule, FMODStudioEditor)
 
 void FFMODStudioEditorModule::StartupModule()
 {
-    FCoreDelegates::OnPostEngineInit.AddRaw(this, &FFMODStudioEditorModule::OnPostEngineInit);
+    FCoreDelegates::GetOnPostEngineInit().AddRaw(this, &FFMODStudioEditorModule::OnPostEngineInit);
 }
 
 void FFMODStudioEditorModule::OnPostEngineInit()
@@ -1133,7 +1133,7 @@ void FFMODStudioEditorModule::ViewportDraw(UCanvas *Canvas, APlayerController *)
         UWorld *World = GCurrentLevelEditingViewportClient->GetWorld();
         const FVector &ViewLocation = GCurrentLevelEditingViewportClient->GetViewLocation();
 
-        FMatrix CameraToWorld = View->ViewMatrices.GetViewMatrix().InverseFast();
+        FMatrix CameraToWorld = View->ViewMatrices.GetWorldToView().InverseFast();
         FVector ProjUp = CameraToWorld.TransformVector(FVector(0, 1000, 0));
         FVector ProjRight = CameraToWorld.TransformVector(FVector(1000, 0, 0));
 

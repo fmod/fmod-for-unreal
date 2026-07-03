@@ -102,7 +102,7 @@ private:
         }
         else
         {
-            return FLinearColor(0.48, 0.48, 0.48); // This is the yellow that UE use for warnings.
+            return FLinearColor(0.48f, 0.48f, 0.48f); // This is the yellow that UE use for warnings.
         }
     }
 

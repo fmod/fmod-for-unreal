@@ -13,7 +13,7 @@ public:
     UFMODAnimNotifyPlay();
 
 // Begin UAnimNotify interface
-    virtual void Notify(USkeletalMeshComponent *MeshComp, UAnimSequenceBase *AnimSeq) override;
+    virtual void Notify(USkeletalMeshComponent *MeshComp, UAnimSequenceBase *AnimSeq, const FAnimNotifyEventReference& EventReference) override;
     virtual FString GetNotifyName_Implementation() const override;
 // End UAnimNotify interface
 
