@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2026.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2025.
 
 #include "FMODStudioEditorModule.h"
 #include "FMODStudioModule.h"
@@ -13,6 +13,7 @@
 #include "FMODAudioComponentDetails.h"
 #include "FMODAssetBuilder.h"
 #include "FMODBankUpdateNotifier.h"
+#include "Sequencer/FMODEventWaveformCapture.h"
 #include "FMODSettingsCustomization.h"
 #include "Sequencer/FMODChannelEditors.h"
 #include "Sequencer/FMODEventControlSection.h"
@@ -682,33 +683,55 @@ void FFMODStudioEditorModule::ValidateFMOD()
         {
             StudioPathString = TEXT("");
         }
+
         FString CanonicalBankPath = FullBankPath;
-        FPaths::MakePathRelativeTo(CanonicalBankPath, *StudioProjectPath);
         FPaths::CollapseRelativeDirectories(CanonicalBankPath);
         FPaths::NormalizeDirectoryName(CanonicalBankPath);
         FPaths::RemoveDuplicateSlashes(CanonicalBankPath);
-
+        FPaths::NormalizeDirectoryName(CanonicalBankPath);
         FString CanonicalStudioPath = StudioPathString;
+
+        if (FPaths::IsRelative(CanonicalStudioPath) && !StudioProjectDir.IsEmpty() && !StudioPathString.IsEmpty())
+        {
+            CanonicalStudioPath = FPaths::Combine(*StudioProjectDir, *CanonicalStudioPath);
+        }
+
         FPaths::CollapseRelativeDirectories(CanonicalStudioPath);
         FPaths::NormalizeDirectoryName(CanonicalStudioPath);
         FPaths::RemoveDuplicateSlashes(CanonicalStudioPath);
+        FPaths::NormalizeDirectoryName(CanonicalStudioPath);
 
         if (!FPaths::IsSamePath(CanonicalBankPath, CanonicalStudioPath))
         {
+            FString BankPathToSet = FullBankPath;
+
+            // Extra logic - if we have put the studio project inside the game project, then make it relative
+            if (!StudioProjectDir.IsEmpty())
+            {
+                FString GameBaseDir = FPaths::ConvertRelativePathToFull(FPaths::ProjectDir());
+                FString BankPathFromGameProject = FullBankPath;
+                FString StudioProjectFromGameProject = StudioProjectDir;
+                if (FPaths::MakePathRelativeTo(BankPathFromGameProject, *GameBaseDir) && !BankPathFromGameProject.Contains(TEXT("..")) &&
+                    FPaths::MakePathRelativeTo(StudioProjectFromGameProject, *GameBaseDir) && !StudioProjectFromGameProject.Contains(TEXT("..")))
+                {
+                    FPaths::MakePathRelativeTo(BankPathToSet, *(StudioProjectDir + TEXT("/")));
+                }
+            }
+
             ProblemsFound++;
 
             FText AskMessage = FText::Format(LOCTEXT("SetStudioBuildStudio_Ask",
                                                  "FMOD Studio build path should be set up.\n\nCurrent Studio build path: {0}\nNew build path: "
                                                  "{1}\n\nDo you want to fix up the project now?"),
-                FText::FromString(StudioPathString), FText::FromString(CanonicalBankPath));
+                FText::FromString(StudioPathString), FText::FromString(BankPathToSet));
 
             if (EAppReturnType::Yes == FMessageDialog::Open(EAppMsgType::YesNo, AskMessage))
             {
                 FString Result;
-                StudioLink.Execute(*FString::Printf(TEXT("studio.project.workspace.builtBanksOutputDirectory = \"%s\";"), *CanonicalBankPath), Result);
+                StudioLink.Execute(*FString::Printf(TEXT("studio.project.workspace.builtBanksOutputDirectory = \"%s\";"), *BankPathToSet), Result);
                 StudioLink.Execute(TEXT("studio.project.workspace.builtBanksOutputDirectory"), Result);
 
-                if (Result != CanonicalBankPath)
+                if (Result != BankPathToSet)
                 {
                     FMessageDialog::Open(EAppMsgType::Ok,
                         LOCTEXT("SetStudioBuildStudio_Save",
@@ -716,7 +739,7 @@ void FFMODStudioEditorModule::ValidateFMOD()
                 }
 
                 FMessageDialog::Open(
-                    EAppMsgType::Ok, LOCTEXT("SetStudioBuildStudio_Save", "Saving your FMOD Studio Project."));
+                    EAppMsgType::Ok, LOCTEXT("SetStudioBuildStudio_Save", "Please go to FMOD Studio, save your project and build banks."));
                 // Just try to do it again anyway
                 StudioLink.Execute(TEXT("studio.project.save()"), Result);
                 StudioLink.Execute(TEXT("studio.project.build()"), Result);
@@ -1058,8 +1081,8 @@ bool FFMODStudioEditorModule::Tick(float DeltaTime)
 
     BankUpdateNotifier.Update(DeltaTime);
 
-    // Update listener position for Auditioning sound system
-    FMOD::Studio::System *StudioSystem = IFMODStudioModule::Get().GetStudioSystem(EFMODSystemContext::Auditioning);
+    // Update listener position for Editor sound system
+    FMOD::Studio::System *StudioSystem = IFMODStudioModule::Get().GetStudioSystem(EFMODSystemContext::Editor);
     if (StudioSystem)
     {
         if (GCurrentLevelEditingViewportClient)
@@ -1149,6 +1172,8 @@ void FFMODStudioEditorModule::ViewportDraw(UCanvas *Canvas, APlayerController *)
 void FFMODStudioEditorModule::ShutdownModule()
 {
     UE_LOG(LogFMOD, Verbose, TEXT("FFMODStudioEditorModule shutdown"));
+    FFMODEventControlTrackEditor::ShutdownWaveformRefreshTickers();
+    FFMODEventWaveformCapture::Shutdown();
 
     if (UObjectInitialized())
     {
