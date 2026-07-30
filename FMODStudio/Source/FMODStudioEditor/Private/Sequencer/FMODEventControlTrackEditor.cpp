@@ -1,26 +1,269 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2026.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2025.
 
 #include "FMODEventControlTrackEditor.h"
 #include "FMODAmbientSound.h"
+#include "FMODAudioComponent.h"
+#include "FMODEvent.h"
+#include "FMODStudioModule.h"
 #include "Sequencer/FMODEventControlSection.h"
 #include "Sequencer/FMODEventControlTrack.h"
+#include "Sequencer/FMODEventWaveformCapture.h"
 #include "AnimatedRange.h"
+#include "Containers/Ticker.h"
 #include "Rendering/DrawElements.h"
 #include "Framework/MultiBox/MultiBoxBuilder.h"
-#include "Curves/IntegralCurve.h"
+#include "Framework/Application/SlateApplication.h"
+#include "Fonts/FontMeasure.h"
 #include "SequencerSectionPainter.h"
 #include "TimeToPixel.h"
-#include "EditorStyleSet.h"
-#include "Editor/UnrealEdEngine.h"
-#include "ISectionLayoutBuilder.h"
+#include "Styling/AppStyle.h"
 #include "Channels/MovieSceneChannelProxy.h"
-#include "Channels/MovieSceneChannelEditorData.h"
+#include "MovieScene.h"
+#include "MovieSceneBinding.h"
+#include "MovieSceneSequence.h"
+#include "Tracks/MovieSceneObjectPropertyTrack.h"
+#include "Sections/MovieSceneObjectPropertySection.h"
+#include "Channels/MovieSceneObjectPathChannel.h"
+#include "fmod_studio.hpp"
 
 #define LOCTEXT_NAMESPACE "FFMODEventControlTrackEditor"
 
-FFMODEventControlSection::FFMODEventControlSection(UMovieSceneSection &InSection, TSharedRef<ISequencer> InOwningSequencer)
+namespace
+{
+TArray<FTSTicker::FDelegateHandle> WaveformRefreshTickerHandles;
+
+struct FVisualFMODRange
+{
+    TRange<float> Range;
+    bool bDrawWaveform = false;
+    FGuid EventGuid;
+    FString EventLabel;
+    FString EventPrefix;
+    FString DurationLabel;
+};
+
+struct FResolvedEventForPlay
+{
+    UFMODEvent* Event = nullptr;
+    bool bFoundEventKey = false;
+};
+
+FResolvedEventForPlay ResolveEventForPlay(
+    const UMovieSceneObjectPropertyTrack* EventTrack,
+    FFrameNumber PlayTime,
+    UFMODEvent* FallbackEvent)
+{
+    FResolvedEventForPlay Result;
+    if (EventTrack == nullptr)
+    {
+        Result.Event = FallbackEvent;
+        return Result;
+    }
+
+    FFrameNumber LatestEventKeyTime;
+
+    for (UMovieSceneSection* Section : EventTrack->GetAllSections())
+    {
+        const UMovieSceneObjectPropertySection* ObjectPropertySection = Cast<UMovieSceneObjectPropertySection>(Section);
+        if (ObjectPropertySection == nullptr)
+        {
+            continue;
+        }
+
+        const TMovieSceneChannelData<const FMovieSceneObjectPathChannelKeyValue> ChannelData = ObjectPropertySection->ObjectChannel.GetData();
+        const TArrayView<const FFrameNumber> Times = ChannelData.GetTimes();
+        const TArrayView<const FMovieSceneObjectPathChannelKeyValue> Values = ChannelData.GetValues();
+
+        for (int32 Index = 0; Index < Times.Num(); ++Index)
+        {
+            const FFrameNumber EventKeyTime = Times[Index];
+            if (EventKeyTime <= PlayTime && (!Result.bFoundEventKey || EventKeyTime > LatestEventKeyTime))
+            {
+                Result.bFoundEventKey = true;
+                LatestEventKeyTime = EventKeyTime;
+                Result.Event = Cast<UFMODEvent>(Values[Index].Get());
+            }
+        }
+    }
+
+    return Result;
+}
+
+UFMODAudioComponent* GetAudioComponent(UObject* Object)
+{
+    if (AFMODAmbientSound* AmbientSound = Cast<AFMODAmbientSound>(Object))
+    {
+        return AmbientSound->AudioComponent;
+    }
+
+    return Cast<UFMODAudioComponent>(Object);
+}
+
+const UMovieSceneObjectPropertyTrack* FindEventPropertyTrack(
+    const UMovieScene& MovieScene,
+    ISequencer& Sequencer,
+    UFMODAudioComponent* AudioComponent)
+{
+    const UMovieSceneObjectPropertyTrack* MatchingTrack = nullptr;
+    const UMovieSceneObjectPropertyTrack* GlobalTrack = nullptr;
+    int32 GlobalTrackCount = 0;
+
+    for (const FMovieSceneBinding& Binding : MovieScene.GetBindings())
+    {
+        UFMODAudioComponent* BindingAudioComponent = GetAudioComponent(Sequencer.FindSpawnedObjectOrTemplate(Binding.GetObjectGuid()));
+        for (UMovieSceneTrack* Track : Binding.GetTracks())
+        {
+            const UMovieSceneObjectPropertyTrack* PropertyTrack = Cast<UMovieSceneObjectPropertyTrack>(Track);
+            if (PropertyTrack == nullptr ||
+                PropertyTrack->GetPropertyName() != GET_MEMBER_NAME_CHECKED(UFMODAudioComponent, Event))
+            {
+                continue;
+            }
+
+            ++GlobalTrackCount;
+            GlobalTrack = PropertyTrack;
+            if (MatchingTrack == nullptr && BindingAudioComponent == AudioComponent)
+            {
+                MatchingTrack = PropertyTrack;
+            }
+        }
+    }
+
+    return MatchingTrack != nullptr ? MatchingTrack : (GlobalTrackCount == 1 ? GlobalTrack : nullptr);
+}
+
+bool HasFMODPlayKeys(const UMovieScene& MovieScene)
+{
+    const auto HasPlayKey = [](const UFMODEventControlTrack& ControlTrack)
+    {
+        for (UMovieSceneSection* Section : ControlTrack.GetAllSections())
+        {
+            const UFMODEventControlSection* ControlSection = Cast<UFMODEventControlSection>(Section);
+            if (ControlSection == nullptr)
+            {
+                continue;
+            }
+
+            const TMovieSceneChannelData<const uint8> ChannelData = ControlSection->ControlKeys.GetData();
+            const TArrayView<const uint8> Values = ChannelData.GetValues();
+            for (const uint8 Value : Values)
+            {
+                if ((EFMODEventControlKey)Value == EFMODEventControlKey::Play)
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    };
+
+    for (const FMovieSceneBinding& Binding : MovieScene.GetBindings())
+    {
+        for (UMovieSceneTrack* Track : Binding.GetTracks())
+        {
+            if (const UFMODEventControlTrack* ControlTrack = Cast<UFMODEventControlTrack>(Track); ControlTrack != nullptr && HasPlayKey(*ControlTrack))
+            {
+                return true;
+            }
+        }
+    }
+
+    for (UMovieSceneTrack* Track : MovieScene.GetTracks())
+    {
+        if (const UFMODEventControlTrack* ControlTrack = Cast<UFMODEventControlTrack>(Track); ControlTrack != nullptr && HasPlayKey(*ControlTrack))
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+void RequestWaveformsForControlTrack(
+    const UFMODEventControlTrack& ControlTrack,
+    ISequencer& Sequencer,
+    const UMovieScene& MovieScene,
+    UFMODAudioComponent* AudioComponent,
+    IFMODStudioModule& FMODStudioModule,
+    TSet<FGuid>& TrackedWaveformGuids)
+{
+    const UMovieSceneObjectPropertyTrack* EventPropertyTrack = FindEventPropertyTrack(MovieScene, Sequencer, AudioComponent);
+    UFMODEvent* FallbackEvent = IsValid(AudioComponent) ? AudioComponent->Event : nullptr;
+
+    for (UMovieSceneSection* Section : ControlTrack.GetAllSections())
+    {
+        const UFMODEventControlSection* ControlSection = Cast<UFMODEventControlSection>(Section);
+        if (ControlSection == nullptr)
+        {
+            continue;
+        }
+
+        const TMovieSceneChannelData<const uint8> ChannelData = ControlSection->ControlKeys.GetData();
+        const TArrayView<const FFrameNumber> Times = ChannelData.GetTimes();
+        const TArrayView<const uint8> Values = ChannelData.GetValues();
+        for (int32 Index = 0; Index < Times.Num(); ++Index)
+        {
+            if ((EFMODEventControlKey)Values[Index] != EFMODEventControlKey::Play)
+            {
+                continue;
+            }
+
+            const FResolvedEventForPlay ResolvedEvent = ResolveEventForPlay(EventPropertyTrack, Times[Index], FallbackEvent);
+            UFMODEvent* Event = ResolvedEvent.Event;
+            if (!IsValid(Event) || !Event->AssetGuid.IsValid() || TrackedWaveformGuids.Contains(Event->AssetGuid))
+            {
+                continue;
+            }
+
+            FMOD::Studio::EventDescription* EventDescription = FMODStudioModule.GetEventDescription(Event, EFMODSystemContext::Auditioning);
+            bool bIsOneShot = false;
+            int32 EventLengthMs = 0;
+            if (EventDescription == nullptr ||
+                EventDescription->isOneshot(&bIsOneShot) != FMOD_OK || !bIsOneShot ||
+                EventDescription->getLength(&EventLengthMs) != FMOD_OK || EventLengthMs <= 0)
+            {
+                continue;
+            }
+
+            FFMODEventWaveformCapture::Request(Event, EventLengthMs, bIsOneShot);
+            TrackedWaveformGuids.Add(Event->AssetGuid);
+        }
+    }
+}
+
+void RequestWaveformsForFocusedMovieScene(
+    ISequencer& Sequencer,
+    const UMovieScene& MovieScene,
+    IFMODStudioModule& FMODStudioModule,
+    TSet<FGuid>& TrackedWaveformGuids)
+{
+    for (const FMovieSceneBinding& Binding : MovieScene.GetBindings())
+    {
+        UFMODAudioComponent* AudioComponent = GetAudioComponent(Sequencer.FindSpawnedObjectOrTemplate(Binding.GetObjectGuid()));
+        for (UMovieSceneTrack* Track : Binding.GetTracks())
+        {
+            if (const UFMODEventControlTrack* ControlTrack = Cast<UFMODEventControlTrack>(Track))
+            {
+                RequestWaveformsForControlTrack(*ControlTrack, Sequencer, MovieScene, AudioComponent, FMODStudioModule, TrackedWaveformGuids);
+            }
+        }
+    }
+
+    for (UMovieSceneTrack* Track : MovieScene.GetTracks())
+    {
+        if (const UFMODEventControlTrack* ControlTrack = Cast<UFMODEventControlTrack>(Track))
+        {
+            RequestWaveformsForControlTrack(*ControlTrack, Sequencer, MovieScene, nullptr, FMODStudioModule, TrackedWaveformGuids);
+        }
+    }
+}
+}
+
+FFMODEventControlSection::FFMODEventControlSection(UMovieSceneSection &InSection, TSharedRef<ISequencer> InOwningSequencer, FGuid InObjectBinding)
     : Section(InSection)
     , OwningSequencerPtr(InOwningSequencer)
+    , ObjectBinding(InObjectBinding)
 {
 }
 
@@ -31,7 +274,7 @@ UMovieSceneSection *FFMODEventControlSection::GetSectionObject()
 
 float FFMODEventControlSection::GetSectionHeight() const
 {
-    static const float SectionHeight = 20.f;
+    static const float SectionHeight = 52.f;
     return SectionHeight;
 }
 
@@ -47,74 +290,241 @@ int32 FFMODEventControlSection::OnPaintSection(FSequencerSectionPainter &InPaint
     const ESlateDrawEffect DrawEffects = InPainter.bParentEnabled ? ESlateDrawEffect::None : ESlateDrawEffect::DisabledEffect;
     const FTimeToPixel &TimeToPixelConverter = InPainter.GetTimeConverter();
 
-    FLinearColor TrackColor;
-
-    // TODO: Set / clip stop time based on event length
     UFMODEventControlSection *ControlSection = Cast<UFMODEventControlSection>(&Section);
-    if (IsValid(ControlSection))
-    {
-        UFMODEventControlTrack *ParentTrack = Cast<UFMODEventControlTrack>(ControlSection->GetOuter());
-        if (IsValid(ParentTrack))
-        {
-            TrackColor = ParentTrack->GetColorTint();
-        }
-    }
 
-    // TODO: This should only draw the visible ranges.
-    TArray<TRange<float>> DrawRanges;
-    TOptional<float> CurrentRangeStart;
+    TArray<FVisualFMODRange> VisualRanges;
 
     if (ControlSection != nullptr)
     {
+        UObject *BoundObject = OwningSequencer->FindSpawnedObjectOrTemplate(ObjectBinding);
+        UFMODAudioComponent *AudioComponent = nullptr;
+        if (AFMODAmbientSound *AmbientSound = Cast<AFMODAmbientSound>(BoundObject)) AudioComponent = AmbientSound->AudioComponent;
+        else AudioComponent = Cast<UFMODAudioComponent>(BoundObject);
+
+        UMovieSceneSequence* Sequence = OwningSequencer->GetFocusedMovieSceneSequence();
+        UMovieScene* MovieScene = Sequence ? Sequence->GetMovieScene() : nullptr;
+        const UMovieSceneObjectPropertyTrack* EventPropertyTrack = MovieScene != nullptr
+            ? FindEventPropertyTrack(*MovieScene, *OwningSequencer, AudioComponent)
+            : nullptr;
+        UFMODEvent* FallbackEvent = IsValid(AudioComponent) ? AudioComponent->Event : nullptr;
+
         TMovieSceneChannelData<const uint8> ChannelData = ControlSection->ControlKeys.GetData();
         TArrayView<const FFrameNumber> Times = ChannelData.GetTimes();
         TArrayView<const uint8> Values = ChannelData.GetValues();
 
         for (int32 Index = 0; Index < Times.Num(); ++Index)
         {
-            const double Time = Times[Index] / TimeToPixelConverter.GetTickResolution();
-            const EFMODEventControlKey Value = (EFMODEventControlKey)Values[Index];
-
-            if (Value == EFMODEventControlKey::Play)
+            if ((EFMODEventControlKey)Values[Index] != EFMODEventControlKey::Play)
             {
-                if (CurrentRangeStart.IsSet() == false)
+                continue;
+            }
+
+            const double PlaySeconds = Times[Index] / TimeToPixelConverter.GetTickResolution();
+            const FResolvedEventForPlay ResolvedEvent = ResolveEventForPlay(EventPropertyTrack, Times[Index], FallbackEvent);
+            UFMODEvent* EventForPlay = ResolvedEvent.Event;
+            const FGuid EventGuid = IsValid(EventForPlay) ? EventForPlay->AssetGuid : FGuid();
+            FString EventLabel = IsValid(EventForPlay) ? EventForPlay->GetName() : TEXT("NO EVENT");
+            bool bDrawWaveform = false;
+            int32 EventLengthMs = 0;
+            FString EventPrefix;
+            FString DurationLabel;
+            double VisualEndSeconds = OwningSequencer->GetViewRange().GetUpperBoundValue();
+
+            if (IsValid(EventForPlay) && IFMODStudioModule::IsAvailable())
+            {
+                IFMODStudioModule &FMODStudioModule = IFMODStudioModule::Get();
+                if (FMODStudioModule.AreAuditioningBanksLoaded())
                 {
-                    CurrentRangeStart = Time;
+                    FMOD::Studio::EventDescription *EventDescription = FMODStudioModule.GetEventDescription(EventForPlay, EFMODSystemContext::Auditioning);
+                    if (EventDescription)
+                    {
+                        bool bIs3D = false;
+                        bool bIsOneshot = false;
+                        const FMOD_RESULT Is3DResult = EventDescription->is3D(&bIs3D);
+                        const FMOD_RESULT IsOneshotResult = EventDescription->isOneshot(&bIsOneshot);
+                        if (Is3DResult == FMOD_OK && IsOneshotResult == FMOD_OK)
+                        {
+                            EventPrefix = FString::Printf(TEXT("%s_%s"),
+                                bIs3D ? TEXT("3D") : TEXT("2D"),
+                                bIsOneshot ? TEXT("Once") : TEXT("Loop"));
+                        }
+
+                        if (EventDescription->getLength(&EventLengthMs) == FMOD_OK && EventLengthMs > 0)
+                        {
+                            VisualEndSeconds = PlaySeconds + EventLengthMs / 1000.0;
+                            DurationLabel = FString::Printf(TEXT("%.2fs"), EventLengthMs / 1000.0);
+                            bDrawWaveform = true;
+                        }
+                    }
                 }
             }
-            if (Value == EFMODEventControlKey::Stop)
+
+
+            for (int32 CandidateIndex = Index + 1; CandidateIndex < Times.Num(); ++CandidateIndex)
             {
-                if (CurrentRangeStart.IsSet())
+                const double CandidateSeconds = Times[CandidateIndex] / TimeToPixelConverter.GetTickResolution();
+                const EFMODEventControlKey CandidateValue = (EFMODEventControlKey)Values[CandidateIndex];
+                if (CandidateSeconds > PlaySeconds &&
+                    CandidateSeconds < VisualEndSeconds &&
+                    (CandidateValue == EFMODEventControlKey::Stop || CandidateValue == EFMODEventControlKey::Play))
                 {
-                    DrawRanges.Add(TRange<float>(CurrentRangeStart.GetValue(), Time));
-                    CurrentRangeStart.Reset();
+                    VisualEndSeconds = CandidateSeconds;
+                    break;
+                }
+            }
+
+            if (VisualEndSeconds > PlaySeconds)
+            {
+                VisualRanges.Add({ TRange<float>(PlaySeconds, VisualEndSeconds), bDrawWaveform, EventGuid, MoveTemp(EventLabel), MoveTemp(EventPrefix), MoveTemp(DurationLabel) });
+            }
+        }
+    }
+    for (const FVisualFMODRange &VisualRange : VisualRanges)
+    {
+        const TRange<float>& DrawRange = VisualRange.Range;
+        float XOffset = TimeToPixelConverter.SecondsToPixel(DrawRange.GetLowerBoundValue());
+        float XSize = TimeToPixelConverter.SecondsToPixel(DrawRange.GetUpperBoundValue()) - XOffset;
+        const float RangeHeight = InPainter.SectionGeometry.GetLocalSize().Y;
+        const float HeaderHeight = 18.0f;
+        FSlateDrawElement::MakeBox(InPainter.DrawElements, InPainter.LayerId,
+            InPainter.SectionGeometry.ToPaintGeometry(
+                FVector2D(XSize, RangeHeight),
+                FSlateLayoutTransform(1.0f, FVector2D(XOffset, 0.0f))),
+            FAppStyle::GetBrush("Sequencer.Section.Background"), DrawEffects);
+        FSlateDrawElement::MakeBox(InPainter.DrawElements, InPainter.LayerId,
+            InPainter.SectionGeometry.ToPaintGeometry(
+                FVector2D(XSize, RangeHeight),
+                FSlateLayoutTransform(1.0f, FVector2D(XOffset, 0.0f))),
+            FAppStyle::GetBrush("Sequencer.Section.BackgroundTint"), DrawEffects, FLinearColor::FromSRGBColor(FColor(93, 95, 136, 255)));
+        const FSlateFontInfo HeaderFont = FAppStyle::GetFontStyle("SmallFont");
+        const float HeaderLeftPadding = 6.0f;
+        const float HeaderRightPadding = 4.0f;
+        const float HeaderTextGap = 6.0f;
+        const float HeaderTextHeight = 16.0f;
+        const float HeaderTextY = 3.0f;
+        const float HeaderLeft = XOffset + HeaderLeftPadding;
+        const float HeaderRight = XOffset + XSize - HeaderRightPadding;
+        const float HeaderContentWidth = FMath::Max(0.0f, HeaderRight - HeaderLeft);
+
+        FString ParametersLabel;
+        if (!VisualRange.EventPrefix.IsEmpty() && !VisualRange.DurationLabel.IsEmpty())
+        {
+            ParametersLabel = FString::Printf(TEXT("(%s_%s)"), *VisualRange.EventPrefix, *VisualRange.DurationLabel);
+        }
+        else if (!VisualRange.EventPrefix.IsEmpty())
+        {
+            ParametersLabel = FString::Printf(TEXT("(%s)"), *VisualRange.EventPrefix);
+        }
+        else if (!VisualRange.DurationLabel.IsEmpty())
+        {
+            ParametersLabel = FString::Printf(TEXT("(%s)"), *VisualRange.DurationLabel);
+        }
+
+        const TSharedRef<FSlateFontMeasure> FontMeasure = FSlateApplication::Get().GetRenderer()->GetFontMeasureService();
+        const float EventLabelBaseWidth = FontMeasure->Measure(VisualRange.EventLabel, HeaderFont).X;
+        const float ParametersWidth = ParametersLabel.IsEmpty() ? 0.0f : FontMeasure->Measure(ParametersLabel, HeaderFont).X;
+        const bool bDrawParameters = !ParametersLabel.IsEmpty() && ParametersWidth > 0.0f &&
+            EventLabelBaseWidth + HeaderTextGap + ParametersWidth <= HeaderContentWidth;
+
+        float TitleRight = HeaderRight;
+        if (bDrawParameters)
+        {
+            const float ParametersLeft = HeaderRight - ParametersWidth;
+            const FPaintGeometry ParametersGeometry = InPainter.SectionGeometry.ToPaintGeometry(
+                FVector2D(ParametersWidth, HeaderTextHeight),
+                FSlateLayoutTransform(1.0f, FVector2D(ParametersLeft, HeaderTextY)));
+            const FPaintGeometry ParametersClipGeometry = InPainter.SectionGeometry.ToPaintGeometry(
+                FVector2D(ParametersWidth, 18.0f),
+                FSlateLayoutTransform(1.0f, FVector2D(ParametersLeft, 2.0f)));
+            InPainter.DrawElements.PushClip(FSlateClippingZone(ParametersClipGeometry));
+            FSlateDrawElement::MakeText(InPainter.DrawElements, InPainter.LayerId + 4,
+                ParametersGeometry, ParametersLabel, HeaderFont, DrawEffects, FLinearColor::White);
+            InPainter.DrawElements.PopClip();
+            TitleRight = ParametersLeft - HeaderTextGap;
+        }
+
+        const float TitleAvailableWidth = FMath::Max(0.0f, TitleRight - HeaderLeft);
+        if (!VisualRange.EventLabel.IsEmpty() && TitleAvailableWidth > 0.0f)
+        {
+            FSlateFontInfo TitleFont = HeaderFont;
+            const int32 BaseTitleFontSize = HeaderFont.Size;
+            const int32 MinTitleFontSize = FMath::Min(6, BaseTitleFontSize);
+            if (BaseTitleFontSize > 0 && EventLabelBaseWidth > KINDA_SMALL_NUMBER && TitleAvailableWidth < EventLabelBaseWidth)
+            {
+                const float ScaledTitleSize = BaseTitleFontSize * (TitleAvailableWidth / EventLabelBaseWidth);
+                TitleFont.Size = FMath::Clamp(FMath::FloorToInt(ScaledTitleSize), MinTitleFontSize, BaseTitleFontSize);
+            }
+
+            const FPaintGeometry TitleGeometry = InPainter.SectionGeometry.ToPaintGeometry(
+                FVector2D(TitleAvailableWidth, HeaderTextHeight),
+                FSlateLayoutTransform(1.0f, FVector2D(HeaderLeft, HeaderTextY)));
+            const FPaintGeometry TitleClipGeometry = InPainter.SectionGeometry.ToPaintGeometry(
+                FVector2D(TitleAvailableWidth, 18.0f),
+                FSlateLayoutTransform(1.0f, FVector2D(HeaderLeft, 2.0f)));
+            InPainter.DrawElements.PushClip(FSlateClippingZone(TitleClipGeometry));
+            FSlateDrawElement::MakeText(InPainter.DrawElements, InPainter.LayerId + 4,
+                TitleGeometry, VisualRange.EventLabel, TitleFont, DrawEffects, FLinearColor::White);
+            InPainter.DrawElements.PopClip();
+        }
+
+        if (VisualRange.bDrawWaveform)
+        {
+            const float WaveformTop = HeaderHeight;
+            const float WaveformBottom = FMath::Max(WaveformTop, RangeHeight - 2.0f);
+            const float WaveformHeight = WaveformBottom - WaveformTop;
+            const float WaveformWidth = FMath::Max(0.0f, XSize);
+            if (WaveformWidth > 0.0f && WaveformHeight > 0.0f)
+            {
+                const float WaveformBaselineY = WaveformBottom;
+                const FLinearColor WaveformPeakColor = FLinearColor::FromSRGBColor(FColor(42, 50, 136, 255));
+
+                const FFMODEventWaveformData* RealWaveform = FFMODEventWaveformCapture::FindReady(VisualRange.EventGuid);
+                if (RealWaveform != nullptr && RealWaveform->DurationMs > 0 && RealWaveform->BucketDurationMs > 0 && !RealWaveform->Peaks.IsEmpty())
+                {
+                    const double VisibleDurationMs = FMath::Min<double>(RealWaveform->DurationMs,
+                        FMath::Max(0.0, (DrawRange.GetUpperBoundValue() - DrawRange.GetLowerBoundValue()) * 1000.0));
+                    const int32 ColumnCount = FMath::Max(1, FMath::CeilToInt(WaveformWidth));
+                    const double BucketsPerPixel = VisibleDurationMs /
+                        (static_cast<double>(RealWaveform->BucketDurationMs) * ColumnCount);
+                    for (int32 ColumnIndex = 0; ColumnIndex < ColumnCount; ++ColumnIndex)
+                    {
+                        float Peak = 0.0f;
+                        if (BucketsPerPixel >= 1.0)
+                        {
+                            const double StartMs = VisibleDurationMs * ColumnIndex / ColumnCount;
+                            const double EndMs = VisibleDurationMs * (ColumnIndex + 1) / ColumnCount;
+                            const int32 StartPeakIndex = FMath::Clamp(FMath::FloorToInt(StartMs / RealWaveform->BucketDurationMs), 0, RealWaveform->Peaks.Num());
+                            const int32 EndPeakIndex = FMath::Clamp(FMath::CeilToInt(EndMs / RealWaveform->BucketDurationMs), StartPeakIndex, RealWaveform->Peaks.Num());
+                            for (int32 PeakIndex = StartPeakIndex; PeakIndex < EndPeakIndex; ++PeakIndex)
+                            {
+                                Peak = FMath::Max(Peak, RealWaveform->Peaks[PeakIndex]);
+                            }
+                        }
+                        else
+                        {
+                            const double PeakPosition = VisibleDurationMs * (ColumnIndex + 0.5) /
+                                (ColumnCount * RealWaveform->BucketDurationMs);
+                            const int32 Index0 = FMath::Clamp(FMath::FloorToInt(PeakPosition), 0, RealWaveform->Peaks.Num() - 1);
+                            const int32 Index1 = FMath::Min(Index0 + 1, RealWaveform->Peaks.Num() - 1);
+                            const float Alpha = FMath::Frac(static_cast<float>(PeakPosition));
+                            Peak = FMath::Lerp(RealWaveform->Peaks[Index0], RealWaveform->Peaks[Index1], Alpha);
+                        }
+
+                        const float NormalizedPeak = FMath::Clamp(Peak, 0.0f, 1.0f);
+                        const float PeakY = WaveformBaselineY - NormalizedPeak * WaveformHeight;
+                        const float X = XOffset + WaveformWidth * (ColumnIndex + 0.5f) / ColumnCount;
+                        TArray<FVector2f> LinePoints;
+                        LinePoints.Add(FVector2f(X, WaveformBaselineY));
+                        LinePoints.Add(FVector2f(X, PeakY));
+                        FSlateDrawElement::MakeLines(InPainter.DrawElements, InPainter.LayerId + 1, InPainter.SectionGeometry.ToPaintGeometry(), MoveTemp(LinePoints),
+                            DrawEffects, WaveformPeakColor, false, 1.0f);
+                    }
                 }
             }
         }
     }
 
-    if (CurrentRangeStart.IsSet())
-    {
-        DrawRanges.Add(TRange<float>(CurrentRangeStart.GetValue(), OwningSequencer->GetViewRange().GetUpperBoundValue()));
-    }
-
-    for (const TRange<float> &DrawRange : DrawRanges)
-    {
-        float XOffset = TimeToPixelConverter.SecondsToPixel(DrawRange.GetLowerBoundValue());
-        float XSize = TimeToPixelConverter.SecondsToPixel(DrawRange.GetUpperBoundValue()) - XOffset;
-        FSlateDrawElement::MakeBox(InPainter.DrawElements, InPainter.LayerId,
-            InPainter.SectionGeometry.ToPaintGeometry(
-                FVector2D(XSize, SequencerSectionConstants::KeySize.Y),
-                FSlateLayoutTransform(1.0f, FVector2D(XOffset, (InPainter.SectionGeometry.GetLocalSize().Y - SequencerSectionConstants::KeySize.Y) / 2))),
-            FAppStyle::GetBrush("Sequencer.Section.Background"), DrawEffects);
-        FSlateDrawElement::MakeBox(InPainter.DrawElements, InPainter.LayerId,
-            InPainter.SectionGeometry.ToPaintGeometry(
-                FVector2D(XSize, SequencerSectionConstants::KeySize.Y),
-                FSlateLayoutTransform(1.0f, FVector2D(XOffset, (InPainter.SectionGeometry.GetLocalSize().Y - SequencerSectionConstants::KeySize.Y) / 2))),
-            FAppStyle::GetBrush("Sequencer.Section.BackgroundTint"), DrawEffects, TrackColor);
-    }
-
-    return InPainter.LayerId + 1;
+    return InPainter.LayerId + 5;
 }
 
 FFMODEventControlTrackEditor::FFMODEventControlTrackEditor(TSharedRef<ISequencer> InSequencer)
@@ -122,6 +532,142 @@ FFMODEventControlTrackEditor::FFMODEventControlTrackEditor(TSharedRef<ISequencer
 {
 }
 
+FFMODEventControlTrackEditor::~FFMODEventControlTrackEditor()
+{
+    RemoveWaveformRefreshTicker();
+}
+
+void FFMODEventControlTrackEditor::RemoveWaveformRefreshTicker()
+{
+    if (WaveformRefreshTickerHandle.IsValid())
+    {
+        FTSTicker::GetCoreTicker().RemoveTicker(WaveformRefreshTickerHandle);
+        WaveformRefreshTickerHandles.RemoveSingleSwap(WaveformRefreshTickerHandle);
+        WaveformRefreshTickerHandle.Reset();
+    }
+}
+
+void FFMODEventControlTrackEditor::ShutdownWaveformRefreshTickers()
+{
+    for (const FTSTicker::FDelegateHandle& TickerHandle : WaveformRefreshTickerHandles)
+    {
+        FTSTicker::GetCoreTicker().RemoveTicker(TickerHandle);
+    }
+
+    WaveformRefreshTickerHandles.Reset();
+}
+
+void FFMODEventControlTrackEditor::OnInitialize()
+{
+    FMovieSceneTrackEditor::OnInitialize();
+
+    RemoveWaveformRefreshTicker();
+
+    const TSharedPtr<ISequencer> Sequencer = GetSequencer();
+    if (!Sequencer.IsValid())
+    {
+        return;
+    }
+
+    TWeakPtr<ISequencer> WeakSequencer = Sequencer;
+    WaveformRefreshTickerHandle = FTSTicker::GetCoreTicker().AddTicker(
+        FTickerDelegate::CreateLambda(
+            [WeakSequencer,
+                bAuditioningLoadRequested = false,
+                LastFocusedMovieScene = TWeakObjectPtr<UMovieScene>(),
+                TrackedWaveformGuids = TSet<FGuid>(),
+                bSequenceScanned = false,
+                bFinalRefreshIssued = false,
+                bStructuralScanComplete = false,
+                bHasFMODPlayKeys = false](float) mutable -> bool
+            {
+                const TSharedPtr<ISequencer> PinnedSequencer = WeakSequencer.Pin();
+                if (!PinnedSequencer.IsValid())
+                {
+                    return false;
+                }
+
+                UMovieSceneSequence* FocusedSequence = PinnedSequencer->GetFocusedMovieSceneSequence();
+                UMovieScene* FocusedMovieScene = FocusedSequence != nullptr ? FocusedSequence->GetMovieScene() : nullptr;
+                if (!IsValid(FocusedMovieScene))
+                {
+                    return true;
+                }
+
+                if (FocusedMovieScene != LastFocusedMovieScene.Get())
+                {
+                    LastFocusedMovieScene = FocusedMovieScene;
+                    TrackedWaveformGuids.Reset();
+                    bSequenceScanned = false;
+                    bFinalRefreshIssued = false;
+                    bStructuralScanComplete = false;
+                    bHasFMODPlayKeys = false;
+                }
+
+                if (!bStructuralScanComplete)
+                {
+                    bHasFMODPlayKeys = HasFMODPlayKeys(*FocusedMovieScene);
+                    bStructuralScanComplete = true;
+                }
+
+                if (!bHasFMODPlayKeys)
+                {
+                    return true;
+                }
+
+                if (!IFMODStudioModule::IsAvailable())
+                {
+                    return true;
+                }
+
+                IFMODStudioModule& FMODStudioModule = IFMODStudioModule::Get();
+                if (!FMODStudioModule.AreAuditioningBanksLoaded())
+                {
+                    if (!bAuditioningLoadRequested)
+                    {
+                        FMODStudioModule.LoadAuditioningBanks();
+                        bAuditioningLoadRequested = true;
+                    }
+                    return true;
+                }
+
+                if (!bSequenceScanned)
+                {
+                    RequestWaveformsForFocusedMovieScene(*PinnedSequencer, *FocusedMovieScene, FMODStudioModule, TrackedWaveformGuids);
+                    bSequenceScanned = true;
+                }
+
+                if (bSequenceScanned && !TrackedWaveformGuids.IsEmpty() && !bFinalRefreshIssued)
+                {
+                    for (const FGuid& EventGuid : TrackedWaveformGuids)
+                    {
+                        if (!FFMODEventWaveformCapture::IsTerminal(EventGuid))
+                        {
+                            return true;
+                        }
+                    }
+
+                    PinnedSequencer->NotifyMovieSceneDataChanged(
+                        EMovieSceneDataChangeType::TrackValueChangedRefreshImmediately);
+                    bFinalRefreshIssued = true;
+                }
+
+                return true;
+            }),
+        0.25f);
+
+    if (WaveformRefreshTickerHandle.IsValid())
+    {
+        WaveformRefreshTickerHandles.Add(WaveformRefreshTickerHandle);
+    }
+}
+
+void FFMODEventControlTrackEditor::OnRelease()
+{
+    RemoveWaveformRefreshTicker();
+
+    FMovieSceneTrackEditor::OnRelease();
+}
 TSharedRef<ISequencerTrackEditor> FFMODEventControlTrackEditor::CreateTrackEditor(TSharedRef<ISequencer> InSequencer)
 {
     return MakeShareable(new FFMODEventControlTrackEditor(InSequencer));
@@ -137,15 +683,13 @@ TSharedRef<ISequencerSection> FFMODEventControlTrackEditor::MakeSectionInterface
 {
     check(SupportsType(SectionObject.GetOuter()->GetClass()));
     const TSharedPtr<ISequencer> OwningSequencer = GetSequencer();
-    return MakeShareable(new FFMODEventControlSection(SectionObject, OwningSequencer.ToSharedRef()));
+    return MakeShareable(new FFMODEventControlSection(SectionObject, OwningSequencer.ToSharedRef(), ObjectBinding));
 }
 
 void FFMODEventControlTrackEditor::BuildObjectBindingTrackMenu(FMenuBuilder &MenuBuilder, const TArray<FGuid> &ObjectBindings, const UClass *ObjectClass)
 {
     if (ObjectClass->IsChildOf(AFMODAmbientSound::StaticClass()) || ObjectClass->IsChildOf(UFMODAudioComponent::StaticClass()))
     {
-        const TSharedPtr<ISequencer> ParentSequencer = GetSequencer();
-
         MenuBuilder.AddMenuEntry(LOCTEXT("AddFMODEventControlTrack", "FMOD Event Control Track"),
             LOCTEXT("FMODEventControlTooltip", "Adds a track for controlling FMOD event."), FSlateIcon(),
             FUIAction(FExecuteAction::CreateSP(this, &FFMODEventControlTrackEditor::AddControlKey, ObjectBindings)));
