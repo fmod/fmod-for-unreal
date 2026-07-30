@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2026.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2025.
 using System.IO;
 
 namespace UnrealBuildTool.Rules
@@ -12,8 +12,9 @@ namespace UnrealBuildTool.Rules
     #endif
         {
             PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
+            PrivatePCHHeaderFile = "Private/FMODStudioEditorPrivatePCH.h";
 
-            bUseUnity = true;
+            bUseUnity = false;
 
             PrivateIncludePaths.AddRange(
                 new string[] {
@@ -52,6 +53,7 @@ namespace UnrealBuildTool.Rules
                     "PropertyEditor",
                     "Settings",
                     "SequencerCore",
+                    "SequencerWidgets",
                     "Slate",
                     "SlateCore",
                     "Sockets",
