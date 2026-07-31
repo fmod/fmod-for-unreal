@@ -14,6 +14,8 @@
 
 class FMenuBuilder;
 class FSequencerSectionPainter;
+class UFMODAudioComponent;
+class UMovieScene;
 
 struct FFMODWaveformRefreshState;
 
@@ -41,8 +43,37 @@ public:
 
 private:
     void RemoveWaveformRefreshTicker();
+    void RegisterCursorSeekDelegates();
+    void RemoveCursorSeekDelegates();
+    void CancelPendingCursorSeek(bool bStopInjectedComponents);
+    void StopInjectedComponents();
+    void HandleExplicitPlay();
+    void HandleGlobalTimeChanged();
+    void HandleBeginScrubbing();
+    void HandleEndScrubbing();
+    void HandleTransportStop();
+    void HandleSequencerClosed(TSharedRef<ISequencer> ClosedSequencer);
+    void ExecutePendingCursorSeek();
 
     TWeakPtr<FFMODWaveformRefreshState> WaveformRefreshState;
+    TWeakPtr<ISequencer> CursorSeekSequencer;
+    FDelegateHandle CursorSeekPlayHandle;
+    FDelegateHandle CursorSeekGlobalTimeChangedHandle;
+    FDelegateHandle CursorSeekBeginScrubbingHandle;
+    FDelegateHandle CursorSeekEndScrubbingHandle;
+    FDelegateHandle CursorSeekStopHandle;
+    FDelegateHandle CursorSeekCloseHandle;
+    TWeakObjectPtr<UMovieScene> CursorSeekMovieScene;
+    FMovieSceneSequenceID CursorSeekTemplateID;
+    FFrameTime CursorSeekCursorTime;
+    FFrameNumber CursorSeekCursorFrame;
+    FFrameTime LastObservedLocalTime;
+    uint64 CursorSeekGeneration = 0;
+    bool bCursorSeekPending = false;
+    bool bCursorSeekScrubbing = false;
+    bool bTransportWasPaused = false;
+    bool bTimeMovedWhilePaused = false;
+    TArray<TWeakObjectPtr<UFMODAudioComponent>> InjectedCursorSeekComponents;
     /** Delegate for AnimatablePropertyChanged in AddKey. */
     virtual FKeyPropertyResult AddKeyInternal(FFrameNumber KeyTime, UObject *Object);
 };

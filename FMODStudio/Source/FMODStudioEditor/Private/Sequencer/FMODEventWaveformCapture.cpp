@@ -43,6 +43,7 @@ struct FActiveWaveformCapture
     int32 CaptureSampleRate = 0;
     int32 PrepareUpdateCount = 0;
     uint64 CapturedFrameCount = 0;
+    uint64 TargetFrameCount = 0;
     uint64 LastObservedFrameCount = 0;
     int32 ConsecutiveNoProgressUpdates = 0;
     TArray<float> Peaks;
@@ -51,6 +52,7 @@ struct FActiveWaveformCapture
     FMOD::DSP* CaptureDsp = nullptr;
     FMOD_DSP_DESCRIPTION DspDescription = {};
     bool bCaptureArmed = false;
+    bool bLoopPreview = false;
 };
 
 class FWaveformCaptureService
@@ -58,7 +60,7 @@ class FWaveformCaptureService
 public:
     void Request(const UFMODEvent* Event, int32 EventLengthMs, bool bIsOneShot)
     {
-        if (!IsValid(Event) || !Event->AssetGuid.IsValid() || !bIsOneShot || EventLengthMs <= 0)
+        if (!IsValid(Event) || !Event->AssetGuid.IsValid() || EventLengthMs <= 0)
         {
             return;
         }
@@ -78,6 +80,7 @@ public:
         FPendingRequest& Request = PendingRequests.AddDefaulted_GetRef();
         Request.EventGuid = EventGuid;
         Request.ExpectedDurationMs = EventLengthMs;
+        Request.bLoopPreview = !bIsOneShot;
         States.Add(EventGuid, EWaveformCaptureState::Pending);
         EnsureTicker();
     }
@@ -120,6 +123,7 @@ private:
     {
         FGuid EventGuid;
         int32 ExpectedDurationMs = 0;
+        bool bLoopPreview = false;
     };
 
     static FMOD_RESULT F_CALL CaptureDspRead(
@@ -153,6 +157,34 @@ private:
 
         if (!Capture->bCaptureArmed || Capture->CaptureSampleRate <= 0)
         {
+            return FMOD_OK;
+        }
+
+        if (Capture->bLoopPreview)
+        {
+            for (unsigned int FrameIndex = 0; FrameIndex < Length; ++FrameIndex)
+            {
+                if (Capture->CapturedFrameCount >= Capture->TargetFrameCount)
+                {
+                    break;
+                }
+
+                const uint64 CapturedFrameIndex = Capture->CapturedFrameCount++;
+                const uint64 BucketIndex = CapturedFrameIndex * 1000ull / static_cast<uint64>(Capture->CaptureSampleRate);
+                if (BucketIndex >= static_cast<uint64>(Capture->ExpectedDurationMs))
+                {
+                    continue;
+                }
+                float FramePeak = 0.0f;
+                const float* Frame = InBuffer + static_cast<SIZE_T>(FrameIndex) * InChannels;
+                for (int ChannelIndex = 0; ChannelIndex < InChannels; ++ChannelIndex)
+                {
+                    FramePeak = FMath::Max(FramePeak, FMath::Abs(Frame[ChannelIndex]));
+                }
+
+                Capture->Peaks[static_cast<int32>(BucketIndex)] = FMath::Max(Capture->Peaks[static_cast<int32>(BucketIndex)], FramePeak);
+            }
+
             return FMOD_OK;
         }
 
@@ -359,6 +391,7 @@ private:
         ActiveCapture = MakeUnique<FActiveWaveformCapture>();
         ActiveCapture->EventGuid = Request.EventGuid;
         ActiveCapture->ExpectedDurationMs = Request.ExpectedDurationMs;
+        ActiveCapture->bLoopPreview = Request.bLoopPreview;
         if (!EnsureSystemInitialized())
         {
             return;
@@ -384,7 +417,8 @@ private:
         bool bIsOneShot = false;
         bool bIs3D = false;
         int32 EventLengthMs = 0;
-        if (EventDescription->isOneshot(&bIsOneShot) != FMOD_OK || !bIsOneShot ||
+        if (EventDescription->isOneshot(&bIsOneShot) != FMOD_OK ||
+            (ActiveCapture->bLoopPreview ? bIsOneShot : !bIsOneShot) ||
             EventDescription->is3D(&bIs3D) != FMOD_OK ||
             EventDescription->getLength(&EventLengthMs) != FMOD_OK || EventLengthMs <= 0)
         {
@@ -392,6 +426,11 @@ private:
             return;
         }
         ActiveCapture->ExpectedDurationMs = EventLengthMs;
+        if (ActiveCapture->bLoopPreview)
+        {
+            ActiveCapture->TargetFrameCount =
+                static_cast<uint64>(ActiveCapture->ExpectedDurationMs) * static_cast<uint64>(ActiveCapture->CaptureSampleRate) / 1000ull;
+        }
 
         Result = EventDescription->createInstance(&ActiveCapture->EventInstance);
         if (Result != FMOD_OK)
@@ -479,6 +518,12 @@ private:
                 States.FindOrAdd(ActiveCapture->EventGuid) = EWaveformCaptureState::Capturing;
                 continue;
             }
+            if (ActiveCapture->bLoopPreview && ActiveCapture->CapturedFrameCount >= ActiveCapture->TargetFrameCount)
+            {
+                ActiveCapture->bCaptureArmed = false;
+                SucceedLoopPreviewCapture();
+                return;
+            }
             FMOD_STUDIO_PLAYBACK_STATE PlaybackState = FMOD_STUDIO_PLAYBACK_STOPPED;
             const FMOD_RESULT PlaybackResult = ActiveCapture->EventInstance->getPlaybackState(&PlaybackState);
             if (PlaybackResult != FMOD_OK) { FailActiveCapture(PlaybackResult); return; }
@@ -536,8 +581,61 @@ float MaxPeak = 0.0f;
         Waveform.Peaks = MoveTemp(ActiveCapture->Peaks);
         Waveform.DurationMs = ActiveCapture->ExpectedDurationMs;
         Waveform.BucketDurationMs = 1;
+        Waveform.bLoopPreview = false;
         States.FindOrAdd(ActiveCapture->EventGuid) = EWaveformCaptureState::Ready;
         CleanupActiveCapture();
+    }
+
+    void SucceedLoopPreviewCapture()
+    {
+        ActiveCapture->bCaptureArmed = false;
+        if (ActiveCapture->EventInstance != nullptr)
+        {
+            ActiveCapture->EventInstance->stop(FMOD_STUDIO_STOP_IMMEDIATE);
+        }
+        if (ActiveCapture->EventChannelGroup != nullptr && ActiveCapture->CaptureDsp != nullptr)
+        {
+            ActiveCapture->EventChannelGroup->removeDSP(ActiveCapture->CaptureDsp);
+        }
+        if (ActiveCapture->CaptureDsp != nullptr)
+        {
+            ActiveCapture->CaptureDsp->release();
+            ActiveCapture->CaptureDsp = nullptr;
+        }
+        if (ActiveCapture->EventInstance != nullptr)
+        {
+            ActiveCapture->EventInstance->release();
+            ActiveCapture->EventInstance = nullptr;
+        }
+        ActiveCapture->EventChannelGroup = nullptr;
+        if (StudioSystem != nullptr)
+        {
+            StudioSystem->flushCommands();
+            StudioSystem->update();
+        }
+
+        ActiveCapture->Peaks.SetNum(FMath::Min(ActiveCapture->Peaks.Num(), ActiveCapture->ExpectedDurationMs));
+        float MaxPeak = 0.0f;
+        for (const float Peak : ActiveCapture->Peaks)
+        {
+            MaxPeak = FMath::Max(MaxPeak, Peak);
+        }
+        if (MaxPeak > KINDA_SMALL_NUMBER)
+        {
+            const float NormalizeScale = 0.92f / MaxPeak;
+            for (float& Peak : ActiveCapture->Peaks)
+            {
+                Peak *= NormalizeScale;
+            }
+        }
+
+        FFMODEventWaveformData& Waveform = ReadyWaveforms.Add(ActiveCapture->EventGuid);
+        Waveform.Peaks = MoveTemp(ActiveCapture->Peaks);
+        Waveform.DurationMs = ActiveCapture->ExpectedDurationMs;
+        Waveform.BucketDurationMs = 1;
+        Waveform.bLoopPreview = true;
+        States.FindOrAdd(ActiveCapture->EventGuid) = EWaveformCaptureState::Ready;
+        ActiveCapture.Reset();
     }
 
     void FailActiveCapture(FMOD_RESULT)

@@ -19,6 +19,7 @@
 #include "Styling/AppStyle.h"
 #include "Channels/MovieSceneChannelProxy.h"
 #include "MovieScene.h"
+#include "MovieSceneTimeHelpers.h"
 #include "MovieScenePossessable.h"
 #include "MovieSceneBinding.h"
 #include "MovieSceneSequence.h"
@@ -48,17 +49,128 @@ struct FFMODWaveformRefreshState
 
 namespace
 {
-TArray<TSharedPtr<FFMODWaveformRefreshState>> WaveformRefreshStates;
+    TArray<TSharedPtr<FFMODWaveformRefreshState>> WaveformRefreshStates;
 
 struct FVisualFMODRange
 {
     TRange<float> Range;
     bool bDrawWaveform = false;
+    bool bLoopPreview = false;
     FGuid EventGuid;
     FString EventLabel;
     FString EventPrefix;
     FString DurationLabel;
 };
+
+TOptional<FFrameNumber> FindLoopVisualEnd(
+    const UFMODEventControlTrack& ControlTrack,
+    const UMovieScene& MovieScene,
+    FFrameNumber PlayFrame)
+{
+    TOptional<FFrameNumber> LoopVisualEnd;
+    const TRange<FFrameNumber> PlaybackRange = MovieScene.GetPlaybackRange();
+    if (PlaybackRange.GetUpperBound().IsClosed())
+    {
+        LoopVisualEnd = UE::MovieScene::DiscreteExclusiveUpper(PlaybackRange);
+    }
+
+    const auto ConsiderBoundary = [&LoopVisualEnd](FFrameNumber CandidateFrame)
+    {
+        if (!LoopVisualEnd.IsSet() || CandidateFrame < LoopVisualEnd.GetValue())
+        {
+            LoopVisualEnd = CandidateFrame;
+        }
+    };
+
+    for (UMovieSceneSection* TrackSection : ControlTrack.GetAllSections())
+    {
+        const UFMODEventControlSection* CandidateSection = Cast<UFMODEventControlSection>(TrackSection);
+        if (CandidateSection == nullptr)
+        {
+            continue;
+        }
+
+        const TMovieSceneChannelData<const uint8> ChannelData = CandidateSection->ControlKeys.GetData();
+        const TArrayView<const FFrameNumber> Times = ChannelData.GetTimes();
+        const TArrayView<const uint8> Values = ChannelData.GetValues();
+        for (int32 KeyIndex = 0; KeyIndex < Times.Num(); ++KeyIndex)
+        {
+            const EFMODEventControlKey Key = static_cast<EFMODEventControlKey>(Values[KeyIndex]);
+            if ((Key == EFMODEventControlKey::Stop && Times[KeyIndex] >= PlayFrame) ||
+                (Key == EFMODEventControlKey::Play && Times[KeyIndex] > PlayFrame))
+            {
+                ConsiderBoundary(Times[KeyIndex]);
+            }
+        }
+    }
+
+    return LoopVisualEnd;
+}
+
+float GetFiniteLoopPeak(float Peak)
+{
+    return FMath::IsFinite(Peak) ? FMath::Max(0.0f, Peak) : 0.0f;
+}
+
+double WrapFiniteLoopTimeMs(double TimeMs, double PreviewLengthMs)
+{
+    if (!FMath::IsFinite(TimeMs) || PreviewLengthMs <= 0.0)
+    {
+        return 0.0;
+    }
+
+    const double WrappedTimeMs = FMath::Fmod(TimeMs, PreviewLengthMs);
+    return WrappedTimeMs < 0.0 ? WrappedTimeMs + PreviewLengthMs : WrappedTimeMs;
+}
+
+float GetFiniteLoopRangePeak(
+    const FFMODEventWaveformData& Waveform,
+    double VirtualStartMs,
+    double VirtualEndMs,
+    float GlobalPeak)
+{
+    const double PreviewLengthMs = Waveform.DurationMs;
+    const double BucketDurationMs = Waveform.BucketDurationMs;
+    if (!FMath::IsFinite(VirtualStartMs) || !FMath::IsFinite(VirtualEndMs) || PreviewLengthMs <= 0.0 ||
+        BucketDurationMs <= 0.0 || Waveform.Peaks.IsEmpty())
+    {
+        return 0.0f;
+    }
+
+    const double IntervalMs = FMath::Max(0.0, VirtualEndMs - VirtualStartMs);
+    if (IntervalMs >= PreviewLengthMs)
+    {
+        return GlobalPeak;
+    }
+
+    const double LocalStartMs = WrapFiniteLoopTimeMs(VirtualStartMs, PreviewLengthMs);
+    const int32 StartPeakIndex = FMath::FloorToInt(LocalStartMs / BucketDurationMs);
+    const int32 EndPeakIndex = FMath::Max(StartPeakIndex + 1,
+        FMath::CeilToInt((LocalStartMs + IntervalMs) / BucketDurationMs));
+    float Peak = 0.0f;
+    for (int32 PeakIndex = StartPeakIndex; PeakIndex < EndPeakIndex; ++PeakIndex)
+    {
+        Peak = FMath::Max(Peak, GetFiniteLoopPeak(Waveform.Peaks[PeakIndex % Waveform.Peaks.Num()]));
+    }
+
+    return Peak;
+}
+
+float GetFiniteLoopInterpolatedPeak(const FFMODEventWaveformData& Waveform, double VirtualTimeMs)
+{
+    const double PreviewLengthMs = Waveform.DurationMs;
+    const double BucketDurationMs = Waveform.BucketDurationMs;
+    if (!FMath::IsFinite(VirtualTimeMs) || PreviewLengthMs <= 0.0 || BucketDurationMs <= 0.0 || Waveform.Peaks.IsEmpty())
+    {
+        return 0.0f;
+    }
+
+    const double PeakPosition = WrapFiniteLoopTimeMs(VirtualTimeMs, PreviewLengthMs) / BucketDurationMs;
+    const int32 Index0 = FMath::FloorToInt(PeakPosition) % Waveform.Peaks.Num();
+    const int32 Index1 = (Index0 + 1) % Waveform.Peaks.Num();
+    return FMath::Lerp(GetFiniteLoopPeak(Waveform.Peaks[Index0]), GetFiniteLoopPeak(Waveform.Peaks[Index1]),
+        FMath::Frac(static_cast<float>(PeakPosition)));
+}
 
 struct FResolvedEventForPlay
 {
@@ -366,7 +478,7 @@ void RequestWaveformsForControlTrack(
             bool bIsOneShot = false;
             int32 EventLengthMs = 0;
             if (EventDescription == nullptr ||
-                EventDescription->isOneshot(&bIsOneShot) != FMOD_OK || !bIsOneShot ||
+                EventDescription->isOneshot(&bIsOneShot) != FMOD_OK ||
                 EventDescription->getLength(&EventLengthMs) != FMOD_OK || EventLengthMs <= 0)
             {
                 continue;
@@ -402,6 +514,130 @@ void RequestWaveformsForFocusedMovieScene(
             RequestWaveformsForControlTrack(*ControlTrack, Sequencer, MovieScene, FMODStudioModule, TrackedWaveformGuids);
         }
     }
+}
+
+struct FCursorControlKey
+{
+    FFrameNumber Time;
+    EFMODEventControlKey Value = EFMODEventControlKey::Stop;
+};
+
+struct FCursorSeekCandidate
+{
+    UFMODAudioComponent* AudioComponent = nullptr;
+    UFMODEvent* Event = nullptr;
+    int32 TimelinePositionMs = 0;
+};
+
+bool CollectCursorControlKeys(const UFMODEventControlTrack& ControlTrack, TArray<FCursorControlKey>& OutKeys)
+{
+    TArray<UMovieSceneSection*> Sections = ControlTrack.GetAllSections();
+    for (int32 SectionIndex = 0; SectionIndex < Sections.Num(); ++SectionIndex)
+    {
+        const UFMODEventControlSection* ControlSection = Cast<UFMODEventControlSection>(Sections[SectionIndex]);
+        if (ControlSection == nullptr)
+        {
+            return false;
+        }
+
+        for (int32 OtherIndex = SectionIndex + 1; OtherIndex < Sections.Num(); ++OtherIndex)
+        {
+            if (Sections[OtherIndex] == nullptr || ControlSection->GetRange().Overlaps(Sections[OtherIndex]->GetRange()))
+            {
+                return false;
+            }
+        }
+
+        const TMovieSceneChannelData<const uint8> ChannelData = ControlSection->ControlKeys.GetData();
+        const TArrayView<const FFrameNumber> Times = ChannelData.GetTimes();
+        const TArrayView<const uint8> Values = ChannelData.GetValues();
+        for (int32 KeyIndex = 0; KeyIndex < Times.Num(); ++KeyIndex)
+        {
+            OutKeys.Add({ Times[KeyIndex], static_cast<EFMODEventControlKey>(Values[KeyIndex]) });
+        }
+    }
+
+    OutKeys.Sort([](const FCursorControlKey& Left, const FCursorControlKey& Right) { return Left.Time < Right.Time; });
+    for (int32 KeyIndex = 1; KeyIndex < OutKeys.Num(); ++KeyIndex)
+    {
+        if (OutKeys[KeyIndex - 1].Time == OutKeys[KeyIndex].Time)
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool ResolveCursorEventAtPlay(
+    const UMovieSceneObjectPropertyTrack* EventTrack,
+    FFrameNumber PlayFrame,
+    UFMODEvent* FallbackEvent,
+    UFMODEvent*& OutEvent)
+{
+    OutEvent = FallbackEvent;
+    if (EventTrack == nullptr)
+    {
+        return IsValid(OutEvent);
+    }
+
+    bool bFoundKey = false;
+    FFrameNumber LatestKeyTime;
+    for (UMovieSceneSection* Section : EventTrack->GetAllSections())
+    {
+        const UMovieSceneObjectPropertySection* ObjectSection = Cast<UMovieSceneObjectPropertySection>(Section);
+        if (ObjectSection == nullptr)
+        {
+            return false;
+        }
+
+        const TMovieSceneChannelData<const FMovieSceneObjectPathChannelKeyValue> ChannelData = ObjectSection->ObjectChannel.GetData();
+        const TArrayView<const FFrameNumber> Times = ChannelData.GetTimes();
+        const TArrayView<const FMovieSceneObjectPathChannelKeyValue> Values = ChannelData.GetValues();
+        for (int32 KeyIndex = 0; KeyIndex < Times.Num(); ++KeyIndex)
+        {
+            if (Times[KeyIndex] <= PlayFrame)
+            {
+                if (bFoundKey && Times[KeyIndex] == LatestKeyTime)
+                {
+                    return false;
+                }
+                if (!bFoundKey || Times[KeyIndex] > LatestKeyTime)
+                {
+                    bFoundKey = true;
+                    LatestKeyTime = Times[KeyIndex];
+                    OutEvent = Cast<UFMODEvent>(Values[KeyIndex].Get());
+                }
+            }
+        }
+    }
+    return IsValid(OutEvent);
+}
+
+bool HasEventChangeAfterPlay(const UMovieSceneObjectPropertyTrack* EventTrack, FFrameNumber PlayFrame, FFrameNumber CursorFrame)
+{
+    if (EventTrack == nullptr)
+    {
+        return false;
+    }
+
+    for (UMovieSceneSection* Section : EventTrack->GetAllSections())
+    {
+        const UMovieSceneObjectPropertySection* ObjectSection = Cast<UMovieSceneObjectPropertySection>(Section);
+        if (ObjectSection == nullptr)
+        {
+            return true;
+        }
+
+        const TMovieSceneChannelData<const FMovieSceneObjectPathChannelKeyValue> ChannelData = ObjectSection->ObjectChannel.GetData();
+        for (const FFrameNumber KeyTime : ChannelData.GetTimes())
+        {
+            if (KeyTime > PlayFrame && KeyTime <= CursorFrame)
+            {
+                return true;
+            }
+        }
+    }
+    return false;
 }
 }
 
@@ -472,6 +708,7 @@ int32 FFMODEventControlSection::OnPaintSection(FSequencerSectionPainter &InPaint
             const FGuid EventGuid = IsValid(EventForPlay) ? EventForPlay->AssetGuid : FGuid();
             FString EventLabel = IsValid(EventForPlay) ? EventForPlay->GetName() : TEXT("NO EVENT");
             bool bDrawWaveform = false;
+            bool bLoopPreview = false;
             int32 EventLengthMs = 0;
             FString EventPrefix;
             FString DurationLabel;
@@ -498,31 +735,47 @@ int32 FFMODEventControlSection::OnPaintSection(FSequencerSectionPainter &InPaint
 
                         if (EventDescription->getLength(&EventLengthMs) == FMOD_OK && EventLengthMs > 0)
                         {
-                            VisualEndSeconds = PlaySeconds + EventLengthMs / 1000.0;
+                            bLoopPreview = !bIsOneshot;
+                            if (bLoopPreview && ControlTrack != nullptr && MovieScene != nullptr)
+                            {
+                                VisualEndSeconds = PlaySeconds;
+                                const TOptional<FFrameNumber> LoopVisualEnd = FindLoopVisualEnd(*ControlTrack, *MovieScene, Times[Index]);
+                                if (LoopVisualEnd.IsSet())
+                                {
+                                    VisualEndSeconds = LoopVisualEnd.GetValue() / TimeToPixelConverter.GetTickResolution();
+                                }
+                            }
+                            else
+                            {
+                                VisualEndSeconds = PlaySeconds + EventLengthMs / 1000.0;
+                            }
                             DurationLabel = FString::Printf(TEXT("%.2fs"), EventLengthMs / 1000.0);
-                            bDrawWaveform = true;
+                            bDrawWaveform = !bLoopPreview || VisualEndSeconds > PlaySeconds;
                         }
                     }
                 }
             }
 
 
-            for (int32 CandidateIndex = Index + 1; CandidateIndex < Times.Num(); ++CandidateIndex)
+            if (!bLoopPreview)
             {
-                const double CandidateSeconds = Times[CandidateIndex] / TimeToPixelConverter.GetTickResolution();
-                const EFMODEventControlKey CandidateValue = (EFMODEventControlKey)Values[CandidateIndex];
-                if (CandidateSeconds > PlaySeconds &&
-                    CandidateSeconds < VisualEndSeconds &&
-                    (CandidateValue == EFMODEventControlKey::Stop || CandidateValue == EFMODEventControlKey::Play))
+                for (int32 CandidateIndex = Index + 1; CandidateIndex < Times.Num(); ++CandidateIndex)
                 {
-                    VisualEndSeconds = CandidateSeconds;
-                    break;
+                    const double CandidateSeconds = Times[CandidateIndex] / TimeToPixelConverter.GetTickResolution();
+                    const EFMODEventControlKey CandidateValue = (EFMODEventControlKey)Values[CandidateIndex];
+                    if (CandidateSeconds > PlaySeconds &&
+                        CandidateSeconds < VisualEndSeconds &&
+                        (CandidateValue == EFMODEventControlKey::Stop || CandidateValue == EFMODEventControlKey::Play))
+                    {
+                        VisualEndSeconds = CandidateSeconds;
+                        break;
+                    }
                 }
             }
 
             if (VisualEndSeconds > PlaySeconds)
             {
-                VisualRanges.Add({ TRange<float>(PlaySeconds, VisualEndSeconds), bDrawWaveform, EventGuid, MoveTemp(EventLabel), MoveTemp(EventPrefix), MoveTemp(DurationLabel) });
+                VisualRanges.Add({ TRange<float>(PlaySeconds, VisualEndSeconds), bDrawWaveform, bLoopPreview, EventGuid, MoveTemp(EventLabel), MoveTemp(EventPrefix), MoveTemp(DurationLabel) });
             }
         }
     }
@@ -628,43 +881,124 @@ int32 FFMODEventControlSection::OnPaintSection(FSequencerSectionPainter &InPaint
                 const FFMODEventWaveformData* RealWaveform = FFMODEventWaveformCapture::FindReady(VisualRange.EventGuid);
                 if (RealWaveform != nullptr && RealWaveform->DurationMs > 0 && RealWaveform->BucketDurationMs > 0 && !RealWaveform->Peaks.IsEmpty())
                 {
-                    const double VisibleDurationMs = FMath::Min<double>(RealWaveform->DurationMs,
-                        FMath::Max(0.0, (DrawRange.GetUpperBoundValue() - DrawRange.GetLowerBoundValue()) * 1000.0));
                     const int32 ColumnCount = FMath::Max(1, FMath::CeilToInt(WaveformWidth));
-                    const double BucketsPerPixel = VisibleDurationMs /
-                        (static_cast<double>(RealWaveform->BucketDurationMs) * ColumnCount);
-                    for (int32 ColumnIndex = 0; ColumnIndex < ColumnCount; ++ColumnIndex)
+                    if (!RealWaveform->bLoopPreview)
                     {
-                        float Peak = 0.0f;
-                        if (BucketsPerPixel >= 1.0)
+                        const double VisibleDurationMs = FMath::Min<double>(RealWaveform->DurationMs,
+                            FMath::Max(0.0, (DrawRange.GetUpperBoundValue() - DrawRange.GetLowerBoundValue()) * 1000.0));
+                        const double BucketsPerPixel = VisibleDurationMs /
+                            (static_cast<double>(RealWaveform->BucketDurationMs) * ColumnCount);
+                        for (int32 ColumnIndex = 0; ColumnIndex < ColumnCount; ++ColumnIndex)
                         {
-                            const double StartMs = VisibleDurationMs * ColumnIndex / ColumnCount;
-                            const double EndMs = VisibleDurationMs * (ColumnIndex + 1) / ColumnCount;
-                            const int32 StartPeakIndex = FMath::Clamp(FMath::FloorToInt(StartMs / RealWaveform->BucketDurationMs), 0, RealWaveform->Peaks.Num());
-                            const int32 EndPeakIndex = FMath::Clamp(FMath::CeilToInt(EndMs / RealWaveform->BucketDurationMs), StartPeakIndex, RealWaveform->Peaks.Num());
-                            for (int32 PeakIndex = StartPeakIndex; PeakIndex < EndPeakIndex; ++PeakIndex)
+                            float Peak = 0.0f;
+                            if (BucketsPerPixel >= 1.0)
                             {
-                                Peak = FMath::Max(Peak, RealWaveform->Peaks[PeakIndex]);
+                                const double StartMs = VisibleDurationMs * ColumnIndex / ColumnCount;
+                                const double EndMs = VisibleDurationMs * (ColumnIndex + 1) / ColumnCount;
+                                const int32 StartPeakIndex = FMath::Clamp(FMath::FloorToInt(StartMs / RealWaveform->BucketDurationMs), 0, RealWaveform->Peaks.Num());
+                                const int32 EndPeakIndex = FMath::Clamp(FMath::CeilToInt(EndMs / RealWaveform->BucketDurationMs), StartPeakIndex, RealWaveform->Peaks.Num());
+                                for (int32 PeakIndex = StartPeakIndex; PeakIndex < EndPeakIndex; ++PeakIndex)
+                                {
+                                    Peak = FMath::Max(Peak, RealWaveform->Peaks[PeakIndex]);
+                                }
                             }
+                            else
+                            {
+                                const double PeakPosition = VisibleDurationMs * (ColumnIndex + 0.5) /
+                                    (ColumnCount * RealWaveform->BucketDurationMs);
+                                const int32 Index0 = FMath::Clamp(FMath::FloorToInt(PeakPosition), 0, RealWaveform->Peaks.Num() - 1);
+                                const int32 Index1 = FMath::Min(Index0 + 1, RealWaveform->Peaks.Num() - 1);
+                                const float Alpha = FMath::Frac(static_cast<float>(PeakPosition));
+                                Peak = FMath::Lerp(RealWaveform->Peaks[Index0], RealWaveform->Peaks[Index1], Alpha);
+                            }
+
+                            const float NormalizedPeak = FMath::Clamp(Peak, 0.0f, 1.0f);
+                            const float PeakY = WaveformBaselineY - NormalizedPeak * WaveformHeight;
+                            const float X = XOffset + WaveformWidth * (ColumnIndex + 0.5f) / ColumnCount;
+                            TArray<FVector2f> LinePoints;
+                            LinePoints.Add(FVector2f(X, WaveformBaselineY));
+                            LinePoints.Add(FVector2f(X, PeakY));
+                            FSlateDrawElement::MakeLines(InPainter.DrawElements, InPainter.LayerId + 1, InPainter.SectionGeometry.ToPaintGeometry(), MoveTemp(LinePoints),
+                                DrawEffects, WaveformPeakColor, false, 1.0f);
                         }
-                        else
+                    }
+                    else
+                    {
+                        const double VisibleDurationMs = FMath::Max(0.0,
+                            (DrawRange.GetUpperBoundValue() - DrawRange.GetLowerBoundValue()) * 1000.0);
+                        const double BucketsPerPixel = VisibleDurationMs /
+                            (static_cast<double>(RealWaveform->BucketDurationMs) * ColumnCount);
+                        float GlobalPeak = 0.0f;
+                        for (const float Peak : RealWaveform->Peaks)
                         {
-                            const double PeakPosition = VisibleDurationMs * (ColumnIndex + 0.5) /
-                                (ColumnCount * RealWaveform->BucketDurationMs);
-                            const int32 Index0 = FMath::Clamp(FMath::FloorToInt(PeakPosition), 0, RealWaveform->Peaks.Num() - 1);
-                            const int32 Index1 = FMath::Min(Index0 + 1, RealWaveform->Peaks.Num() - 1);
-                            const float Alpha = FMath::Frac(static_cast<float>(PeakPosition));
-                            Peak = FMath::Lerp(RealWaveform->Peaks[Index0], RealWaveform->Peaks[Index1], Alpha);
+                            GlobalPeak = FMath::Max(GlobalPeak, GetFiniteLoopPeak(Peak));
                         }
 
-                        const float NormalizedPeak = FMath::Clamp(Peak, 0.0f, 1.0f);
-                        const float PeakY = WaveformBaselineY - NormalizedPeak * WaveformHeight;
-                        const float X = XOffset + WaveformWidth * (ColumnIndex + 0.5f) / ColumnCount;
-                        TArray<FVector2f> LinePoints;
-                        LinePoints.Add(FVector2f(X, WaveformBaselineY));
-                        LinePoints.Add(FVector2f(X, PeakY));
-                        FSlateDrawElement::MakeLines(InPainter.DrawElements, InPainter.LayerId + 1, InPainter.SectionGeometry.ToPaintGeometry(), MoveTemp(LinePoints),
-                            DrawEffects, WaveformPeakColor, false, 1.0f);
+                        for (int32 ColumnIndex = 0; ColumnIndex < ColumnCount; ++ColumnIndex)
+                        {
+                            const double VirtualStartMs = VisibleDurationMs * ColumnIndex / ColumnCount;
+                            const double VirtualEndMs = VisibleDurationMs * (ColumnIndex + 1) / ColumnCount;
+                            const float Peak = BucketsPerPixel >= 1.0
+                                ? GetFiniteLoopRangePeak(*RealWaveform, VirtualStartMs, VirtualEndMs, GlobalPeak)
+                                : GetFiniteLoopInterpolatedPeak(*RealWaveform, (VirtualStartMs + VirtualEndMs) * 0.5);
+                            const float NormalizedPeak = FMath::Clamp(Peak, 0.0f, 1.0f);
+                            const float PeakY = WaveformBaselineY - NormalizedPeak * WaveformHeight;
+                            const float X = XOffset + WaveformWidth * (ColumnIndex + 0.5f) / ColumnCount;
+                            TArray<FVector2f> LinePoints;
+                            LinePoints.Add(FVector2f(X, WaveformBaselineY));
+                            LinePoints.Add(FVector2f(X, PeakY));
+                            FSlateDrawElement::MakeLines(InPainter.DrawElements, InPainter.LayerId + 1, InPainter.SectionGeometry.ToPaintGeometry(), MoveTemp(LinePoints),
+                                DrawEffects, WaveformPeakColor, false, 1.0f);
+                        }
+                    }
+
+                    if (RealWaveform->bLoopPreview)
+                    {
+                        const double PlayTime = DrawRange.GetLowerBoundValue();
+                        const double LoopVisualEnd = DrawRange.GetUpperBoundValue();
+                        const double LoopDurationSeconds = RealWaveform->DurationMs / 1000.0;
+                        const float LoopWidthPixels = FMath::Abs(
+                            TimeToPixelConverter.SecondsToPixel(PlayTime + LoopDurationSeconds) -
+                            TimeToPixelConverter.SecondsToPixel(PlayTime));
+                        const double GeometryStartSeconds = TimeToPixelConverter.PixelToSeconds(0.0f);
+                        const double GeometryEndSeconds = TimeToPixelConverter.PixelToSeconds(InPainter.SectionGeometry.GetLocalSize().X);
+                        const double VisibleStartSeconds = FMath::Min(GeometryStartSeconds, GeometryEndSeconds);
+                        const double VisibleEndSeconds = FMath::Max(GeometryStartSeconds, GeometryEndSeconds);
+
+                        if (FMath::IsFinite(PlayTime) && FMath::IsFinite(LoopVisualEnd) && FMath::IsFinite(LoopDurationSeconds) &&
+                            FMath::IsFinite(LoopWidthPixels) && FMath::IsFinite(VisibleStartSeconds) && FMath::IsFinite(VisibleEndSeconds) &&
+                            LoopDurationSeconds > 0.0 &&
+                            LoopVisualEnd > PlayTime && LoopWidthPixels > 12.0f)
+                        {
+                            const double FirstBoundaryIndexDouble = FMath::Max(1.0,
+                                FMath::CeilToDouble((VisibleStartSeconds - PlayTime) / LoopDurationSeconds));
+                            if (FMath::IsFinite(FirstBoundaryIndexDouble) &&
+                                FirstBoundaryIndexDouble < static_cast<double>(TNumericLimits<int64>::Max()))
+                            {
+                                const double DrawEndSeconds = FMath::Min(LoopVisualEnd, VisibleEndSeconds);
+                                const FLinearColor LoopSeparatorColor(0.35f, 1.0f, 0.45f, 0.48f);
+                                for (int64 BoundaryIndex = static_cast<int64>(FirstBoundaryIndexDouble);
+                                    BoundaryIndex < TNumericLimits<int64>::Max(); ++BoundaryIndex)
+                                {
+                                    const double BoundaryTime = PlayTime + BoundaryIndex * LoopDurationSeconds;
+                                    if (!FMath::IsFinite(BoundaryTime) || BoundaryTime >= DrawEndSeconds)
+                                    {
+                                        break;
+                                    }
+
+                                    if (BoundaryTime > PlayTime && BoundaryTime >= VisibleStartSeconds)
+                                    {
+                                        const float BoundaryX = TimeToPixelConverter.SecondsToPixel(BoundaryTime);
+                                        TArray<FVector2f> LinePoints;
+                                        LinePoints.Add(FVector2f(BoundaryX, WaveformTop));
+                                        LinePoints.Add(FVector2f(BoundaryX, WaveformBottom));
+                                        FSlateDrawElement::MakeLines(InPainter.DrawElements, InPainter.LayerId + 2,
+                                            InPainter.SectionGeometry.ToPaintGeometry(), MoveTemp(LinePoints), DrawEffects,
+                                            LoopSeparatorColor, false, 1.0f);
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -681,7 +1015,361 @@ FFMODEventControlTrackEditor::FFMODEventControlTrackEditor(TSharedRef<ISequencer
 
 FFMODEventControlTrackEditor::~FFMODEventControlTrackEditor()
 {
+    RemoveCursorSeekDelegates();
     RemoveWaveformRefreshTicker();
+}
+
+void FFMODEventControlTrackEditor::RegisterCursorSeekDelegates()
+{
+    RemoveCursorSeekDelegates();
+
+    const TSharedPtr<ISequencer> Sequencer = GetSequencer();
+    if (!Sequencer.IsValid())
+    {
+        return;
+    }
+
+    CursorSeekSequencer = Sequencer;
+    LastObservedLocalTime = Sequencer->GetLocalTime().Time;
+    CursorSeekPlayHandle = Sequencer->OnPlayEvent().AddRaw(this, &FFMODEventControlTrackEditor::HandleExplicitPlay);
+    CursorSeekGlobalTimeChangedHandle = Sequencer->OnGlobalTimeChanged().AddRaw(this, &FFMODEventControlTrackEditor::HandleGlobalTimeChanged);
+    CursorSeekBeginScrubbingHandle = Sequencer->OnBeginScrubbingEvent().AddRaw(this, &FFMODEventControlTrackEditor::HandleBeginScrubbing);
+    CursorSeekEndScrubbingHandle = Sequencer->OnEndScrubbingEvent().AddRaw(this, &FFMODEventControlTrackEditor::HandleEndScrubbing);
+    CursorSeekStopHandle = Sequencer->OnStopEvent().AddRaw(this, &FFMODEventControlTrackEditor::HandleTransportStop);
+    CursorSeekCloseHandle = Sequencer->OnCloseEvent().AddRaw(this, &FFMODEventControlTrackEditor::HandleSequencerClosed);
+}
+
+void FFMODEventControlTrackEditor::RemoveCursorSeekDelegates()
+{
+    CancelPendingCursorSeek(true);
+
+    const TSharedPtr<ISequencer> Sequencer = CursorSeekSequencer.Pin();
+    if (Sequencer.IsValid())
+    {
+        if (CursorSeekPlayHandle.IsValid())
+        {
+            Sequencer->OnPlayEvent().Remove(CursorSeekPlayHandle);
+        }
+        if (CursorSeekGlobalTimeChangedHandle.IsValid())
+        {
+            Sequencer->OnGlobalTimeChanged().Remove(CursorSeekGlobalTimeChangedHandle);
+        }
+        if (CursorSeekBeginScrubbingHandle.IsValid())
+        {
+            Sequencer->OnBeginScrubbingEvent().Remove(CursorSeekBeginScrubbingHandle);
+        }
+        if (CursorSeekEndScrubbingHandle.IsValid())
+        {
+            Sequencer->OnEndScrubbingEvent().Remove(CursorSeekEndScrubbingHandle);
+        }
+        if (CursorSeekStopHandle.IsValid())
+        {
+            Sequencer->OnStopEvent().Remove(CursorSeekStopHandle);
+        }
+        if (CursorSeekCloseHandle.IsValid())
+        {
+            Sequencer->OnCloseEvent().Remove(CursorSeekCloseHandle);
+        }
+    }
+
+    CursorSeekPlayHandle.Reset();
+    CursorSeekGlobalTimeChangedHandle.Reset();
+    CursorSeekBeginScrubbingHandle.Reset();
+    CursorSeekEndScrubbingHandle.Reset();
+    CursorSeekStopHandle.Reset();
+    CursorSeekCloseHandle.Reset();
+    CursorSeekSequencer.Reset();
+}
+
+void FFMODEventControlTrackEditor::StopInjectedComponents()
+{
+    for (const TWeakObjectPtr<UFMODAudioComponent>& WeakComponent : InjectedCursorSeekComponents)
+    {
+        if (UFMODAudioComponent* AudioComponent = WeakComponent.Get())
+        {
+            AudioComponent->Stop();
+        }
+    }
+    InjectedCursorSeekComponents.Reset();
+}
+
+void FFMODEventControlTrackEditor::CancelPendingCursorSeek(bool bStopInjectedComponents)
+{
+    bCursorSeekPending = false;
+    ++CursorSeekGeneration;
+    if (bStopInjectedComponents)
+    {
+        StopInjectedComponents();
+    }
+}
+
+void FFMODEventControlTrackEditor::HandleExplicitPlay()
+{
+    const TSharedPtr<ISequencer> Sequencer = CursorSeekSequencer.Pin();
+    if (!Sequencer.IsValid() || bCursorSeekScrubbing || Sequencer->GetPlaybackStatus() != EMovieScenePlayerStatus::Playing ||
+        !FMath::IsNearlyEqual(Sequencer->GetPlaybackSpeed(), 1.0f))
+    {
+        CancelPendingCursorSeek(false);
+        return;
+    }
+
+    UMovieSceneSequence* FocusedSequence = Sequencer->GetFocusedMovieSceneSequence();
+    UMovieScene* FocusedMovieScene = FocusedSequence ? FocusedSequence->GetMovieScene() : nullptr;
+    if (!IsValid(FocusedMovieScene))
+    {
+        CancelPendingCursorSeek(false);
+        return;
+    }
+    if (!InjectedCursorSeekComponents.IsEmpty() &&
+        (FocusedMovieScene != CursorSeekMovieScene.Get() || Sequencer->GetFocusedTemplateID() != CursorSeekTemplateID))
+    {
+        bTransportWasPaused = false;
+        bTimeMovedWhilePaused = false;
+        CancelPendingCursorSeek(true);
+    }
+
+    const FFrameTime CurrentTime = Sequencer->GetLocalTime().Time;
+    if (bTransportWasPaused && !bTimeMovedWhilePaused)
+    {
+        // Sequencer's implicit pause/resume owns this existing instance.
+        bTransportWasPaused = false;
+        return;
+    }
+
+    ++CursorSeekGeneration;
+    bCursorSeekPending = true;
+    bTransportWasPaused = false;
+    bTimeMovedWhilePaused = false;
+    CursorSeekCursorTime = CurrentTime;
+    CursorSeekCursorFrame = CurrentTime.FloorToFrame();
+    CursorSeekMovieScene = FocusedMovieScene;
+    CursorSeekTemplateID = Sequencer->GetFocusedTemplateID();
+}
+
+void FFMODEventControlTrackEditor::HandleGlobalTimeChanged()
+{
+    const TSharedPtr<ISequencer> Sequencer = CursorSeekSequencer.Pin();
+    if (!Sequencer.IsValid())
+    {
+        CancelPendingCursorSeek(true);
+        return;
+    }
+
+    const FFrameTime CurrentTime = Sequencer->GetLocalTime().Time;
+    if (bTransportWasPaused && CurrentTime != LastObservedLocalTime)
+    {
+        bTimeMovedWhilePaused = true;
+    }
+    LastObservedLocalTime = CurrentTime;
+
+    const EMovieScenePlayerStatus::Type Status = Sequencer->GetPlaybackStatus();
+    if (Status == EMovieScenePlayerStatus::Scrubbing || Status == EMovieScenePlayerStatus::Jumping ||
+        Status == EMovieScenePlayerStatus::Stepping || !FMath::IsNearlyEqual(Sequencer->GetPlaybackSpeed(), 1.0f))
+    {
+        bCursorSeekScrubbing = Status == EMovieScenePlayerStatus::Scrubbing;
+        CancelPendingCursorSeek(true);
+        return;
+    }
+
+    if (!bCursorSeekPending && !InjectedCursorSeekComponents.IsEmpty())
+    {
+        UMovieSceneSequence* FocusedSequence = Sequencer->GetFocusedMovieSceneSequence();
+        UMovieScene* FocusedMovieScene = FocusedSequence ? FocusedSequence->GetMovieScene() : nullptr;
+        if (FocusedMovieScene != CursorSeekMovieScene.Get() || Sequencer->GetFocusedTemplateID() != CursorSeekTemplateID)
+        {
+            CancelPendingCursorSeek(true);
+            return;
+        }
+    }
+
+    if (bCursorSeekPending)
+    {
+        UMovieSceneSequence* FocusedSequence = Sequencer->GetFocusedMovieSceneSequence();
+        UMovieScene* FocusedMovieScene = FocusedSequence ? FocusedSequence->GetMovieScene() : nullptr;
+        if (FocusedMovieScene != CursorSeekMovieScene.Get() || Sequencer->GetFocusedTemplateID() != CursorSeekTemplateID ||
+            Status != EMovieScenePlayerStatus::Playing)
+        {
+            CancelPendingCursorSeek(false);
+            return;
+        }
+        ExecutePendingCursorSeek();
+    }
+}
+
+void FFMODEventControlTrackEditor::HandleBeginScrubbing()
+{
+    bCursorSeekScrubbing = true;
+    CancelPendingCursorSeek(true);
+}
+
+void FFMODEventControlTrackEditor::HandleEndScrubbing()
+{
+    // Ending a scrub only re-arms explicit transport Play; it never starts a seek itself.
+    bCursorSeekScrubbing = false;
+}
+
+void FFMODEventControlTrackEditor::HandleTransportStop()
+{
+    const TSharedPtr<ISequencer> Sequencer = CursorSeekSequencer.Pin();
+    if (Sequencer.IsValid() && Sequencer->GetPlaybackStatus() == EMovieScenePlayerStatus::Paused)
+    {
+        bTransportWasPaused = true;
+        bTimeMovedWhilePaused = false;
+        LastObservedLocalTime = Sequencer->GetLocalTime().Time;
+        return;
+    }
+
+    bTransportWasPaused = false;
+    bTimeMovedWhilePaused = false;
+    CancelPendingCursorSeek(true);
+}
+
+void FFMODEventControlTrackEditor::HandleSequencerClosed(TSharedRef<ISequencer> ClosedSequencer)
+{
+    RemoveCursorSeekDelegates();
+}
+
+void FFMODEventControlTrackEditor::ExecutePendingCursorSeek()
+{
+    const TSharedPtr<ISequencer> Sequencer = CursorSeekSequencer.Pin();
+    if (!Sequencer.IsValid() || !bCursorSeekPending || !IFMODStudioModule::IsAvailable())
+    {
+        CancelPendingCursorSeek(false);
+        return;
+    }
+
+    const uint64 RequestGeneration = CursorSeekGeneration;
+    bCursorSeekPending = false;
+
+    UMovieScene* MovieScene = CursorSeekMovieScene.Get();
+    if (!IsValid(MovieScene))
+    {
+        return;
+    }
+
+    bool bExactPlayAtCursor = false;
+    TMap<UFMODAudioComponent*, int32> ComponentTrackCounts;
+    TArray<FCursorSeekCandidate> Candidates;
+    IFMODStudioModule& FMODStudioModule = IFMODStudioModule::Get();
+    const FFrameRate TickResolution = MovieScene->GetTickResolution();
+
+    const UMovieScene* ConstMovieScene = MovieScene;
+    for (const FMovieSceneBinding& Binding : ConstMovieScene->GetBindings())
+    {
+        for (UMovieSceneTrack* Track : Binding.GetTracks())
+        {
+            const UFMODEventControlTrack* ControlTrack = Cast<UFMODEventControlTrack>(Track);
+            if (ControlTrack == nullptr)
+            {
+                continue;
+            }
+            const FFMODEventControlTrackResolution Resolution = ResolveEventPropertyTrack(*ControlTrack, *MovieScene, *Sequencer);
+            if (Resolution.Result == EFMODEventPropertyTrackResolutionResult::Invalid || !IsValid(Resolution.AudioComponent))
+            {
+                continue;
+            }
+
+            const UMovieSceneObjectPropertyTrack* EventTrack =
+                Resolution.Result == EFMODEventPropertyTrackResolutionResult::Found ? Resolution.EventPropertyTrack : nullptr;
+
+            TArray<FCursorControlKey> ControlKeys;
+            if (!CollectCursorControlKeys(*ControlTrack, ControlKeys))
+            {
+                continue;
+            }
+            for (const FCursorControlKey& Key : ControlKeys)
+            {
+                bExactPlayAtCursor |= Key.Time == CursorSeekCursorFrame && Key.Value == EFMODEventControlKey::Play;
+            }
+
+            int32& TrackCount = ComponentTrackCounts.FindOrAdd(Resolution.AudioComponent);
+            ++TrackCount;
+
+            const FCursorControlKey* LastKey = nullptr;
+            for (const FCursorControlKey& Key : ControlKeys)
+            {
+                if (Key.Time < CursorSeekCursorFrame)
+                {
+                    LastKey = &Key;
+                }
+                else
+                {
+                    break;
+                }
+            }
+            if (LastKey == nullptr || LastKey->Value != EFMODEventControlKey::Play)
+            {
+                continue;
+            }
+
+            UFMODEvent* EventAtPlay = nullptr;
+            UFMODEvent* FallbackEvent =
+                Resolution.Result == EFMODEventPropertyTrackResolutionResult::NotFound ? Resolution.AudioComponent->Event : nullptr;
+            if (!ResolveCursorEventAtPlay(EventTrack, LastKey->Time, FallbackEvent, EventAtPlay))
+            {
+                continue;
+            }
+            if (HasEventChangeAfterPlay(EventTrack, LastKey->Time, CursorSeekCursorFrame))
+            {
+                continue;
+            }
+
+            const double OffsetMsDouble = TickResolution.AsSeconds(CursorSeekCursorTime - FFrameTime(LastKey->Time)) * 1000.0;
+            if (!FMath::IsFinite(OffsetMsDouble) || OffsetMsDouble <= 0.0 ||
+                OffsetMsDouble > static_cast<double>(TNumericLimits<int32>::Max()))
+            {
+                continue;
+            }
+            const int32 OffsetMs = static_cast<int32>(FMath::FloorToDouble(OffsetMsDouble));
+            if (OffsetMs <= 0)
+            {
+                continue;
+            }
+
+            FMOD::Studio::EventDescription* EventDescription = FMODStudioModule.GetEventDescription(EventAtPlay, EFMODSystemContext::Auditioning);
+            bool bIsOneShot = false;
+            int32 EventLengthMs = 0;
+            if (EventDescription == nullptr || EventDescription->isOneshot(&bIsOneShot) != FMOD_OK ||
+                EventDescription->getLength(&EventLengthMs) != FMOD_OK || EventLengthMs <= 0)
+            {
+                continue;
+            }
+            if (bIsOneShot && OffsetMs >= EventLengthMs)
+            {
+                continue;
+            }
+
+            Candidates.Add({ Resolution.AudioComponent, EventAtPlay, bIsOneShot ? OffsetMs : OffsetMs % EventLengthMs });
+        }
+    }
+
+    if (RequestGeneration != CursorSeekGeneration)
+    {
+        return;
+    }
+
+    if (bExactPlayAtCursor)
+    {
+        return;
+    }
+
+    Candidates.RemoveAll([&ComponentTrackCounts](const FCursorSeekCandidate& Candidate)
+    {
+        return ComponentTrackCounts.FindRef(Candidate.AudioComponent) != 1;
+    });
+    Candidates.Sort([](const FCursorSeekCandidate& Left, const FCursorSeekCandidate& Right)
+    {
+        return Left.AudioComponent->GetPathName() < Right.AudioComponent->GetPathName();
+    });
+
+    StopInjectedComponents();
+    for (const FCursorSeekCandidate& Candidate : Candidates)
+    {
+        if (Candidate.AudioComponent->PlayEventAtTimelinePosition(Candidate.Event, Candidate.TimelinePositionMs))
+        {
+            InjectedCursorSeekComponents.Add(Candidate.AudioComponent);
+        }
+    }
 }
 
 void FFMODEventControlTrackEditor::RemoveWaveformRefreshTicker()
@@ -745,6 +1433,7 @@ void FFMODEventControlTrackEditor::OnInitialize()
     FMovieSceneTrackEditor::OnInitialize();
 
     RemoveWaveformRefreshTicker();
+    RegisterCursorSeekDelegates();
 
     const TSharedPtr<ISequencer> Sequencer = GetSequencer();
     if (!Sequencer.IsValid())
@@ -872,6 +1561,7 @@ void FFMODEventControlTrackEditor::OnInitialize()
 
 void FFMODEventControlTrackEditor::OnRelease()
 {
+    RemoveCursorSeekDelegates();
     RemoveWaveformRefreshTicker();
 
     FMovieSceneTrackEditor::OnRelease();
@@ -897,8 +1587,8 @@ void FFMODEventControlTrackEditor::BuildObjectBindingTrackMenu(FMenuBuilder &Men
 {
     if (ObjectClass->IsChildOf(AFMODAmbientSound::StaticClass()) || ObjectClass->IsChildOf(UFMODAudioComponent::StaticClass()))
     {
-        MenuBuilder.AddMenuEntry(LOCTEXT("AddFMODEventControlTrack", "FMOD Event Control Track"),
-            LOCTEXT("FMODEventControlTooltip", "Adds a track for controlling FMOD event."), FSlateIcon(),
+        MenuBuilder.AddMenuEntry(LOCTEXT("AddFMODEventControlTrack", "Playback Track"),
+            LOCTEXT("FMODEventControlTooltip", "Controls playback of the selected sound using Play, Stop, and Pause."), FSlateIcon(),
             FUIAction(FExecuteAction::CreateSP(this, &FFMODEventControlTrackEditor::AddControlKey, ObjectBindings)));
     }
 }
@@ -935,7 +1625,7 @@ FKeyPropertyResult FFMODEventControlTrackEditor::AddKeyInternal(FFrameNumber Key
         {
             UFMODEventControlTrack *EventTrack = Cast<UFMODEventControlTrack>(Track);
             EventTrack->AddNewSection(KeyTime);
-            EventTrack->SetDisplayName(LOCTEXT("TrackName", "FMOD Event"));
+            EventTrack->SetDisplayName(LOCTEXT("TrackName", "Playback Track"));
             KeyPropertyResult.bTrackModified = true;
         }
     }

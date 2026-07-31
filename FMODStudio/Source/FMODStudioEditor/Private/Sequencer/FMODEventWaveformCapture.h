@@ -11,6 +11,7 @@ struct FFMODEventWaveformData
     TArray<float> Peaks;
     int32 DurationMs = 0;
     int32 BucketDurationMs = 1;
+    bool bLoopPreview = false;
 };
 
 class FFMODEventWaveformCapture
