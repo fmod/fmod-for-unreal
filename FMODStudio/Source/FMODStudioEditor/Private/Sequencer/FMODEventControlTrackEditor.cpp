@@ -19,6 +19,7 @@
 #include "Styling/AppStyle.h"
 #include "Channels/MovieSceneChannelProxy.h"
 #include "MovieScene.h"
+#include "MovieScenePossessable.h"
 #include "MovieSceneBinding.h"
 #include "MovieSceneSequence.h"
 #include "Tracks/MovieSceneObjectPropertyTrack.h"
@@ -28,9 +29,26 @@
 
 #define LOCTEXT_NAMESPACE "FFMODEventControlTrackEditor"
 
+struct FFMODWaveformRefreshState
+{
+    TWeakPtr<ISequencer> WeakSequencer;
+    FTSTicker::FDelegateHandle WaveformRefreshTickerHandle;
+    FDelegateHandle MovieSceneDataChangedHandle;
+    TWeakObjectPtr<UMovieScene> LastFocusedMovieScene;
+    TSet<FGuid> TrackedWaveformGuids;
+    bool bAuditioningLoadRequested = false;
+    bool bSequenceScanned = false;
+    bool bFinalRefreshIssued = false;
+    bool bStructuralScanComplete = false;
+    bool bHasFMODPlayKeys = false;
+    bool bDiscoveryDirty = true;
+    bool bIssuingWaveformRefresh = false;
+    bool bIsActive = true;
+};
+
 namespace
 {
-TArray<FTSTicker::FDelegateHandle> WaveformRefreshTickerHandles;
+TArray<TSharedPtr<FFMODWaveformRefreshState>> WaveformRefreshStates;
 
 struct FVisualFMODRange
 {
@@ -99,37 +117,161 @@ UFMODAudioComponent* GetAudioComponent(UObject* Object)
     return Cast<UFMODAudioComponent>(Object);
 }
 
-const UMovieSceneObjectPropertyTrack* FindEventPropertyTrack(
-    const UMovieScene& MovieScene,
-    ISequencer& Sequencer,
-    UFMODAudioComponent* AudioComponent)
+enum class EFMODEventPropertyTrackResolutionResult
 {
-    const UMovieSceneObjectPropertyTrack* MatchingTrack = nullptr;
-    const UMovieSceneObjectPropertyTrack* GlobalTrack = nullptr;
-    int32 GlobalTrackCount = 0;
+    Invalid,
+    NotFound,
+    Found
+};
 
-    for (const FMovieSceneBinding& Binding : MovieScene.GetBindings())
+struct FFMODEventControlTrackResolution
+{
+    EFMODEventPropertyTrackResolutionResult Result = EFMODEventPropertyTrackResolutionResult::Invalid;
+    UFMODAudioComponent* AudioComponent = nullptr;
+    const UMovieSceneObjectPropertyTrack* EventPropertyTrack = nullptr;
+};
+
+FFMODEventControlTrackResolution ResolveEventPropertyTrack(
+    const UFMODEventControlTrack& ControlTrack,
+    const UMovieScene& MovieScene,
+    ISequencer& Sequencer)
+{
+    FFMODEventControlTrackResolution Resolution;
+    const FGuid ControlGuid = ControlTrack.FindObjectBindingGuid();
+    if (!ControlGuid.IsValid() || MovieScene.FindBinding(ControlGuid) == nullptr)
     {
-        UFMODAudioComponent* BindingAudioComponent = GetAudioComponent(Sequencer.FindSpawnedObjectOrTemplate(Binding.GetObjectGuid()));
-        for (UMovieSceneTrack* Track : Binding.GetTracks())
+        return Resolution;
+    }
+
+    UFMODAudioComponent* DirectAudioComponent = nullptr;
+    AFMODAmbientSound* AmbientSound = nullptr;
+
+    for (TWeakObjectPtr<> WeakObject : Sequencer.FindObjectsInCurrentSequence(ControlGuid))
+    {
+        UObject* Object = WeakObject.Get();
+        if (!IsValid(Object))
         {
-            const UMovieSceneObjectPropertyTrack* PropertyTrack = Cast<UMovieSceneObjectPropertyTrack>(Track);
-            if (PropertyTrack == nullptr ||
-                PropertyTrack->GetPropertyName() != GET_MEMBER_NAME_CHECKED(UFMODAudioComponent, Event))
+            return FFMODEventControlTrackResolution();
+        }
+
+        if (UFMODAudioComponent* Candidate = Cast<UFMODAudioComponent>(Object))
+        {
+            if (AmbientSound != nullptr ||
+                (DirectAudioComponent != nullptr && DirectAudioComponent != Candidate))
+            {
+                return FFMODEventControlTrackResolution();
+            }
+
+            DirectAudioComponent = Candidate;
+        }
+        else if (AFMODAmbientSound* AmbientCandidate = Cast<AFMODAmbientSound>(Object))
+        {
+            if (DirectAudioComponent != nullptr ||
+                (AmbientSound != nullptr && AmbientSound != AmbientCandidate))
+            {
+                return FFMODEventControlTrackResolution();
+            }
+
+            AmbientSound = AmbientCandidate;
+        }
+        else
+        {
+            return FFMODEventControlTrackResolution();
+        }
+    }
+
+    FGuid ComponentGuid;
+    UFMODAudioComponent* AudioComponent = nullptr;
+
+    if (DirectAudioComponent != nullptr)
+    {
+        ComponentGuid = ControlGuid;
+        AudioComponent = DirectAudioComponent;
+    }
+    else if (AmbientSound != nullptr && IsValid(AmbientSound->AudioComponent))
+    {
+        AudioComponent = AmbientSound->AudioComponent;
+        int32 MatchingChildBindingCount = 0;
+
+        for (const FMovieSceneBinding& Binding : MovieScene.GetBindings())
+        {
+            const FGuid ChildGuid = Binding.GetObjectGuid();
+            const FMovieScenePossessable* Possessable = const_cast<UMovieScene&>(MovieScene).FindPossessable(ChildGuid);
+            if (Possessable == nullptr || Possessable->GetParent() != ControlGuid)
             {
                 continue;
             }
 
-            ++GlobalTrackCount;
-            GlobalTrack = PropertyTrack;
-            if (MatchingTrack == nullptr && BindingAudioComponent == AudioComponent)
+            bool bResolvesToAudioComponent = false;
+            for (TWeakObjectPtr<> WeakObject : Sequencer.FindObjectsInCurrentSequence(ChildGuid))
             {
-                MatchingTrack = PropertyTrack;
+                if (WeakObject.Get() != AudioComponent)
+                {
+                    bResolvesToAudioComponent = false;
+                    break;
+                }
+
+                bResolvesToAudioComponent = true;
+            }
+
+            if (bResolvesToAudioComponent)
+            {
+                ++MatchingChildBindingCount;
+                ComponentGuid = ChildGuid;
+                if (MatchingChildBindingCount > 1)
+                {
+                    return FFMODEventControlTrackResolution();
+                }
             }
         }
+
+        if (MatchingChildBindingCount != 1)
+        {
+            return FFMODEventControlTrackResolution();
+        }
+    }
+    else
+    {
+        return Resolution;
     }
 
-    return MatchingTrack != nullptr ? MatchingTrack : (GlobalTrackCount == 1 ? GlobalTrack : nullptr);
+    const FMovieSceneBinding* ComponentBinding = MovieScene.FindBinding(ComponentGuid);
+    if (ComponentBinding == nullptr)
+    {
+        return FFMODEventControlTrackResolution();
+    }
+
+    const UMovieSceneObjectPropertyTrack* EventPropertyTrack = nullptr;
+    int32 EventPropertyTrackCount = 0;
+
+    for (UMovieSceneTrack* Track : ComponentBinding->GetTracks())
+    {
+        const UMovieSceneObjectPropertyTrack* PropertyTrack = Cast<UMovieSceneObjectPropertyTrack>(Track);
+        if (PropertyTrack == nullptr ||
+            PropertyTrack->GetPropertyName() != GET_MEMBER_NAME_CHECKED(UFMODAudioComponent, Event))
+        {
+            continue;
+        }
+
+        ++EventPropertyTrackCount;
+        EventPropertyTrack = PropertyTrack;
+    }
+
+    if (EventPropertyTrackCount > 1)
+    {
+        return FFMODEventControlTrackResolution();
+    }
+
+    Resolution.AudioComponent = AudioComponent;
+    if (EventPropertyTrackCount == 0)
+    {
+        Resolution.Result = EFMODEventPropertyTrackResolutionResult::NotFound;
+        return Resolution;
+    }
+
+    Resolution.Result = EFMODEventPropertyTrackResolutionResult::Found;
+    Resolution.EventPropertyTrack = EventPropertyTrack;
+    return Resolution;
 }
 
 bool HasFMODPlayKeys(const UMovieScene& MovieScene)
@@ -184,12 +326,16 @@ void RequestWaveformsForControlTrack(
     const UFMODEventControlTrack& ControlTrack,
     ISequencer& Sequencer,
     const UMovieScene& MovieScene,
-    UFMODAudioComponent* AudioComponent,
     IFMODStudioModule& FMODStudioModule,
     TSet<FGuid>& TrackedWaveformGuids)
 {
-    const UMovieSceneObjectPropertyTrack* EventPropertyTrack = FindEventPropertyTrack(MovieScene, Sequencer, AudioComponent);
-    UFMODEvent* FallbackEvent = IsValid(AudioComponent) ? AudioComponent->Event : nullptr;
+    const FFMODEventControlTrackResolution EventResolution = ResolveEventPropertyTrack(ControlTrack, MovieScene, Sequencer);
+    const UMovieSceneObjectPropertyTrack* EventPropertyTrack =
+        EventResolution.Result == EFMODEventPropertyTrackResolutionResult::Found ? EventResolution.EventPropertyTrack : nullptr;
+    UFMODEvent* FallbackEvent =
+        EventResolution.Result == EFMODEventPropertyTrackResolutionResult::NotFound && IsValid(EventResolution.AudioComponent)
+            ? EventResolution.AudioComponent->Event
+            : nullptr;
 
     for (UMovieSceneSection* Section : ControlTrack.GetAllSections())
     {
@@ -240,12 +386,11 @@ void RequestWaveformsForFocusedMovieScene(
 {
     for (const FMovieSceneBinding& Binding : MovieScene.GetBindings())
     {
-        UFMODAudioComponent* AudioComponent = GetAudioComponent(Sequencer.FindSpawnedObjectOrTemplate(Binding.GetObjectGuid()));
         for (UMovieSceneTrack* Track : Binding.GetTracks())
         {
             if (const UFMODEventControlTrack* ControlTrack = Cast<UFMODEventControlTrack>(Track))
             {
-                RequestWaveformsForControlTrack(*ControlTrack, Sequencer, MovieScene, AudioComponent, FMODStudioModule, TrackedWaveformGuids);
+                RequestWaveformsForControlTrack(*ControlTrack, Sequencer, MovieScene, FMODStudioModule, TrackedWaveformGuids);
             }
         }
     }
@@ -254,7 +399,7 @@ void RequestWaveformsForFocusedMovieScene(
     {
         if (const UFMODEventControlTrack* ControlTrack = Cast<UFMODEventControlTrack>(Track))
         {
-            RequestWaveformsForControlTrack(*ControlTrack, Sequencer, MovieScene, nullptr, FMODStudioModule, TrackedWaveformGuids);
+            RequestWaveformsForControlTrack(*ControlTrack, Sequencer, MovieScene, FMODStudioModule, TrackedWaveformGuids);
         }
     }
 }
@@ -296,17 +441,19 @@ int32 FFMODEventControlSection::OnPaintSection(FSequencerSectionPainter &InPaint
 
     if (ControlSection != nullptr)
     {
-        UObject *BoundObject = OwningSequencer->FindSpawnedObjectOrTemplate(ObjectBinding);
-        UFMODAudioComponent *AudioComponent = nullptr;
-        if (AFMODAmbientSound *AmbientSound = Cast<AFMODAmbientSound>(BoundObject)) AudioComponent = AmbientSound->AudioComponent;
-        else AudioComponent = Cast<UFMODAudioComponent>(BoundObject);
-
+        const UFMODEventControlTrack* ControlTrack = Cast<UFMODEventControlTrack>(ControlSection->GetOuter());
         UMovieSceneSequence* Sequence = OwningSequencer->GetFocusedMovieSceneSequence();
         UMovieScene* MovieScene = Sequence ? Sequence->GetMovieScene() : nullptr;
-        const UMovieSceneObjectPropertyTrack* EventPropertyTrack = MovieScene != nullptr
-            ? FindEventPropertyTrack(*MovieScene, *OwningSequencer, AudioComponent)
-            : nullptr;
-        UFMODEvent* FallbackEvent = IsValid(AudioComponent) ? AudioComponent->Event : nullptr;
+        const FFMODEventControlTrackResolution EventResolution =
+            ControlTrack != nullptr && MovieScene != nullptr
+                ? ResolveEventPropertyTrack(*ControlTrack, *MovieScene, *OwningSequencer)
+                : FFMODEventControlTrackResolution();
+        const UMovieSceneObjectPropertyTrack* EventPropertyTrack =
+            EventResolution.Result == EFMODEventPropertyTrackResolutionResult::Found ? EventResolution.EventPropertyTrack : nullptr;
+        UFMODEvent* FallbackEvent =
+            EventResolution.Result == EFMODEventPropertyTrackResolutionResult::NotFound && IsValid(EventResolution.AudioComponent)
+                ? EventResolution.AudioComponent->Event
+                : nullptr;
 
         TMovieSceneChannelData<const uint8> ChannelData = ControlSection->ControlKeys.GetData();
         TArrayView<const FFrameNumber> Times = ChannelData.GetTimes();
@@ -539,22 +686,58 @@ FFMODEventControlTrackEditor::~FFMODEventControlTrackEditor()
 
 void FFMODEventControlTrackEditor::RemoveWaveformRefreshTicker()
 {
-    if (WaveformRefreshTickerHandle.IsValid())
+    const TSharedPtr<FFMODWaveformRefreshState> State = WaveformRefreshState.Pin();
+    WaveformRefreshState.Reset();
+
+    if (!State.IsValid())
     {
-        FTSTicker::GetCoreTicker().RemoveTicker(WaveformRefreshTickerHandle);
-        WaveformRefreshTickerHandles.RemoveSingleSwap(WaveformRefreshTickerHandle);
-        WaveformRefreshTickerHandle.Reset();
+        return;
     }
+
+    State->bIsActive = false;
+
+    if (State->WaveformRefreshTickerHandle.IsValid())
+    {
+        FTSTicker::GetCoreTicker().RemoveTicker(State->WaveformRefreshTickerHandle);
+        State->WaveformRefreshTickerHandle.Reset();
+    }
+
+    const TSharedPtr<ISequencer> Sequencer = State->WeakSequencer.Pin();
+    if (Sequencer.IsValid() && State->MovieSceneDataChangedHandle.IsValid())
+    {
+        Sequencer->OnMovieSceneDataChanged().Remove(State->MovieSceneDataChangedHandle);
+    }
+    State->MovieSceneDataChangedHandle.Reset();
+
+    WaveformRefreshStates.RemoveSingleSwap(State);
 }
 
 void FFMODEventControlTrackEditor::ShutdownWaveformRefreshTickers()
 {
-    for (const FTSTicker::FDelegateHandle& TickerHandle : WaveformRefreshTickerHandles)
+    for (const TSharedPtr<FFMODWaveformRefreshState>& State : WaveformRefreshStates)
     {
-        FTSTicker::GetCoreTicker().RemoveTicker(TickerHandle);
+        if (!State.IsValid())
+        {
+            continue;
+        }
+
+        State->bIsActive = false;
+
+        if (State->WaveformRefreshTickerHandle.IsValid())
+        {
+            FTSTicker::GetCoreTicker().RemoveTicker(State->WaveformRefreshTickerHandle);
+            State->WaveformRefreshTickerHandle.Reset();
+        }
+
+        const TSharedPtr<ISequencer> Sequencer = State->WeakSequencer.Pin();
+        if (Sequencer.IsValid() && State->MovieSceneDataChangedHandle.IsValid())
+        {
+            Sequencer->OnMovieSceneDataChanged().Remove(State->MovieSceneDataChangedHandle);
+        }
+        State->MovieSceneDataChangedHandle.Reset();
     }
 
-    WaveformRefreshTickerHandles.Reset();
+    WaveformRefreshStates.Reset();
 }
 
 void FFMODEventControlTrackEditor::OnInitialize()
@@ -569,19 +752,33 @@ void FFMODEventControlTrackEditor::OnInitialize()
         return;
     }
 
-    TWeakPtr<ISequencer> WeakSequencer = Sequencer;
-    WaveformRefreshTickerHandle = FTSTicker::GetCoreTicker().AddTicker(
-        FTickerDelegate::CreateLambda(
-            [WeakSequencer,
-                bAuditioningLoadRequested = false,
-                LastFocusedMovieScene = TWeakObjectPtr<UMovieScene>(),
-                TrackedWaveformGuids = TSet<FGuid>(),
-                bSequenceScanned = false,
-                bFinalRefreshIssued = false,
-                bStructuralScanComplete = false,
-                bHasFMODPlayKeys = false](float) mutable -> bool
+    const TSharedRef<FFMODWaveformRefreshState> State = MakeShared<FFMODWaveformRefreshState>();
+    State->WeakSequencer = Sequencer;
+    WaveformRefreshState = State;
+    WaveformRefreshStates.Add(State);
+
+    const TWeakPtr<FFMODWaveformRefreshState> WeakState = State;
+    State->MovieSceneDataChangedHandle = Sequencer->OnMovieSceneDataChanged().AddLambda(
+        [WeakState](EMovieSceneDataChangeType)
+        {
+            const TSharedPtr<FFMODWaveformRefreshState> PinnedState = WeakState.Pin();
+            if (PinnedState.IsValid() && PinnedState->bIsActive && !PinnedState->bIssuingWaveformRefresh)
             {
-                const TSharedPtr<ISequencer> PinnedSequencer = WeakSequencer.Pin();
+                PinnedState->bDiscoveryDirty = true;
+            }
+        });
+
+    State->WaveformRefreshTickerHandle = FTSTicker::GetCoreTicker().AddTicker(
+        FTickerDelegate::CreateLambda(
+            [WeakState](float) -> bool
+            {
+                const TSharedPtr<FFMODWaveformRefreshState> PinnedState = WeakState.Pin();
+                if (!PinnedState.IsValid() || !PinnedState->bIsActive)
+                {
+                    return false;
+                }
+
+                const TSharedPtr<ISequencer> PinnedSequencer = PinnedState->WeakSequencer.Pin();
                 if (!PinnedSequencer.IsValid())
                 {
                     return false;
@@ -594,23 +791,31 @@ void FFMODEventControlTrackEditor::OnInitialize()
                     return true;
                 }
 
-                if (FocusedMovieScene != LastFocusedMovieScene.Get())
+                if (FocusedMovieScene != PinnedState->LastFocusedMovieScene.Get())
                 {
-                    LastFocusedMovieScene = FocusedMovieScene;
-                    TrackedWaveformGuids.Reset();
-                    bSequenceScanned = false;
-                    bFinalRefreshIssued = false;
-                    bStructuralScanComplete = false;
-                    bHasFMODPlayKeys = false;
+                    PinnedState->LastFocusedMovieScene = FocusedMovieScene;
+                    PinnedState->TrackedWaveformGuids.Reset();
+                    PinnedState->bSequenceScanned = false;
+                    PinnedState->bFinalRefreshIssued = false;
+                    PinnedState->bStructuralScanComplete = false;
+                    PinnedState->bHasFMODPlayKeys = false;
+                    PinnedState->bDiscoveryDirty = true;
                 }
 
-                if (!bStructuralScanComplete)
+                if (PinnedState->bDiscoveryDirty)
                 {
-                    bHasFMODPlayKeys = HasFMODPlayKeys(*FocusedMovieScene);
-                    bStructuralScanComplete = true;
+                    PinnedState->bDiscoveryDirty = false;
+                    PinnedState->bSequenceScanned = false;
+                    PinnedState->bStructuralScanComplete = false;
                 }
 
-                if (!bHasFMODPlayKeys)
+                if (!PinnedState->bStructuralScanComplete)
+                {
+                    PinnedState->bHasFMODPlayKeys = HasFMODPlayKeys(*FocusedMovieScene);
+                    PinnedState->bStructuralScanComplete = true;
+                }
+
+                if (!PinnedState->bHasFMODPlayKeys)
                 {
                     return true;
                 }
@@ -623,23 +828,29 @@ void FFMODEventControlTrackEditor::OnInitialize()
                 IFMODStudioModule& FMODStudioModule = IFMODStudioModule::Get();
                 if (!FMODStudioModule.AreAuditioningBanksLoaded())
                 {
-                    if (!bAuditioningLoadRequested)
+                    if (!PinnedState->bAuditioningLoadRequested)
                     {
                         FMODStudioModule.LoadAuditioningBanks();
-                        bAuditioningLoadRequested = true;
+                        PinnedState->bAuditioningLoadRequested = true;
                     }
                     return true;
                 }
 
-                if (!bSequenceScanned)
+                if (!PinnedState->bSequenceScanned)
                 {
-                    RequestWaveformsForFocusedMovieScene(*PinnedSequencer, *FocusedMovieScene, FMODStudioModule, TrackedWaveformGuids);
-                    bSequenceScanned = true;
+                    const int32 TrackedGuidCount = PinnedState->TrackedWaveformGuids.Num();
+                    RequestWaveformsForFocusedMovieScene(*PinnedSequencer, *FocusedMovieScene, FMODStudioModule, PinnedState->TrackedWaveformGuids);
+                    PinnedState->bSequenceScanned = true;
+
+                    if (PinnedState->TrackedWaveformGuids.Num() > TrackedGuidCount)
+                    {
+                        PinnedState->bFinalRefreshIssued = false;
+                    }
                 }
 
-                if (bSequenceScanned && !TrackedWaveformGuids.IsEmpty() && !bFinalRefreshIssued)
+                if (PinnedState->bSequenceScanned && !PinnedState->TrackedWaveformGuids.IsEmpty() && !PinnedState->bFinalRefreshIssued)
                 {
-                    for (const FGuid& EventGuid : TrackedWaveformGuids)
+                    for (const FGuid& EventGuid : PinnedState->TrackedWaveformGuids)
                     {
                         if (!FFMODEventWaveformCapture::IsTerminal(EventGuid))
                         {
@@ -647,19 +858,16 @@ void FFMODEventControlTrackEditor::OnInitialize()
                         }
                     }
 
+                    PinnedState->bIssuingWaveformRefresh = true;
                     PinnedSequencer->NotifyMovieSceneDataChanged(
                         EMovieSceneDataChangeType::TrackValueChangedRefreshImmediately);
-                    bFinalRefreshIssued = true;
+                    PinnedState->bIssuingWaveformRefresh = false;
+                    PinnedState->bFinalRefreshIssued = true;
                 }
 
                 return true;
             }),
         0.25f);
-
-    if (WaveformRefreshTickerHandle.IsValid())
-    {
-        WaveformRefreshTickerHandles.Add(WaveformRefreshTickerHandle);
-    }
 }
 
 void FFMODEventControlTrackEditor::OnRelease()
@@ -667,8 +875,7 @@ void FFMODEventControlTrackEditor::OnRelease()
     RemoveWaveformRefreshTicker();
 
     FMovieSceneTrackEditor::OnRelease();
-}
-TSharedRef<ISequencerTrackEditor> FFMODEventControlTrackEditor::CreateTrackEditor(TSharedRef<ISequencer> InSequencer)
+}TSharedRef<ISequencerTrackEditor> FFMODEventControlTrackEditor::CreateTrackEditor(TSharedRef<ISequencer> InSequencer)
 {
     return MakeShareable(new FFMODEventControlTrackEditor(InSequencer));
 }

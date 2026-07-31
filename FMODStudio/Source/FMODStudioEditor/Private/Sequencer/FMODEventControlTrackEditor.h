@@ -15,6 +15,8 @@
 class FMenuBuilder;
 class FSequencerSectionPainter;
 
+struct FFMODWaveformRefreshState;
+
 /** FMOD Event control track */
 class FFMODEventControlTrackEditor : public FMovieSceneTrackEditor
 {
@@ -40,7 +42,7 @@ public:
 private:
     void RemoveWaveformRefreshTicker();
 
-    FTSTicker::FDelegateHandle WaveformRefreshTickerHandle;
+    TWeakPtr<FFMODWaveformRefreshState> WaveformRefreshState;
     /** Delegate for AnimatablePropertyChanged in AddKey. */
     virtual FKeyPropertyResult AddKeyInternal(FFrameNumber KeyTime, UObject *Object);
 };
