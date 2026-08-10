@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2026.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2025.
 
 #pragma once
 
@@ -144,16 +144,12 @@ class FMODSTUDIO_API UFMODAudioComponent : public USceneComponent
 
 public:
     /** The event asset to use for this sound. */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = FMODAudio)
-    TObjectPtr<UFMODEvent> Event;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = FMODAudio, meta = (DisplayName = "Sound Track"))
+    UFMODEvent* Event;
 
     /** Event parameter cache. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, SimpleDisplay, Category = FMODAudio)
     TMap<FName, float> ParameterCache;
-
-    /** Event parameter cache for automated parameters. */
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, SimpleDisplay, Category = FMODAudio)
-    TMap<FName, float> AutomatedParameterCache;
 
     /** Sound name used for programmer sound.  Will look up the name in any loaded audio table. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = FMODAudio)
@@ -200,6 +196,13 @@ public:
     /** Start a sound playing on an audio component. */
     UFUNCTION(BlueprintCallable, Category = "Audio|FMOD|Components")
     void Play();
+
+#if WITH_EDITOR
+    /** Starts an editor preview at a timeline position without briefly auditioning frame zero. */
+    bool PlayEventAtTimelinePosition(UFMODEvent *EventToPlay, int32 TimelinePositionMs);
+#endif
+
+    bool IsSpawnedBySequencer() const;
 
     /** Stop an audio component playing its sound cue, issue any delegates if needed. */
     UFUNCTION(BlueprintCallable, Category = "Audio|FMOD|Components")
@@ -396,6 +399,9 @@ private:
 
     /** Release the Studio Instance. */
     void ReleaseEventInstance();
+
+    /** Check if a parameter is game controlled or automated to determine if it should be cached. */
+    bool ShouldCacheParameter(const FMOD_STUDIO_PARAMETER_DESCRIPTION& ParameterDescription);
 
     /** Return a cached reference to the current IFMODStudioModule.*/
     IFMODStudioModule& GetStudioModule()

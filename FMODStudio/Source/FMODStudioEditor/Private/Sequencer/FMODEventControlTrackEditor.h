@@ -1,11 +1,11 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2026.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2025.
 
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Containers/Ticker.h"
 #include "Misc/Guid.h"
 #include "Templates/SubclassOf.h"
-#include "Curves/KeyHandle.h"
 #include "ISequencer.h"
 #include "MovieSceneTrack.h"
 #include "ISequencerSection.h"
@@ -14,16 +14,25 @@
 
 class FMenuBuilder;
 class FSequencerSectionPainter;
+class UFMODAudioComponent;
+class UMovieScene;
+
+struct FFMODWaveformRefreshState;
 
 /** FMOD Event control track */
 class FFMODEventControlTrackEditor : public FMovieSceneTrackEditor
 {
 public:
     FFMODEventControlTrackEditor(TSharedRef<ISequencer> InSequencer);
+    virtual ~FFMODEventControlTrackEditor() override;
 
     static TSharedRef<ISequencerTrackEditor> CreateTrackEditor(TSharedRef<ISequencer> OwningSequencer);
+    static void ShutdownWaveformRefreshTickers();
 
     void AddControlKey(TArray<FGuid> ObjectGuids);
+
+    virtual void OnInitialize() override;
+    virtual void OnRelease() override;
 
     // Begin ISequencerTrackEditor interface
     virtual void BuildObjectBindingTrackMenu(FMenuBuilder &MenuBuilder, const TArray<FGuid> &ObjectBindings, const UClass *ObjectClass) override;
@@ -33,6 +42,38 @@ public:
     // End ISequencerTrackEditor interface
 
 private:
+    void RemoveWaveformRefreshTicker();
+    void RegisterCursorSeekDelegates();
+    void RemoveCursorSeekDelegates();
+    void CancelPendingCursorSeek(bool bStopInjectedComponents);
+    void StopInjectedComponents();
+    void HandleExplicitPlay();
+    void HandleGlobalTimeChanged();
+    void HandleBeginScrubbing();
+    void HandleEndScrubbing();
+    void HandleTransportStop();
+    void HandleSequencerClosed(TSharedRef<ISequencer> ClosedSequencer);
+    void ExecutePendingCursorSeek();
+
+    TWeakPtr<FFMODWaveformRefreshState> WaveformRefreshState;
+    TWeakPtr<ISequencer> CursorSeekSequencer;
+    FDelegateHandle CursorSeekPlayHandle;
+    FDelegateHandle CursorSeekGlobalTimeChangedHandle;
+    FDelegateHandle CursorSeekBeginScrubbingHandle;
+    FDelegateHandle CursorSeekEndScrubbingHandle;
+    FDelegateHandle CursorSeekStopHandle;
+    FDelegateHandle CursorSeekCloseHandle;
+    TWeakObjectPtr<UMovieScene> CursorSeekMovieScene;
+    FMovieSceneSequenceID CursorSeekTemplateID;
+    FFrameTime CursorSeekCursorTime;
+    FFrameNumber CursorSeekCursorFrame;
+    FFrameTime LastObservedLocalTime;
+    uint64 CursorSeekGeneration = 0;
+    bool bCursorSeekPending = false;
+    bool bCursorSeekScrubbing = false;
+    bool bTransportWasPaused = false;
+    bool bTimeMovedWhilePaused = false;
+    TArray<TWeakObjectPtr<UFMODAudioComponent>> InjectedCursorSeekComponents;
     /** Delegate for AnimatablePropertyChanged in AddKey. */
     virtual FKeyPropertyResult AddKeyInternal(FFrameNumber KeyTime, UObject *Object);
 };
@@ -41,7 +82,7 @@ private:
 class FFMODEventControlSection : public ISequencerSection, public TSharedFromThis<FFMODEventControlSection>
 {
 public:
-    FFMODEventControlSection(UMovieSceneSection &InSection, TSharedRef<ISequencer> InOwningSequencer);
+    FFMODEventControlSection(UMovieSceneSection &InSection, TSharedRef<ISequencer> InOwningSequencer, FGuid InObjectBinding);
 
     // Begin ISequencerSection interface
     virtual UMovieSceneSection *GetSectionObject() override;
@@ -56,4 +97,8 @@ private:
 
     /** The sequencer that owns this section */
     TWeakPtr<ISequencer> OwningSequencerPtr;
+
+    /** The object binding visualized by this editor-only section interface. */
+    FGuid ObjectBinding;
+
 };

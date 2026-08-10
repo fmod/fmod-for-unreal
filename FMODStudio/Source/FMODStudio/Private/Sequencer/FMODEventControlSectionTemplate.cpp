@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2026.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2025.
 
 #include "FMODEventControlSectionTemplate.h"
 #include "FMODAmbientSound.h"
@@ -209,6 +209,18 @@ void FFMODEventControlSectionTemplate::Evaluate(const FMovieSceneEvaluationOpera
 
     TRange<FFrameNumber> PlaybackRange = Context.GetFrameNumberRange();
     TMovieSceneChannelData<const uint8> ChannelData = ControlKeys.GetData();
+
+#if WITH_EDITOR
+    const bool bEditorPreview = IsEditorSequence && !RuntimeSequenceSetup && GWorld && GWorld->WorldType == EWorldType::Editor;
+    const bool bNonForwardEditorTransport = Context.GetStatus() == EMovieScenePlayerStatus::Scrubbing ||
+        Context.GetStatus() == EMovieScenePlayerStatus::Jumping || Context.GetStatus() == EMovieScenePlayerStatus::Stepping ||
+        Context.GetDirection() == EPlayDirection::Backwards || Context.HasJumped();
+    if (bEditorPreview && bNonForwardEditorTransport)
+    {
+        ExecutionTokens.Add(FFMODEventControlExecutionToken(EventControlKeyInternal::Stop, FFrameTime(0)));
+        return;
+    }
+#endif
 
     bool bScrubbed = PlaybackRange.GetUpperBoundValue() - PlaybackRange.GetLowerBoundValue() == 1;
     if (bScrubbed)

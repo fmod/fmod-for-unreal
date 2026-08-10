@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2026.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2025.
 
 #include "FMODAudioComponent.h"
 #include "FMODStudioModule.h"
@@ -10,9 +10,14 @@
 #include "Misc/App.h"
 #include "Misc/Paths.h"
 #include "Misc/ScopeLock.h"
+#include "FMODStudioPrivatePCH.h"
 #include "Components/BillboardComponent.h"
 #if WITH_EDITORONLY_DATA
 #include "Engine/Texture2D.h"
+#endif
+
+#if WITH_EDITOR
+#include "LevelSequenceEditorBlueprintLibrary.h"
 #endif
 
 UFMODAudioComponent::UFMODAudioComponent(const FObjectInitializer &ObjectInitializer)
@@ -141,7 +146,6 @@ void UFMODAudioComponent::PostEditChangeProperty(FPropertyChangedEvent &e)
         (PropertyName == GET_MEMBER_NAME_CHECKED(UFMODAudioComponent, ParameterCache) && ParameterCache.Num() == 0))
     {
         ParameterCache.Empty();
-        AutomatedParameterCache.Empty();
         bDefaultParameterValuesCached = false;
     }
     UpdateCachedParameterValues();
@@ -320,6 +324,21 @@ void UFMODAudioComponent::ApplyVolumeLPF()
     }
 }
 
+bool UFMODAudioComponent::ShouldCacheParameter(const FMOD_STUDIO_PARAMETER_DESCRIPTION& ParameterDescription)
+{
+    const UFMODSettings& Settings = *GetDefault<UFMODSettings>();
+
+    if (((ParameterDescription.flags & FMOD_STUDIO_PARAMETER_GLOBAL) == 0) &&
+        (ParameterDescription.type == FMOD_STUDIO_PARAMETER_GAME_CONTROLLED) &&
+        ParameterDescription.name != Settings.OcclusionParameter &&
+        ParameterDescription.name != Settings.AmbientVolumeParameter &&
+        ParameterDescription.name != Settings.AmbientLPFParameter)
+    {
+        return true;
+    }
+    return false;
+}
+
 void UFMODAudioComponent::CacheDefaultParameterValues()
 {
     if (Event)
@@ -328,13 +347,9 @@ void UFMODAudioComponent::CacheDefaultParameterValues()
         Event->GetParameterDescriptions(ParameterDescriptions);
         for (const FMOD_STUDIO_PARAMETER_DESCRIPTION &ParameterDescription : ParameterDescriptions)
         {
-            if (FMODUtils::isParameterAutomated(ParameterDescription))
+            if (!ParameterCache.Find(ParameterDescription.name) && ShouldCacheParameter(ParameterDescription))
             {
-                AutomatedParameterCache.FindOrAdd(ParameterDescription.name, ParameterDescription.minimum);
-            }
-            else
-            {
-                ParameterCache.FindOrAdd(ParameterDescription.name, ParameterDescription.defaultvalue);
+                ParameterCache.Add(ParameterDescription.name, ParameterDescription.defaultvalue);
             }
         }
         bDefaultParameterValuesCached = true;
@@ -343,17 +358,13 @@ void UFMODAudioComponent::CacheDefaultParameterValues()
 
 void UFMODAudioComponent::UpdateCachedParameterValues()
 {
-    if (!bDefaultParameterValuesCached)
-    {
-        CacheDefaultParameterValues();
-    }
-    else
+    if (bDefaultParameterValuesCached)
     {
         TArray<FMOD_STUDIO_PARAMETER_DESCRIPTION> ParameterDescriptions;
         Event->GetParameterDescriptions(ParameterDescriptions);
         for (const FMOD_STUDIO_PARAMETER_DESCRIPTION& ParameterDescription : ParameterDescriptions)
         {
-            if (ParameterCache.Find(ParameterDescription.name) && FMODUtils::isParameterAutomated(ParameterDescription))
+            if (ParameterCache.Find(ParameterDescription.name) && !ShouldCacheParameter(ParameterDescription))
             {
                 ParameterCache.Remove(ParameterDescription.name);
                 FString paramName(ParameterDescription.name);
@@ -486,6 +497,9 @@ void UFMODAudioComponent::TickComponent(float DeltaTime, enum ELevelTick TickTyp
 
 void UFMODAudioComponent::SetEvent(UFMODEvent *NewEvent)
 {
+    if (Event == NewEvent)
+        return;
+    
     const bool bPlay = IsPlaying();
 
     Stop();
@@ -498,7 +512,7 @@ void UFMODAudioComponent::SetEvent(UFMODEvent *NewEvent)
 
     if (bPlay)
     {
-        Play();
+        PlayInternal(EFMODSystemContext::Max);
     }
 }
 
@@ -724,11 +738,176 @@ void UFMODAudioComponent::Play()
     PlayInternal(EFMODSystemContext::Runtime);
 }
 
+#if WITH_EDITOR
+bool UFMODAudioComponent::PlayEventAtTimelinePosition(UFMODEvent *EventToPlay, int32 TimelinePositionMs)
+{
+    const auto FailSeekStart = [this]()
+    {
+        Stop();
+        ReleaseEventInstance();
+        return false;
+    };
+
+    if (!IsValid(EventToPlay) || TimelinePositionMs < 0)
+    {
+        return false;
+    }
+
+    Stop();
+
+    if (Event != EventToPlay)
+    {
+        ReleaseEventCache();
+        Event = EventToPlay;
+    }
+
+    if (!FMODUtils::IsWorldAudible(GetWorld(), true))
+    {
+        return false;
+    }
+
+    FMOD::Studio::EventDescription *EventDesc = GetStudioModule().GetEventDescription(EventToPlay, EFMODSystemContext::Auditioning);
+    if (EventDesc == nullptr)
+    {
+        return false;
+    }
+
+    if (StudioInstance && StudioInstance->isValid())
+    {
+        FMOD::Studio::EventDescription *InstanceDesc = nullptr;
+        if (StudioInstance->getDescription(&InstanceDesc) != FMOD_OK || InstanceDesc != EventDesc)
+        {
+            ReleaseEventInstance();
+        }
+    }
+
+    if (!StudioInstance || !StudioInstance->isValid())
+    {
+        const FMOD_RESULT Result = EventDesc->createInstance(&StudioInstance);
+        if (Result != FMOD_OK)
+        {
+            StudioInstance = nullptr;
+            return FailSeekStart();
+        }
+    }
+
+    FMOD_RESULT Result = EventDesc->getLength(&EventLength);
+    if (Result != FMOD_OK)
+    {
+        return FailSeekStart();
+    }
+
+    const UFMODSettings &Settings = *GetDefault<UFMODSettings>();
+    FMOD_STUDIO_PARAMETER_DESCRIPTION ParamDesc = {};
+    if (!Settings.OcclusionParameter.IsEmpty() &&
+        EventDesc->getParameterDescriptionByName(TCHAR_TO_UTF8(*Settings.OcclusionParameter), &ParamDesc) == FMOD_OK)
+    {
+        OcclusionID = ParamDesc.id;
+        bApplyOcclusionParameter = true;
+    }
+
+    ParamDesc = {};
+    if (!Settings.AmbientVolumeParameter.IsEmpty() &&
+        EventDesc->getParameterDescriptionByName(TCHAR_TO_UTF8(*Settings.AmbientVolumeParameter), &ParamDesc) == FMOD_OK)
+    {
+        AmbientVolumeID = ParamDesc.id;
+        LastVolume = -1.0f;
+        bApplyAmbientVolumes = true;
+    }
+
+    ParamDesc = {};
+    if (!Settings.AmbientLPFParameter.IsEmpty() &&
+        EventDesc->getParameterDescriptionByName(TCHAR_TO_UTF8(*Settings.AmbientLPFParameter), &ParamDesc) == FMOD_OK)
+    {
+        AmbientLPFID = ParamDesc.id;
+        LastLPF = -1.0f;
+        bApplyAmbientVolumes = true;
+    }
+
+    OnUpdateTransform(EUpdateTransformFlags::SkipPhysicsUpdate);
+    for (const TPair<FName, float> &Kvp : ParameterCache)
+    {
+        Result = StudioInstance->setParameterByName(TCHAR_TO_UTF8(*Kvp.Key.ToString()), Kvp.Value);
+        if (Result != FMOD_OK)
+        {
+            return FailSeekStart();
+        }
+    }
+    for (int32 Index = 0; Index < EFMODEventProperty::Count; ++Index)
+    {
+        if (StoredProperties[Index] != -1.0f)
+        {
+            Result = StudioInstance->setProperty((FMOD_STUDIO_EVENT_PROPERTY)Index, StoredProperties[Index]);
+            if (Result != FMOD_OK)
+            {
+                return FailSeekStart();
+            }
+        }
+    }
+
+    if (bEnableTimelineCallbacks || !ProgrammerSoundName.IsEmpty())
+    {
+        Result = StudioInstance->setCallback(UFMODAudioComponent_EventCallback);
+        if (Result != FMOD_OK)
+        {
+            return FailSeekStart();
+        }
+    }
+
+    Result = StudioInstance->setUserData(this);
+    if (Result != FMOD_OK)
+    {
+        return FailSeekStart();
+    }
+
+    Result = StudioInstance->setPaused(true);
+    if (Result != FMOD_OK)
+    {
+        return FailSeekStart();
+    }
+
+    Result = StudioInstance->start();
+    if (Result != FMOD_OK)
+    {
+        return FailSeekStart();
+    }
+
+    Result = StudioInstance->setTimelinePosition(TimelinePositionMs);
+    if (Result != FMOD_OK)
+    {
+        return FailSeekStart();
+    }
+
+    Result = StudioInstance->setPaused(false);
+    if (Result != FMOD_OK)
+    {
+        return FailSeekStart();
+    }
+
+    if (ShouldActivate())
+    {
+        Super::Activate(false);
+    }
+    return true;
+}
+#endif
+
+bool UFMODAudioComponent::IsSpawnedBySequencer() const
+{
+    bool Result = false;
+#if WITH_EDITOR
+    Result = ULevelSequenceEditorBlueprintLibrary::IsPlaying();
+#endif
+    return Result;
+}
+
 void UFMODAudioComponent::PlayInternal(EFMODSystemContext::Type Context, bool bReset)
 {
     Stop();
 
-    if (!FMODUtils::IsWorldAudible(GetWorld(), Context == EFMODSystemContext::Auditioning))
+    bool AllowInEditor = (Context == EFMODSystemContext::Editor) || IsSpawnedBySequencer();
+    
+    if (!FMODUtils::IsWorldAudible(GetWorld(), AllowInEditor))
     {
         return;
     }
@@ -740,6 +919,14 @@ void UFMODAudioComponent::PlayInternal(EFMODSystemContext::Type Context, bool bR
     if (EventDesc != nullptr)
     {
         EventDesc->getLength(&EventLength);
+        if (StudioInstance && StudioInstance->isValid())
+        {
+            FMOD::Studio::EventDescription *InstanceDesc = nullptr;
+            if (StudioInstance->getDescription(&InstanceDesc) != FMOD_OK || InstanceDesc != EventDesc)
+            {
+                ReleaseEventInstance();
+            }
+        }
         if (!StudioInstance || !StudioInstance->isValid())
         {
             FMOD_RESULT result = EventDesc->createInstance(&StudioInstance);
@@ -749,28 +936,19 @@ void UFMODAudioComponent::PlayInternal(EFMODSystemContext::Type Context, bool bR
 
         const UFMODSettings &Settings = *GetDefault<UFMODSettings>();
         FMOD_STUDIO_PARAMETER_DESCRIPTION paramDesc = {};
-        FString param = "";
-
-        if (OcclusionDetails.bEnableOcclusion)
+        FString param = Settings.OcclusionParameter;
+        if (!param.IsEmpty())
         {
-            param = Settings.OcclusionParameter;
-            if (!param.IsEmpty() && AutomatedParameterCache.Find(*param))
+            if (EventDesc->getParameterDescriptionByName(TCHAR_TO_UTF8(*Settings.OcclusionParameter), &paramDesc) == FMOD_OK)
             {
-                if (EventDesc->getParameterDescriptionByName(TCHAR_TO_UTF8(*param), &paramDesc) == FMOD_OK)
-                {
-                    OcclusionID = paramDesc.id;
-                    bApplyOcclusionParameter = true;
-                }
-            }
-            else
-            {
-                UE_LOG(LogFMOD, Warning, TEXT("Event '%s' does not contain Occlusion Parameter: %s"), *Event->GetName(), *param);
+                OcclusionID = paramDesc.id;
+                bApplyOcclusionParameter = true;
             }
         }
 
         paramDesc = {};
         param = Settings.AmbientVolumeParameter;
-        if (!param.IsEmpty() && AutomatedParameterCache.Find(*param))
+        if (!param.IsEmpty())
         {
             if (EventDesc->getParameterDescriptionByName(TCHAR_TO_UTF8(*param), &paramDesc) == FMOD_OK)
             {
@@ -782,9 +960,9 @@ void UFMODAudioComponent::PlayInternal(EFMODSystemContext::Type Context, bool bR
 
         paramDesc = {};
         param = Settings.AmbientLPFParameter;
-        if (!param.IsEmpty() && AutomatedParameterCache.Find(*param))
+        if (!param.IsEmpty())
         {
-            if (EventDesc->getParameterDescriptionByName(TCHAR_TO_UTF8(*param), &paramDesc) == FMOD_OK)
+            if (EventDesc->getParameterDescriptionByName(TCHAR_TO_UTF8(*Settings.AmbientLPFParameter), &paramDesc) == FMOD_OK)
             {
                 AmbientLPFID = paramDesc.id;
                 LastLPF = -1.0f;     // Invalidate LastLPF so the AmbientLPFParameter of the Event will be set later on
@@ -888,7 +1066,6 @@ void UFMODAudioComponent::Shutdown()
 void UFMODAudioComponent::ReleaseEventCache()
 {
     ParameterCache.Empty();
-    AutomatedParameterCache.Empty();
     bDefaultParameterValuesCached = false;
     ReleaseEventInstance();
 }

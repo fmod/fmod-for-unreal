@@ -1,4 +1,4 @@
-// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2026.
+// Copyright (c), Firelight Technologies Pty, Ltd. 2012-2025.
 
 #include "FMODEventControlTrack.h"
 #include "FMODEventControlSection.h"
@@ -68,7 +68,7 @@ FMovieSceneEvalTemplatePtr UFMODEventControlTrack::CreateTemplateForSection(cons
 #if WITH_EDITORONLY_DATA
 FText UFMODEventControlTrack::GetDefaultDisplayName() const
 {
-    return LOCTEXT("DisplayName", "FMOD Event");
+    return LOCTEXT("DisplayName", "Playback Track");
 }
 #endif
 
