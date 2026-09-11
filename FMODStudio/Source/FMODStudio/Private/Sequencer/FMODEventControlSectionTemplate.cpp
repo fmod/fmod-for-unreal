@@ -210,7 +210,11 @@ void FFMODEventControlSectionTemplate::Evaluate(const FMovieSceneEvaluationOpera
     TRange<FFrameNumber> PlaybackRange = Context.GetFrameNumberRange();
     TMovieSceneChannelData<const uint8> ChannelData = ControlKeys.GetData();
 
-    bool bScrubbed = PlaybackRange.GetUpperBoundValue() - PlaybackRange.GetLowerBoundValue() == 1;
+    // A one-tick range is also produced by the first evaluation of playback, which is a
+    // single-point range rather than a scrub. Excluding Playing stops keys on a sequence's
+    // first frame from being swallowed.
+    bool bScrubbed = PlaybackRange.GetUpperBoundValue() - PlaybackRange.GetLowerBoundValue() == 1
+                     && Context.GetStatus() != EMovieScenePlayerStatus::Playing;
     if (bScrubbed)
     {
         ExecutionTokens.Add(FFMODEventControlExecutionToken(EventControlKeyInternal::Stop, FFrameTime(0)));
