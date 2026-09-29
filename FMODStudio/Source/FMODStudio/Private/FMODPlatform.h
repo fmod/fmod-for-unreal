@@ -11,10 +11,6 @@ EFMODPlatforms::Type FMODPlatform_CurrentPlatform();
 
 FString FMODPlatform_PlatformName();
 
-void FMODPlatform_SetRealChannelCount(FMOD_ADVANCEDSETTINGS* advSettings);
-
-int FMODPlatform_MemoryPoolSize();
-
 #ifdef FMOD_PLATFORM_LOAD_DLL
 void* FMODPlatformLoadDll(const TCHAR* LibToLoad);
 #endif

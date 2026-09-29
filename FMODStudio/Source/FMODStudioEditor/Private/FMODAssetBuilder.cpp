@@ -34,8 +34,9 @@ FFMODAssetBuilder::~FFMODAssetBuilder()
 
 void FFMODAssetBuilder::Create()
 {
+    // We cannot grab a System from IFMODStudioModule::GetStudioSystem() because this class may be called from the commandlet.
     verifyfmod(FMOD::Studio::System::create(&StudioSystem));
-    FMOD::System *lowLevelSystem = nullptr;
+    FMOD::System* lowLevelSystem = nullptr;
     verifyfmod(StudioSystem->getCoreSystem(&lowLevelSystem));
     verifyfmod(lowLevelSystem->setOutput(FMOD_OUTPUTTYPE_NOSOUND_NRT));
     verifyfmod(StudioSystem->initialize(1, FMOD_STUDIO_INIT_ALLOW_MISSING_PLUGINS | FMOD_STUDIO_INIT_SYNCHRONOUS_UPDATE, FMOD_INIT_MIX_FROM_UPDATE,
