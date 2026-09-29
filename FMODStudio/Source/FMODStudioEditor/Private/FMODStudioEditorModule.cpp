@@ -452,9 +452,9 @@ void FFMODStudioEditorModule::AddFileMenuExtension(FMenuBuilder &MenuBuilder)
 
 unsigned int GetDLLVersion()
 {
-    // Just grab it from the audition context which is always valid
+    // Just grab it from the editor context which is always valid
     unsigned int DLLVersion = 0;
-    FMOD::Studio::System *StudioSystem = IFMODStudioModule::Get().GetStudioSystem(EFMODSystemContext::Auditioning);
+    FMOD::Studio::System *StudioSystem = IFMODStudioModule::Get().GetStudioSystem(EFMODSystemContext::Editor);
     if (StudioSystem)
     {
         FMOD::System *LowLevelSystem = nullptr;
@@ -816,13 +816,10 @@ void FFMODStudioEditorModule::ValidateFMOD()
     // Look for banks that may have failed to load
     if (bAnyBankFiles)
     {
-        if (!IFMODStudioModule::Get().AreAuditioningBanksLoaded()) {
-            IFMODStudioModule::Get().LoadAuditioningBanks();
-        }
-        FMOD::Studio::System *StudioSystem = IFMODStudioModule::Get().GetStudioSystem(EFMODSystemContext::Auditioning);
+        FMOD::Studio::System *StudioSystem = IFMODStudioModule::Get().GetStudioSystem(EFMODSystemContext::Editor);
         int BankCount = 0;
         StudioSystem->getBankCount(&BankCount);
-        TArray<FString> FailedBanks = IFMODStudioModule::Get().GetFailedBankLoads(EFMODSystemContext::Auditioning);
+        TArray<FString> FailedBanks = IFMODStudioModule::Get().GetFailedBankLoads(EFMODSystemContext::Editor);
 
         if (BankCount == 0 || FailedBanks.Num() != 0)
         {
