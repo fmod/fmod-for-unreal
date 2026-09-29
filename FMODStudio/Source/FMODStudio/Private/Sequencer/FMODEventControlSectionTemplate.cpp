@@ -22,16 +22,12 @@ EventControlKeyInternal MapControlKey(EFMODEventControlKey key)
     {
     case EFMODEventControlKey::Stop:
         return EventControlKeyInternal::Stop;
-        break;
     case EFMODEventControlKey::Play:
         return EventControlKeyInternal::Play;
-        break;
     case EFMODEventControlKey::Pause:
         return EventControlKeyInternal::Pause;
-        break;
     default:
         return EventControlKeyInternal::MAX;
-        break;
     }
 }
 
