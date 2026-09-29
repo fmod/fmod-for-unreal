@@ -1037,7 +1037,7 @@ const FFMODListener &FFMODStudioModule::GetNearestListener(const FVector &Locati
 // Partially copied from FAudioDevice::SetListener
 void FFMODStudioModule::SetListenerPosition(int ListenerIndex, UWorld *World, const FTransform &ListenerTransform, float DeltaSeconds)
 {
-    FMOD::Studio::System *System = IFMODStudioModule::Get().GetStudioSystem(EFMODSystemContext::Runtime);
+    FMOD::Studio::System *System = StudioSystem[EFMODSystemContext::Runtime];
     if (System && ListenerIndex < MAX_LISTENERS)
     {
         // Expand number of listeners dynamically
@@ -1080,7 +1080,7 @@ void FFMODStudioModule::SetListenerPosition(int ListenerIndex, UWorld *World, co
 
 void FFMODStudioModule::FinishSetListenerPosition(int NumListeners)
 {
-    FMOD::Studio::System *System = IFMODStudioModule::Get().GetStudioSystem(EFMODSystemContext::Runtime);
+    FMOD::Studio::System *System = StudioSystem[EFMODSystemContext::Runtime];
     if (!System || NumListeners < 1)
     {
         return;
