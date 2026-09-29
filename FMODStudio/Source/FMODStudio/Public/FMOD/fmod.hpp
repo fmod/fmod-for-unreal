@@ -320,7 +320,7 @@ namespace FMOD
         FMOD_RESULT F_API get3DMinMaxDistance    (float *mindistance, float *maxdistance);
         FMOD_RESULT F_API set3DConeSettings      (float insideconeangle, float outsideconeangle, float outsidevolume);
         FMOD_RESULT F_API get3DConeSettings      (float *insideconeangle, float *outsideconeangle, float *outsidevolume);
-        FMOD_RESULT F_API set3DConeOrientation   (FMOD_VECTOR *orientation);
+        FMOD_RESULT F_API set3DConeOrientation   (const FMOD_VECTOR *orientation);
         FMOD_RESULT F_API get3DConeOrientation   (FMOD_VECTOR *orientation);
         FMOD_RESULT F_API set3DCustomRolloff     (FMOD_VECTOR *points, int numpoints);
         FMOD_RESULT F_API get3DCustomRolloff     (FMOD_VECTOR **points, int *numpoints);
