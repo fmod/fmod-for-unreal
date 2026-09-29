@@ -42,7 +42,7 @@ void UFMODEvent::GetParameterDescriptions(TArray<FMOD_STUDIO_PARAMETER_DESCRIPTI
 {
     if (IFMODStudioModule::Get().AreBanksLoaded())
     {
-        FMOD::Studio::EventDescription *EventDesc = IFMODStudioModule::Get().GetEventDescription(this, EFMODSystemContext::Auditioning);
+        FMOD::Studio::EventDescription *EventDesc = IFMODStudioModule::Get().GetEventDescription(this, EFMODSystemContext::Max);
 
         if (EventDesc)
         {

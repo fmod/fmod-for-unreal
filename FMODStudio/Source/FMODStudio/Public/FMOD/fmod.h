@@ -304,7 +304,7 @@ FMOD_RESULT F_API FMOD_Channel_Set3DMinMaxDistance      (FMOD_CHANNEL *channel, 
 FMOD_RESULT F_API FMOD_Channel_Get3DMinMaxDistance      (FMOD_CHANNEL *channel, float *mindistance, float *maxdistance);
 FMOD_RESULT F_API FMOD_Channel_Set3DConeSettings        (FMOD_CHANNEL *channel, float insideconeangle, float outsideconeangle, float outsidevolume);
 FMOD_RESULT F_API FMOD_Channel_Get3DConeSettings        (FMOD_CHANNEL *channel, float *insideconeangle, float *outsideconeangle, float *outsidevolume);
-FMOD_RESULT F_API FMOD_Channel_Set3DConeOrientation     (FMOD_CHANNEL *channel, FMOD_VECTOR *orientation);
+FMOD_RESULT F_API FMOD_Channel_Set3DConeOrientation     (FMOD_CHANNEL *channel, const FMOD_VECTOR *orientation);
 FMOD_RESULT F_API FMOD_Channel_Get3DConeOrientation     (FMOD_CHANNEL *channel, FMOD_VECTOR *orientation);
 FMOD_RESULT F_API FMOD_Channel_Set3DCustomRolloff       (FMOD_CHANNEL *channel, FMOD_VECTOR *points, int numpoints);
 FMOD_RESULT F_API FMOD_Channel_Get3DCustomRolloff       (FMOD_CHANNEL *channel, FMOD_VECTOR **points, int *numpoints);
