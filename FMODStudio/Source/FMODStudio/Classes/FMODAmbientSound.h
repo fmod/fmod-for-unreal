@@ -15,7 +15,7 @@ class FMODSTUDIO_API AFMODAmbientSound : public AActor
 public:
     /** The Audio component for this actor */
     UPROPERTY(Category = Sound, VisibleAnywhere, BlueprintReadOnly, meta = (ExposeFunctionCategories = "Sound"))
-    UFMODAudioComponent *AudioComponent;
+    TObjectPtr<UFMODAudioComponent> AudioComponent;
 
 // Begin AActor interface.
 #if WITH_EDITOR

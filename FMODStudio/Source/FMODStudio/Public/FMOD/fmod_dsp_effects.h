@@ -6,7 +6,7 @@
 /* and generators.                                                                                               */
 /*                                                                                                               */
 /* For more detail visit:                                                                                        */
-/* https://fmod.com/docs/2.03/api/core-api-common-dsp-effects.html#fmod_dsp_type                                 */
+/* https://fmod.com/docs/2.04/api/core-api-common-dsp-effects.html#fmod_dsp_type                                 */
 /* ============================================================================================================= */
 
 #ifndef _FMOD_DSP_EFFECTS_H
@@ -229,6 +229,7 @@ typedef enum FMOD_DSP_MULTIBAND_DYNAMICS
     FMOD_DSP_MULTIBAND_DYNAMICS_C_RELEASE,
     FMOD_DSP_MULTIBAND_DYNAMICS_C_GAIN_MAKEUP,
     FMOD_DSP_MULTIBAND_DYNAMICS_C_RESPONSE_DATA,
+    FMOD_DSP_MULTIBAND_DYNAMICS_LEGACY_MODE,
 } FMOD_DSP_MULTIBAND_DYNAMICS;
 
 
@@ -240,6 +241,13 @@ typedef enum FMOD_DSP_MULTIBAND_DYNAMICS_MODE_TYPE
     FMOD_DSP_MULTIBAND_DYNAMICS_MODE_EXPAND_UP,
     FMOD_DSP_MULTIBAND_DYNAMICS_MODE_EXPAND_DOWN
 } FMOD_DSP_MULTIBAND_DYNAMICS_MODE_TYPE;
+
+
+typedef enum FMOD_DSP_MULTIBAND_DYNAMICS_LEGACY_MODE_TYPE
+{
+    FMOD_DSP_MULTIBAND_DYNAMICS_LEGACY_MODE_LATEST,
+    FMOD_DSP_MULTIBAND_DYNAMICS_LEGACY_MODE_20300
+} FMOD_DSP_MULTIBAND_DYNAMICS_LEGACY_MODE_TYPE;
 
 
 typedef enum

@@ -6,7 +6,7 @@
 /* the C and C++ interfaces.                                                                */
 /*                                                                                          */
 /* For more detail visit:                                                                   */
-/* https://fmod.com/docs/2.03/api/studio-api.html                                           */
+/* https://fmod.com/docs/2.04/api/studio-api.html                                           */
 /* ======================================================================================== */
 #ifndef FMOD_STUDIO_COMMON_H
 #define FMOD_STUDIO_COMMON_H
@@ -51,6 +51,7 @@ typedef unsigned int FMOD_STUDIO_SYSTEM_CALLBACK_TYPE;
 #define FMOD_STUDIO_SYSTEM_CALLBACK_BANK_UNLOAD             0x00000004
 #define FMOD_STUDIO_SYSTEM_CALLBACK_LIVEUPDATE_CONNECTED    0x00000008
 #define FMOD_STUDIO_SYSTEM_CALLBACK_LIVEUPDATE_DISCONNECTED 0x00000010
+#define FMOD_STUDIO_SYSTEM_CALLBACK_GET_SOUND_INFO          0x00000020
 #define FMOD_STUDIO_SYSTEM_CALLBACK_ALL                     0xFFFFFFFF
 
 typedef unsigned int FMOD_STUDIO_EVENT_CALLBACK_TYPE;
@@ -73,6 +74,7 @@ typedef unsigned int FMOD_STUDIO_EVENT_CALLBACK_TYPE;
 #define FMOD_STUDIO_EVENT_CALLBACK_VIRTUAL_TO_REAL          0x00010000
 #define FMOD_STUDIO_EVENT_CALLBACK_START_EVENT_COMMAND      0x00020000
 #define FMOD_STUDIO_EVENT_CALLBACK_NESTED_TIMELINE_BEAT     0x00040000
+#define FMOD_STUDIO_EVENT_CALLBACK_ASSET_MARKER             0x00080000
 #define FMOD_STUDIO_EVENT_CALLBACK_ALL                      0xFFFFFFFF
 
 typedef unsigned int FMOD_STUDIO_LOAD_BANK_FLAGS;
@@ -123,6 +125,7 @@ typedef enum FMOD_STUDIO_PARAMETER_TYPE
     FMOD_STUDIO_PARAMETER_AUTOMATIC_SPEED,
     FMOD_STUDIO_PARAMETER_AUTOMATIC_SPEED_ABSOLUTE,
     FMOD_STUDIO_PARAMETER_AUTOMATIC_DISTANCE_NORMALIZED,
+    FMOD_STUDIO_PARAMETER_AUTOMATIC_AUDIO_TABLE_KEY_COUNT,
 
     FMOD_STUDIO_PARAMETER_MAX,
     FMOD_STUDIO_PARAMETER_FORCEINT = 65536                  /* Makes sure this enum is signed 32bit. */
@@ -266,6 +269,14 @@ typedef struct FMOD_STUDIO_TIMELINE_NESTED_BEAT_PROPERTIES
     FMOD_STUDIO_TIMELINE_BEAT_PROPERTIES    properties;
 } FMOD_STUDIO_TIMELINE_NESTED_BEAT_PROPERTIES;
 
+typedef struct FMOD_STUDIO_ASSET_MARKER_PROPERTIES
+{
+    const char *name;
+    FMOD_SOUND *sound;
+    int        position;
+    int        index;
+} FMOD_STUDIO_ASSET_MARKER_PROPERTIES;
+
 typedef struct FMOD_STUDIO_ADVANCEDSETTINGS
 {
     int             cbsize;
@@ -303,6 +314,7 @@ typedef struct FMOD_STUDIO_SOUND_INFO
     FMOD_MODE               mode;
     FMOD_CREATESOUNDEXINFO  exinfo;
     int                     subsoundindex;
+    unsigned long long      keyhash;
 } FMOD_STUDIO_SOUND_INFO;
 
 typedef struct FMOD_STUDIO_COMMAND_INFO

@@ -45,7 +45,7 @@ namespace EFMODOutput
         TYPE_AUTODETECT,
         /** All - Perform all mixing but discard the final output. */
         TYPE_NOSOUND,
-        /** Win / UWP / Xbox One / Game Core - Windows Audio Session API. (Default on Windows, Xbox One, Game Core and UWP) */
+        /** Win / Game Core - Windows Audio Session API. (Default on Windows and Game Core) */
         TYPE_WASAPI,
         /** Win - Low latency ASIO 2.0. */
         TYPE_ASIO,
@@ -214,7 +214,7 @@ public:
     /**
     * Enable live update in Editor for Auditioning. *Requires Restart*
     */
-    UPROPERTY(Config, EditAnywhere, Category = Basic)
+    UPROPERTY(Config, EditAnywhere, Category = Basic, meta = (ConfigRestartRequired = true))
     bool bEnableEditorLiveUpdate;
 
     /**
@@ -336,7 +336,7 @@ public:
     /**
     * Live update port to use while in editor for auditioning. *Requires Restart*
     */
-    UPROPERTY(config, EditAnywhere, Category = Advanced, meta = (EditCondition = "bEnableEditorLiveUpdate"))
+    UPROPERTY(config, EditAnywhere, Category = Advanced, meta = (EditCondition = "bEnableEditorLiveUpdate", ConfigRestartRequired = true))
     int32 EditorLiveUpdatePort;
 
     /**
@@ -428,8 +428,14 @@ public:
     FString AmbientLPFParameter;
 
     /**
-     * Used to specify platform specific settings.
-     */
+    * Enables/Disables the FMODAudioLink modules.
+    */
+    UPROPERTY(config, EditAnywhere, Category = Advanced, meta = (ConfigRestartRequired=true))
+    bool bFMODAudioLinkEnabled;
+
+    /*
+    * Used to specify platform specific settings.
+    */
     UPROPERTY(config, EditAnywhere, Category = PlatformSettings)
     TMap<TEnumAsByte<EFMODPlatforms::Type>, FFMODPlatformSettings> Platforms;
 

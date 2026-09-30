@@ -1,5 +1,4 @@
 // Copyright (c), Firelight Technologies Pty, Ltd. 2012-2026.
-using Tools.DotNETCommon;
 using UnrealBuildTool;
 using System;
 using System.IO;
@@ -25,7 +24,6 @@ namespace UnrealBuildTool.Rules
         public FMODStudio(ReadOnlyTargetRules Target) : base(Target)
         {
             PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
-            PrivatePCHHeaderFile = "Private/FMODStudioPrivatePCH.h";
 
             bUseUnity = true;
 
@@ -53,9 +51,10 @@ namespace UnrealBuildTool.Rules
 
             if (Target.bBuildEditor == true)
             {
+                PublicDependencyModuleNames.Add("DeveloperToolSettings");
                 PrivateDependencyModuleNames.Add("AssetRegistry");
-                PrivateDependencyModuleNames.Add("UnrealEd");
                 PrivateDependencyModuleNames.Add("Settings");
+                PrivateDependencyModuleNames.Add("UnrealEd");
             }
 
             DynamicallyLoadedModuleNames.AddRange(
@@ -94,13 +93,7 @@ namespace UnrealBuildTool.Rules
 
                 libPath = System.IO.Path.Combine(LibRootDirectory, platformName);
 
-                if (Target.Platform.ToString() == "UWP64")
-                {
-                    linkExtension = ".lib";
-                    dllExtension = ".dll";
-                    bAddDelayLoad = true;
-                }
-                else if (Target.IsInPlatformGroup(UnrealPlatformGroup.Windows))
+                if (Target.IsInPlatformGroup(UnrealPlatformGroup.Windows))
                 {
                     linkExtension = "_vc.lib";
                     dllExtension = ".dll";
@@ -110,8 +103,6 @@ namespace UnrealBuildTool.Rules
                 {
                     linkExtension = dllExtension = ".dylib";
                     libPrefix = "lib";
-
-                    libPath = System.IO.Path.Combine(ModuleDirectory, "../../Libs/Mac/");
                 }
                 else if (Target.Platform == UnrealTargetPlatform.Android)
                 {
@@ -173,7 +164,7 @@ namespace UnrealBuildTool.Rules
 
             if (Target.IsInPlatformGroup(UnrealPlatformGroup.Android))
             {
-                string[] archs = new string[] { "armeabi-v7a", "arm64-v8a", "x86_64" };
+                string[] archs = new string[] { "arm64-v8a", "x86_64" };
                 foreach (string arch in archs)
                 {
                     string LibPath = System.IO.Path.Combine(libPath, arch);
@@ -252,6 +243,9 @@ namespace UnrealBuildTool.Rules
                     }
                 }
             }
+
+            FMODAudioLink.Apply(this, Target);
+            FMODAudioLinkEditor.Apply(this, Target);
         }
 
         private System.Collections.Generic.List<string> GetPlugins(ReadOnlyTargetRules Target, string BasePath)
@@ -266,7 +260,7 @@ namespace UnrealBuildTool.Rules
             {
                 try
                 {
-                    ConfigHierarchy Ini = ConfigCache.ReadHierarchy(ConfigHierarchyType.Engine, DirectoryReference.FromFile(Target.ProjectFile), Target.Platform);
+                    ConfigHierarchy Ini = ConfigCache.ReadHierarchy(ConfigHierarchyType.Engine, EpicGames.Core.DirectoryReference.FromFile(Target.ProjectFile), Target.Platform);
 
                     if (Ini != null && Ini.GetArray("/Script/FMODStudio.FMODSettings", "PluginFiles", out AllPlugins))
                     {
@@ -280,6 +274,19 @@ namespace UnrealBuildTool.Rules
             }
 
             return AllPlugins ?? new System.Collections.Generic.List<string>();
+        }
+
+        public void AddModule(string Module, bool AddPublic = true)
+        {
+            ConditionalAddModuleDirectory(
+                EpicGames.Core.DirectoryReference.Combine(new EpicGames.Core.DirectoryReference(ModuleDirectory), "..", Module));
+
+            ExternalDependencies.Add(Path.Combine(ModuleDirectory, "..", Module, Module + ".Build.cs"));
+            if (AddPublic)
+            {
+                PublicIncludePaths.Add(Path.Combine(ModuleDirectory, "..", Module, "Public"));
+            }
+            PrivateIncludePaths.Add(Path.Combine(ModuleDirectory, "..", Module, "Private"));
         }
     }
 }
