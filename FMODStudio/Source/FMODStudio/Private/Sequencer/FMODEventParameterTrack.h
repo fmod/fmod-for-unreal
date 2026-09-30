@@ -41,5 +41,5 @@ public:
 private:
     /** The sections owned by this track. */
     UPROPERTY()
-    TArray<UMovieSceneSection *> Sections;
+    TArray<TObjectPtr<UMovieSceneSection>> Sections;
 };

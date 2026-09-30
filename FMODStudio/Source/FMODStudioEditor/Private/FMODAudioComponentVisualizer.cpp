@@ -5,8 +5,8 @@
 #include "FMODUtils.h"
 #include "FMODEvent.h"
 #include "fmod_studio.hpp"
-#include "Engine/Public/SceneView.h"
-#include "Engine/Public/SceneManagement.h"
+#include "SceneView.h"
+#include "SceneManagement.h"
 
 void FFMODAudioComponentVisualizer::DrawVisualization(const UActorComponent *Component, const FSceneView *View, FPrimitiveDrawInterface *PDI)
 {

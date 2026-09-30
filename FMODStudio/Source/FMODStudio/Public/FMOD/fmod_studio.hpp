@@ -6,7 +6,7 @@
 /* constants / callbacks) to develop using the C++ language.                                */
 /*                                                                                          */
 /* For more detail visit:                                                                   */
-/* https://fmod.com/docs/2.03/api/studio-api.html                                           */
+/* https://fmod.com/docs/2.04/api/studio-api.html                                           */
 /* ======================================================================================== */
 #ifndef FMOD_STUDIO_HPP
 #define FMOD_STUDIO_HPP
@@ -32,6 +32,10 @@ namespace Studio
     class CommandReplay;
 
     inline FMOD_RESULT parseID(const char *idstring, FMOD_GUID *id) { return FMOD_Studio_ParseID(idstring, id); }
+    inline FMOD_RESULT hashAudioTableKey(const char *key, unsigned long long *hash)
+    {
+        return FMOD_Studio_HashAudioTableKey(key, hash);
+    }
 
     class System
     {
@@ -152,7 +156,7 @@ namespace Studio
         FMOD_RESULT F_API getUserPropertyByIndex(int index, FMOD_STUDIO_USER_PROPERTY *property) const;
         FMOD_RESULT F_API getUserProperty(const char *name, FMOD_STUDIO_USER_PROPERTY *property) const;
         FMOD_RESULT F_API getLength(int *length) const;
-        FMOD_RESULT F_API getMinMaxDistance(float *min, float *max) const;
+        FMOD_RESULT F_API getMinMaxDistance(float *min, float *max, bool includeOverrides = false) const;
         FMOD_RESULT F_API getSoundSize(float *size) const;
 
         FMOD_RESULT F_API isSnapshot(bool *snapshot) const;
@@ -244,6 +248,9 @@ namespace Studio
         FMOD_RESULT F_API setParameterByNameWithLabel(const char *name, const char* label, bool ignoreseekspeed = false);
 
         FMOD_RESULT F_API keyOff();
+
+        FMOD_RESULT F_API addAudioTableKey(const char *key);
+        FMOD_RESULT F_API clearAudioTableKeys();
 
         // Monitoring
         FMOD_RESULT F_API getCPUUsage(unsigned int *exclusive, unsigned int *inclusive) const;
