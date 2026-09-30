@@ -8,7 +8,6 @@
 #include "HAL/Runnable.h"
 #include "HAL/RunnableThread.h"
 #include "Misc/ScopeLock.h"
-#include "FMODStudioPrivatePCH.h"
 
 FMOD_RESULT F_CALL FMODLogCallback(FMOD_DEBUG_FLAGS flags, const char *file, int line, const char *func, const char *message)
 {

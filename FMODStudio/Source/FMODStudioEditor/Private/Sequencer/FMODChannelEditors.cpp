@@ -7,9 +7,10 @@
 #include "MovieSceneTimeHelpers.h"
 #include "MovieSceneToolHelpers.h"
 #include "ScopedTransaction.h"
-#include "EditorWidgets/Public/SEnumCombobox.h"
+#include "Editor/EditorWidgets/Public/SEnumCombo.h"
 #include "EditorStyleSet.h"
 #include "Channels/MovieSceneChannelTraits.h"
+#include "ISequencer.h"
 
 class SFMODEventControlKeyEditor : public SCompoundWidget
 {
@@ -151,9 +152,9 @@ void DrawKeys(FFMODEventControlChannel *Channel, TArrayView<const FKeyHandle> In
     static const FName KeyRightBrushName("Sequencer.KeyRight");
     static const FName KeyDiamondBrushName("Sequencer.KeyDiamond");
 
-    const FSlateBrush *LeftKeyBrush = FEditorStyle::GetBrush(KeyLeftBrushName);
-    const FSlateBrush *RightKeyBrush = FEditorStyle::GetBrush(KeyRightBrushName);
-    const FSlateBrush *DiamondBrush = FEditorStyle::GetBrush(KeyDiamondBrushName);
+    const FSlateBrush *LeftKeyBrush = FAppStyle::GetBrush(KeyLeftBrushName);
+    const FSlateBrush *RightKeyBrush = FAppStyle::GetBrush(KeyRightBrushName);
+    const FSlateBrush *DiamondBrush = FAppStyle::GetBrush(KeyDiamondBrushName);
 
     TMovieSceneChannelData<uint8> ChannelData = Channel->GetData();
 

@@ -9,9 +9,9 @@ UFMODBank::UFMODBank(const FObjectInitializer &ObjectInitializer)
 }
 
 /** Get tags to show in content view */
-void UFMODBank::GetAssetRegistryTags(TArray<FAssetRegistryTag> &OutTags) const
+void UFMODBank::GetAssetRegistryTags(FAssetRegistryTagsContext Context) const
 {
-    Super::GetAssetRegistryTags(OutTags);
+    Super::GetAssetRegistryTags(Context);
 }
 
 FString UFMODBank::GetDesc()

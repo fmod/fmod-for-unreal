@@ -27,5 +27,5 @@ public:
 
     // Sound to Play
     UPROPERTY(EditAnywhere, Category = "FMOD Anim Notify", BlueprintReadWrite)
-    class UFMODEvent* Event;
+    TObjectPtr<UFMODEvent> Event;
 };

@@ -6,7 +6,7 @@
 /* callbacks) to develop using the C interface                                              */
 /*                                                                                          */
 /* For more detail visit:                                                                   */
-/* https://fmod.com/docs/2.03/api/core-api.html                                             */
+/* https://fmod.com/docs/2.04/api/core-api.html                                             */
 /* ======================================================================================== */
 
 #ifndef _FMOD_H
@@ -533,9 +533,9 @@ FMOD_RESULT F_API FMOD_DSP_SetBypass                    (FMOD_DSP *dsp, FMOD_BOO
 FMOD_RESULT F_API FMOD_DSP_GetBypass                    (FMOD_DSP *dsp, FMOD_BOOL *bypass);
 FMOD_RESULT F_API FMOD_DSP_SetWetDryMix                 (FMOD_DSP *dsp, float prewet, float postwet, float dry);
 FMOD_RESULT F_API FMOD_DSP_GetWetDryMix                 (FMOD_DSP *dsp, float *prewet, float *postwet, float *dry);
-FMOD_RESULT F_API FMOD_DSP_SetChannelFormat             (FMOD_DSP *dsp, FMOD_CHANNELMASK channelmask, int numchannels, FMOD_SPEAKERMODE source_speakermode);
-FMOD_RESULT F_API FMOD_DSP_GetChannelFormat             (FMOD_DSP *dsp, FMOD_CHANNELMASK *channelmask, int *numchannels, FMOD_SPEAKERMODE *source_speakermode);
-FMOD_RESULT F_API FMOD_DSP_GetOutputChannelFormat       (FMOD_DSP *dsp, FMOD_CHANNELMASK inmask, int inchannels, FMOD_SPEAKERMODE inspeakermode, FMOD_CHANNELMASK *outmask, int *outchannels, FMOD_SPEAKERMODE *outspeakermode);
+FMOD_RESULT F_API FMOD_DSP_SetInputChannelFormat        (FMOD_DSP *dsp, int inchannels, FMOD_SPEAKERMODE inmode);
+FMOD_RESULT F_API FMOD_DSP_GetInputChannelFormat        (FMOD_DSP *dsp, int *inchannels, FMOD_SPEAKERMODE *inmode);
+FMOD_RESULT F_API FMOD_DSP_GetOutputChannelFormat       (FMOD_DSP *dsp, int inchannels, FMOD_SPEAKERMODE inmode, int *outchannels, FMOD_SPEAKERMODE *outmode);
 FMOD_RESULT F_API FMOD_DSP_Reset                        (FMOD_DSP *dsp);
 FMOD_RESULT F_API FMOD_DSP_SetCallback                  (FMOD_DSP *dsp, FMOD_DSP_CALLBACK callback);
 
@@ -554,13 +554,12 @@ FMOD_RESULT F_API FMOD_DSP_GetParameterData             (FMOD_DSP *dsp, int inde
 FMOD_RESULT F_API FMOD_DSP_GetNumParameters             (FMOD_DSP *dsp, int *numparams);
 FMOD_RESULT F_API FMOD_DSP_GetParameterInfo             (FMOD_DSP *dsp, int index, FMOD_DSP_PARAMETER_DESC **desc);
 FMOD_RESULT F_API FMOD_DSP_GetDataParameterIndex        (FMOD_DSP *dsp, int datatype, int *index);
-FMOD_RESULT F_API FMOD_DSP_ShowConfigDialog             (FMOD_DSP *dsp, void *hwnd, FMOD_BOOL show);
 
 /*
      DSP attributes.
 */
 
-FMOD_RESULT F_API FMOD_DSP_GetInfo                      (FMOD_DSP *dsp, char *name, unsigned int *version, int *channels, int *configwidth, int *configheight);
+FMOD_RESULT F_API FMOD_DSP_GetInfo                      (FMOD_DSP *dsp, char *name, unsigned int *version, int *channels, FMOD_DSP_MODE *mode);
 FMOD_RESULT F_API FMOD_DSP_GetType                      (FMOD_DSP *dsp, FMOD_DSP_TYPE *type);
 FMOD_RESULT F_API FMOD_DSP_GetIdle                      (FMOD_DSP *dsp, FMOD_BOOL *idle);
 

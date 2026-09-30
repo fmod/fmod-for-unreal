@@ -61,6 +61,17 @@ struct FTimelineBeatProperties
     {}
 };
 
+struct FAssetMarkerProperties
+{
+    FString Name;
+    int32 Position;
+    int32 Index;
+    FAssetMarkerProperties()
+        : Position(0)
+        , Index(0)
+    {}
+};
+
 USTRUCT(BlueprintType)
 struct FFMODAttenuationDetails
 {
@@ -109,6 +120,8 @@ struct FFMODOcclusionDetails
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnEventStopped);
 /** called when a sound stops */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnSoundStopped);
+/** called when one of an EventInstance's internal Channels passes an asset marker */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FOnAssetMarker, FString, Name, int32, Position, int32, index);
 /** called when we reach a named marker on the timeline */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnTimelineMarker, FString, Name, int32, Position);
 /** called when we reach a beat on the timeline */
@@ -146,7 +159,7 @@ class FMODSTUDIO_API UFMODAudioComponent : public USceneComponent
 public:
     /** The event asset to use for this sound. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = FMODAudio)
-    UFMODEvent* Event;
+    TObjectPtr<UFMODEvent> Event;
 
     /** Event parameter cache. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, SimpleDisplay, Category = FMODAudio)
@@ -185,6 +198,10 @@ public:
     /** Called when a sound stops. */
     UPROPERTY(BlueprintAssignable)
     FOnSoundStopped OnSoundStopped;
+
+    /** Called when one of an EventInstance's internal Channels passes an asset marker. */
+    UPROPERTY(BlueprintAssignable)
+    FOnAssetMarker OnAssetMarker;
 
     /** Called when we reach a named marker (if bEnableTimelineCallbacks is true). */
     UPROPERTY(BlueprintAssignable)
@@ -371,6 +388,9 @@ private:
     /** Timeline Beat callback. */
     void EventCallbackAddBeat(struct FMOD_STUDIO_TIMELINE_BEAT_PROPERTIES *props);
 
+    /** AssetMarker callback.. */
+    void EventCallbackAssetMarker(struct FMOD_STUDIO_ASSET_MARKER_PROPERTIES *props);
+
     /** Programmer Sound Create callback. */
     void EventCallbackCreateProgrammerSound(struct FMOD_STUDIO_PROGRAMMER_SOUND_PROPERTIES *props);
 
@@ -445,6 +465,8 @@ private:
     TArray<FTimelineMarkerProperties> CallbackMarkerQueue;
     /** Stores the Timeline Beats as they are triggered. */
     TArray<FTimelineBeatProperties> CallbackBeatQueue;
+    /** Stores the Asset Markers as they are triggered. */
+    TArray<FAssetMarkerProperties> CallbackSyncQueue;
 
     /** Direct assignment of programmer sound from other C++ code. */
     FMOD::Sound *ProgrammerSound;
@@ -452,7 +474,7 @@ private:
     /** The length of the current Event in milliseconds. */
     int32 EventLength;
 
-    /** Used by FPlayingToken to prevent restarting from delayed sequencer state restore. */
+    /** To prevent restarting by delayed state restore from sequencer. */
     bool bPlayEnded;
 
     FVector Velocity;

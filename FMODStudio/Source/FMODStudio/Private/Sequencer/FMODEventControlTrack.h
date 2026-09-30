@@ -39,5 +39,5 @@ public:
 private:
     /** List of all event control sections. */
     UPROPERTY()
-    TArray<UMovieSceneSection *> ControlSections;
+    TArray<TObjectPtr<UMovieSceneSection>> ControlSections;
 };

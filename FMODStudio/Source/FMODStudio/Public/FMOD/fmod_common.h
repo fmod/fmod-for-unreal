@@ -5,7 +5,7 @@
 /* This header is included by fmod.hpp (C++ interface) and fmod.h (C interface)             */
 /*                                                                                          */
 /* For more detail visit:                                                                   */
-/* https://fmod.com/docs/2.03/api/core-api-common.html                                      */
+/* https://fmod.com/docs/2.04/api/core-api-common.html                                      */
 /* ======================================================================================== */
 #ifndef _FMOD_COMMON_H
 #define _FMOD_COMMON_H
@@ -54,7 +54,7 @@ typedef struct FMOD_ASYNCREADINFO  FMOD_ASYNCREADINFO;
 /*
     FMOD constants
 */
-#define FMOD_VERSION    0x00020315                     /* 0xaaaabbcc -> aaaa = product version, bb = major version, cc = minor version.*/
+#define FMOD_VERSION    0x00020400                     /* 0xaaaabbcc -> aaaa = product version, bb = major version, cc = minor version.*/
 #define FMOD_BUILDNUMBER 121212
 
 typedef unsigned int FMOD_DEBUG_FLAGS;
@@ -84,7 +84,6 @@ typedef unsigned int FMOD_MEMORY_TYPE;
 typedef unsigned int FMOD_INITFLAGS;
 #define FMOD_INIT_NORMAL                            0x00000000
 #define FMOD_INIT_STREAM_FROM_UPDATE                0x00000001
-#define FMOD_INIT_MIX_FROM_UPDATE                   0x00000002
 #define FMOD_INIT_3D_RIGHTHANDED                    0x00000004
 #define FMOD_INIT_CLIP_OUTPUT                       0x00000008
 #define FMOD_INIT_CHANNEL_LOWPASS                   0x00000100
@@ -436,6 +435,7 @@ typedef enum FMOD_OUTPUTTYPE
     FMOD_OUTPUTTYPE_WINSONIC,
     FMOD_OUTPUTTYPE_AAUDIO,
     FMOD_OUTPUTTYPE_AUDIOWORKLET,
+    FMOD_OUTPUTTYPE_AUDIOWORKLETP,
     FMOD_OUTPUTTYPE_PHASE,
     FMOD_OUTPUTTYPE_OHAUDIO,
 
@@ -534,7 +534,6 @@ typedef enum FMOD_SOUND_TYPE
     FMOD_SOUND_TYPE_AUDIOQUEUE,
     FMOD_SOUND_TYPE_AT9,
     FMOD_SOUND_TYPE_VORBIS,
-    FMOD_SOUND_TYPE_MEDIA_FOUNDATION,
     FMOD_SOUND_TYPE_MEDIACODEC,
     FMOD_SOUND_TYPE_FADPCM,
     FMOD_SOUND_TYPE_OPUS,
@@ -847,6 +846,7 @@ typedef struct FMOD_CREATESOUNDEXINFO
     unsigned int                   minmidigranularity;
     int                            nonblockthreadid;
     FMOD_GUID                     *fsbguid;
+    FMOD_DSP_RESAMPLER             resamplermethod;
 } FMOD_CREATESOUNDEXINFO;
 
 typedef struct FMOD_REVERB_PROPERTIES

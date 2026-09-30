@@ -12,7 +12,6 @@ namespace UnrealBuildTool.Rules
     #endif
         {
             PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
-            PrivatePCHHeaderFile = "Private/FMODStudioEditorPrivatePCH.h";
 
             bUseUnity = true;
 
@@ -29,6 +28,7 @@ namespace UnrealBuildTool.Rules
                 {
                     "Core",
                     "CoreUObject",
+                    "DeveloperToolSettings",
                     "Engine",
                     "FMODStudio",
                     "InputCore",
