@@ -1,6 +1,6 @@
 #include "FMODAssetBuilder.h"
 
-#include "AssetRegistryModule.h"
+#include "AssetRegistry/AssetRegistryModule.h"
 #include "FMODAssetLookup.h"
 #include "FMODAssetTable.h"
 #include "FMODBank.h"
@@ -18,6 +18,7 @@
 #include "SourceControlHelpers.h"
 #include "HAL/FileManager.h"
 #include "Misc/MessageDialog.h"
+#include "DataTableEditorUtils.h"
 
 #include "fmod_studio.hpp"
 
@@ -38,12 +39,13 @@ void FFMODAssetBuilder::Create()
     FMOD::System* lowLevelSystem = nullptr;
     verifyfmod(StudioSystem->getCoreSystem(&lowLevelSystem));
     verifyfmod(lowLevelSystem->setOutput(FMOD_OUTPUTTYPE_NOSOUND_NRT));
-    verifyfmod(StudioSystem->initialize(1, FMOD_STUDIO_INIT_ALLOW_MISSING_PLUGINS | FMOD_STUDIO_INIT_SYNCHRONOUS_UPDATE, FMOD_INIT_MIX_FROM_UPDATE,
+    verifyfmod(StudioSystem->initialize(1, FMOD_STUDIO_INIT_ALLOW_MISSING_PLUGINS | FMOD_STUDIO_INIT_SYNCHRONOUS_UPDATE, FMOD_INIT_NORMAL,
         nullptr));
 }
 
 void FFMODAssetBuilder::ProcessBanks()
 {
+    FlushAsyncLoading();
     TArray<UObject*> AssetsToSave;
     TArray<UObject*> AssetsToDelete;
     const UFMODSettings& Settings = *GetDefault<UFMODSettings>();
@@ -191,8 +193,7 @@ void FFMODAssetBuilder::BuildAssets(const UFMODSettings& InSettings, const FStri
                         UE_LOG(LogFMOD, Log, TEXT("Deleting stale asset %s/%s."), *Entry.Value.PackageName, *Entry.Value.AssetName);
                         AssetsToDelete.Add(Asset);
                     }
-
-                    AssetLookup->RemoveRow(Entry.Key);
+                    FDataTableEditorUtils::RemoveRow(AssetLookup, Entry.Key);
                 }
 
                 bAssetLookupModified = true;
@@ -359,9 +360,8 @@ void FFMODAssetBuilder::BuildBankLookup(const FString &AssetName, const FString 
     {
         for (const auto& RowName : StaleBanks)
         {
-            BankLookup->DataTable->RemoveRow(RowName);
+            FDataTableEditorUtils::RemoveRow(BankLookup->DataTable, RowName);
         }
-
         bModified = true;
     }
 
@@ -383,7 +383,7 @@ void FFMODAssetBuilder::BuildBankLookup(const FString &AssetName, const FString 
         }
         for (auto& rowname : RowsToRemove)
         {
-            outerrow->Banks->RemoveRow(rowname);
+            FDataTableEditorUtils::RemoveRow(outerrow->Banks, rowname);
             bModified = true;
         }
     }

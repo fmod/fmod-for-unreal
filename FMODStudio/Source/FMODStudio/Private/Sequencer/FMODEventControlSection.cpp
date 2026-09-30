@@ -4,16 +4,10 @@
 #include "Channels/MovieSceneChannelProxy.h"
 #include "UObject/SequencerObjectVersion.h"
 #include "UObject/Package.h"
-#include "Modules/ModuleManager.h"
 
 FFMODEventControlChannel::FFMODEventControlChannel()
 {
-#if WITH_HOT_RELOAD
-    if (!GIsHotReload)
-#endif
-    {
-        SetEnum(StaticEnum<EFMODEventControlKey>());
-    }
+    SetEnum(StaticEnum<EFMODEventControlKey>());
 }
 
 UFMODEventControlSection::UFMODEventControlSection(const FObjectInitializer &ObjectInitializer)

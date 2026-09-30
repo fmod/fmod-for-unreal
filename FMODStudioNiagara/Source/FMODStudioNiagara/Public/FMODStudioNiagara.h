@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "Modules/ModuleManager.h"
 
-class FMODSTUDIONIAGARA_API FFMODStudioNiagaraModule : public IModuleInterface
+class FFMODStudioNiagaraModule : public IModuleInterface
 {
 public:
 

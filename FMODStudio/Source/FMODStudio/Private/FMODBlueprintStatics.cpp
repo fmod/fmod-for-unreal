@@ -11,7 +11,6 @@
 #include "FMODVCA.h"
 #include "fmod_studio.hpp"
 #include "fmod_errors.h"
-#include "FMODStudioPrivatePCH.h"
 
 /////////////////////////////////////////////////////
 // UFMODBlueprintStatics
@@ -76,17 +75,10 @@ class UFMODAudioComponent *UFMODBlueprintStatics::PlayEventAttached(class UFMODE
         return nullptr;
     }
 
-    UWorld* const ThisWorld = AttachToComponent->GetWorld();
-    if (ThisWorld && ThisWorld->IsNetMode(NM_DedicatedServer))
-    {
-        // FAudioDevice::CreateComponent will fail to create the AudioComponent in a real dedicated server, but we need to check netmode here for Editor support.
-        return nullptr;
-    }
-
     AActor *Actor = AttachToComponent->GetOwner();
 
     // Avoid creating component if we're trying to play a sound on an already destroyed actor.
-    if (Actor && Actor->IsPendingKill())
+    if (!IsValid(Actor))
     {
         return nullptr;
     }
@@ -95,12 +87,12 @@ class UFMODAudioComponent *UFMODBlueprintStatics::PlayEventAttached(class UFMODE
     if (Actor)
     {
         // Use actor as outer if we have one.
-        AudioComponent = NewObject<UFMODAudioComponent>(Actor, UFMODAudioComponent::StaticClass());
+        AudioComponent = NewObject<UFMODAudioComponent>(Actor);
     }
     else
     {
         // Let engine pick the outer (transient package).
-        AudioComponent = NewObject<UFMODAudioComponent>(UFMODAudioComponent::StaticClass());
+        AudioComponent = NewObject<UFMODAudioComponent>();
     }
     check(AudioComponent);
     AudioComponent->Event = Event;
@@ -110,7 +102,7 @@ class UFMODAudioComponent *UFMODBlueprintStatics::PlayEventAttached(class UFMODE
 #if WITH_EDITORONLY_DATA
     AudioComponent->bVisualizeComponent = false;
 #endif
-    AudioComponent->RegisterComponentWithWorld(ThisWorld);
+    AudioComponent->RegisterComponentWithWorld(AttachToComponent->GetWorld());
 
     AudioComponent->AttachToComponent(AttachToComponent, FAttachmentTransformRules::KeepRelativeTransform, AttachPointName);
     if (LocationType == EAttachLocation::KeepWorldPosition)
@@ -124,9 +116,7 @@ class UFMODAudioComponent *UFMODBlueprintStatics::PlayEventAttached(class UFMODE
 
     if (bAutoPlay)
     {
-        EFMODSystemContext::Type SystemContext =
-            (GWorld && GWorld->WorldType == EWorldType::Editor) ? EFMODSystemContext::Editor : EFMODSystemContext::Runtime;
-        AudioComponent->PlayInternal(SystemContext);
+        AudioComponent->Play();
     }
     return AudioComponent;
 }
@@ -268,10 +258,10 @@ TArray<FFMODEventInstance> UFMODBlueprintStatics::FindEventInstances(UObject *Wo
             if (Capacity > 0)
             {
                 TArray<FMOD::Studio::EventInstance *> InstancePointers;
-                InstancePointers.SetNum(Capacity, true);
+                InstancePointers.SetNum(Capacity, EAllowShrinking::Yes);
                 int Count = 0;
                 EventDesc->getInstanceList(InstancePointers.GetData(), Capacity, &Count);
-                Instances.SetNum(Count, true);
+                Instances.SetNum(Count, EAllowShrinking::Yes);
                 for (int i = 0; i < Count; ++i)
                 {
                     Instances[i].Instance = InstancePointers[i];
@@ -491,13 +481,13 @@ void UFMODBlueprintStatics::EventInstanceSetProperty(FFMODEventInstance EventIns
 
         if (Result != FMOD_OK)
         {
-            UE_LOG(LogFMOD, Warning, TEXT("Failed to set event instance property type %d to value %f (%s)"), (int)Property, Value,
+            UE_LOG(LogFMOD, Warning, TEXT("Failed to set event instance property type %d to value %f (%hs)"), (int)Property, Value,
                 FMOD_ErrorString(Result));
         }
     }
 }
 
-void UFMODBlueprintStatics::EventInstancePlay(FFMODEventInstance EventInstance)
+void UFMODBlueprintStatics::EventInstancePlay(FFMODEventInstance EventInstance, bool Release)
 {
     if (EventInstance.Instance)
     {
@@ -506,8 +496,13 @@ void UFMODBlueprintStatics::EventInstancePlay(FFMODEventInstance EventInstance)
         {
             UE_LOG(LogFMOD, Warning, TEXT("Failed to play event instance"));
         }
-        // Once we start playing, allow instance to be cleaned up when it finishes
-        EventInstance.Instance->release();
+        else
+        {
+            if (Release)
+            {
+                EventInstanceRelease(EventInstance);
+            }
+        }
     }
 }
 
@@ -561,6 +556,30 @@ void UFMODBlueprintStatics::EventInstanceSetTransform(FFMODEventInstance EventIn
         if (Result != FMOD_OK)
         {
             UE_LOG(LogFMOD, Warning, TEXT("Failed to set transform on event instance"));
+        }
+    }
+}
+
+void UFMODBlueprintStatics::EventInstanceAddAudioTableKey(FFMODEventInstance EventInstance, const FString& Key)
+{
+    if (EventInstance.Instance)
+    {
+        FMOD_RESULT Result = EventInstance.Instance->addAudioTableKey(TCHAR_TO_UTF8(*Key));
+        if (Result != FMOD_OK)
+        {
+            UE_LOG(LogFMOD, Warning, TEXT("Failed to set audio table key on event instance"));
+        }
+    }
+}
+
+void UFMODBlueprintStatics::EventInstanceClearAudioTableKeys(FFMODEventInstance EventInstance)
+{
+    if (EventInstance.Instance)
+    {
+        FMOD_RESULT Result = EventInstance.Instance->clearAudioTableKeys();
+        if (Result != FMOD_OK)
+        {
+            UE_LOG(LogFMOD, Warning, TEXT("Failed to clear audio table keys on event instance"));
         }
     }
 }

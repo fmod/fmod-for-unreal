@@ -6,7 +6,7 @@
 /* of the FMOD error codes.                                                                        */
 /*                                                                                                 */
 /* For more detail visit:                                                                          */
-/* https://fmod.com/docs/2.03/api/core-api-common.html#fmod_result                                 */
+/* https://fmod.com/docs/2.04/api/core-api-common.html#fmod_result                                 */
 /* =============================================================================================== */
 #ifndef _FMOD_ERRORS_H
 #define _FMOD_ERRORS_H
@@ -26,7 +26,7 @@ static const char *FMOD_ErrorString(FMOD_RESULT errcode)
         case FMOD_ERR_CHANNEL_ALLOC:             return "Error trying to allocate a channel.";
         case FMOD_ERR_CHANNEL_STOLEN:            return "The specified channel has been reused to play another sound.";
         case FMOD_ERR_DMA:                       return "DMA Failure.  See debug output for more information.";
-        case FMOD_ERR_DSP_CONNECTION:            return "DSP connection error.  Connection possibly caused a cyclic dependency or connected dsps with incompatible buffer counts.";
+        case FMOD_ERR_DSP_CONNECTION:            return "DSP connection error.  Connection possibly caused a cyclic dependency or connected dsps with incompatible process modes.";
         case FMOD_ERR_DSP_DONTPROCESS:           return "DSP return code from a DSP process query callback.  Tells mixer not to call the process callback and therefore not consume CPU.  Use this to optimize the DSP graph.";
         case FMOD_ERR_DSP_FORMAT:                return "DSP Format error.  A DSP unit may have attempted to connect to this network with the wrong format, or a matrix may have been set with the wrong size if the target unit has a specified channel map.";
         case FMOD_ERR_DSP_INUSE:                 return "DSP is already in the mixer's DSP network. It must be removed before being reinserted or released.";
@@ -67,7 +67,7 @@ static const char *FMOD_ErrorString(FMOD_RESULT errcode)
         case FMOD_ERR_NET_SOCKET_ERROR:          return "A socket error occurred.  This is a catch-all for socket-related errors not listed elsewhere.";
         case FMOD_ERR_NET_URL:                   return "The specified URL couldn't be resolved.";
         case FMOD_ERR_NET_WOULD_BLOCK:           return "Operation on a non-blocking socket could not complete immediately.";
-        case FMOD_ERR_NOTREADY:                  return "Operation could not be performed because specified sound/DSP connection is not ready.";
+        case FMOD_ERR_NOTREADY:                  return "Operation could not be performed because specified resource is not ready.";
         case FMOD_ERR_OUTPUT_ALLOCATED:          return "Error initializing output device, but more specifically, the output device is already in use and cannot be reused.";
         case FMOD_ERR_OUTPUT_CREATEBUFFER:       return "Error creating hardware sound buffer.";
         case FMOD_ERR_OUTPUT_DRIVERCALL:         return "A call to a standard soundcard driver failed, which could possibly mean a bug in the driver or resources were missing or exhausted.";
