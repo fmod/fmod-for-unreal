@@ -45,7 +45,7 @@ namespace EFMODOutput
         TYPE_AUTODETECT,
         /** All - Perform all mixing but discard the final output. */
         TYPE_NOSOUND,
-        /** Win / UWP / Xbox One / Game Core - Windows Audio Session API. (Default on Windows, Xbox One, Game Core and UWP) */
+        /** Win / Game Core - Windows Audio Session API. (Default on Windows and Game Core) */
         TYPE_WASAPI,
         /** Win - Low latency ASIO 2.0. */
         TYPE_ASIO,

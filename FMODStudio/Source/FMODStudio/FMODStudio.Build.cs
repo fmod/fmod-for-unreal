@@ -94,13 +94,7 @@ namespace UnrealBuildTool.Rules
 
                 libPath = System.IO.Path.Combine(LibRootDirectory, platformName);
 
-                if (Target.Platform.ToString() == "UWP64")
-                {
-                    linkExtension = ".lib";
-                    dllExtension = ".dll";
-                    bAddDelayLoad = true;
-                }
-                else if (Target.IsInPlatformGroup(UnrealPlatformGroup.Windows))
+                if (Target.IsInPlatformGroup(UnrealPlatformGroup.Windows))
                 {
                     linkExtension = "_vc.lib";
                     dllExtension = ".dll";

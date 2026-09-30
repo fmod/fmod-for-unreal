@@ -363,10 +363,6 @@ bool FFMODStudioModule::LoadPlugin(EFMODSystemContext::Type Context, const TCHAR
 
             UE_LOG(LogFMOD, Log, TEXT("Trying to load plugin file at location: %s"), *PluginPath);
 
-#if defined(PLATFORM_UWP) && PLATFORM_UWP
-            FPaths::MakePathRelativeTo(PluginPath, *(FPaths::RootDir() + TEXT("/")));
-#endif
-
             unsigned int Handle = 0;
             PluginLoadResult = LowLevelSystem->loadPlugin(TCHAR_TO_UTF8(*PluginPath), &Handle, 0);
             if (PluginLoadResult == FMOD_OK)
@@ -424,8 +420,6 @@ FString FFMODStudioModule::GetDllPath(const TCHAR *ShortName, bool bExplicitPath
 #else
     return FString::Printf(TEXT("%s/Win32/%s.dll"), *BaseLibPath, ShortName);
 #endif
-#elif defined(PLATFORM_UWP) && PLATFORM_UWP
-    return FString::Printf(TEXT("%s/UWP64/%s.dll"), *BaseLibPath, ShortName);
 #else
     UE_LOG(LogFMOD, Error, TEXT("Unsupported platform for dynamic libs"));
     return "";

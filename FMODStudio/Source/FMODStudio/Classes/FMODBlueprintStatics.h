@@ -262,7 +262,7 @@ class FMODSTUDIO_API UFMODBlueprintStatics : public UBlueprintFunctionLibrary
 	 * @param EventInstance - Event instance
 	 */
     UFUNCTION(BlueprintCallable, Category = "Audio|FMOD|EventInstance", meta = (UnsafeDuringActorConstruction = "true"))
-    static void EventInstancePlay(FFMODEventInstance EventInstance);
+    static void EventInstancePlay(FFMODEventInstance EventInstance, bool Release = true);
 
     /** Stop an FMOD Event Instance.
 	 * @param EventInstance - Event instance
@@ -289,6 +289,20 @@ class FMODSTUDIO_API UFMODBlueprintStatics : public UBlueprintFunctionLibrary
 	 */
     UFUNCTION(BlueprintCallable, Category = "Audio|FMOD|EventInstance", meta = (UnsafeDuringActorConstruction = "true"))
     static void EventInstanceSetTransform(FFMODEventInstance EventInstance, const FTransform &Location);
+
+    /** Adds an Audio Table Key to an FMOD Event Instance.
+     * @param EventInstance - Event instance
+     * @param Key - Key to add
+     */
+    UFUNCTION(BlueprintCallable, Category = "Audio|FMOD|EventInstance", meta = (UnsafeDuringActorConstruction = "true"))
+    static void EventInstanceAddAudioTableKey(FFMODEventInstance EventInstance, const FString& Key);
+
+    /** Clear all Audio Table Keys on an FMOD Event Instance.
+     * @param EventInstance - Event instance
+     * @param Key - Key to add
+     */
+    UFUNCTION(BlueprintCallable, Category = "Audio|FMOD|EventInstance", meta = (UnsafeDuringActorConstruction = "true"))
+    static void EventInstanceClearAudioTableKeys(FFMODEventInstance EventInstance);
 
     /** List all output device names.
 	 */
